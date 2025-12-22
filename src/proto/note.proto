@@ -1,0 +1,77 @@
+syntax = "proto3";
+import "google/protobuf/timestamp.proto";
+
+package note;
+option go_package = "github.com/KuramaSyu/Wersu-Rest/src/pb/note;note";
+// Request for getting a note by id
+message GetNoteRequest {
+    int32 id = 1;
+}
+
+message GetSearchNotesRequest {
+    enum SearchType {
+        Undefined = 0;      // default
+        NoSearch = 1;       // just
+        FullTextTitle = 2;  // exact match search
+        Fuzzy = 3;          // typo tolerant search
+        Context = 4;        // semantic search using embeddings
+    }
+    // Search parameters
+    SearchType search_type = 1;
+    string query = 2;
+
+    // Pagination
+    int32 limit = 3;
+    int32 offset = 4;
+}
+
+// Response: represents a minimal Note for search results
+message MinimalNote {
+    int32 id = 1;
+    string title = 2;
+    int32 author_id = 3;
+    google.protobuf.Timestamp updated_at = 4;
+    string stripped_content = 5;
+}
+
+// Response: represents a Note
+message Note {
+    reserved 6;
+    int32 id = 1;
+    string title = 2;
+    string content = 3;
+    google.protobuf.Timestamp updated_at = 4;
+    int32 author_id = 5;
+    //repeated NoteEmbedding embeddings = 6;
+    repeated NotePermission permissions = 7;
+}
+
+message NoteEmbedding {
+    string model = 1;
+    repeated float embedding = 2;
+}
+
+message NotePermission {
+    int32 role_id = 1;
+}
+
+// Request to add/Update a note
+message PostNoteRequest {
+    string title = 1;
+    optional string content = 2;
+    int32 author_id = 3;
+}
+
+message AlterNoteRequest {
+    int32 id = 1;
+    optional string title = 2;
+    optional string content = 3;
+    optional int32 author_id = 4;
+}
+
+// Note Service
+service NoteService {
+    rpc GetNote(GetNoteRequest) returns (Note);
+    rpc PostNote(PostNoteRequest) returns (Note);
+    rpc SearchNotes(GetSearchNotesRequest) returns (stream MinimalNote);
+}
