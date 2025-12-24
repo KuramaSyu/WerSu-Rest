@@ -153,7 +153,13 @@ func (ac *AuthController) GetUser(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not logged in"})
 		return
 	}
-	user_go := user.(*proto.User)
+	user_go_old := user.(*proto.User)
+	// fetch again
+	user_go, err := ac.userService.GetUser(c, &proto.GetUserRequest{Id: &user_go_old.Id})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user from gRPC service"})
+		return
+	}
 	c.JSON(http.StatusOK, user_go.ParseJS())
 }
 
