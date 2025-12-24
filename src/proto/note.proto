@@ -1,8 +1,8 @@
 syntax = "proto3";
 import "google/protobuf/timestamp.proto";
 
-package note;
-option go_package = "github.com/KuramaSyu/Wersu-Rest/src/pb/note;note";
+package proto;
+option go_package = "github.com/KuramaSyu/Wersu-Rest/src/proto;proto";
 // Request for getting a note by id
 message GetNoteRequest {
     int32 id = 1;
