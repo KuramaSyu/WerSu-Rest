@@ -1,27 +1,73 @@
+// @title GoToHell Gin REST API
+// @oversion 1.0
+// @description Provides all methods to persist data for GoToHell
+// @securityDefinitions.apikey CookieAuth
+// @in cookie
+// @name discord_auth
+
 package main
 
 import (
+	"encoding/gob"
 	"log"
 
-	"github.com/gin-gonic/gin"
-	_ "github.com/yourname/gin-grpc-gateway/docs"
-	"github.com/yourname/gin-grpc-gateway/internal/routes"
+	"github.com/KuramaSyu/WerSu-Rest/src/config"
+	"github.com/KuramaSyu/WerSu-Rest/src/controllers"
+	"github.com/KuramaSyu/WerSu-Rest/src/models"
+	"github.com/KuramaSyu/WerSu-Rest/src/proto"
+	"github.com/KuramaSyu/WerSu-Rest/src/routes"
 
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
+	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc"
 )
 
-// @title Gin gRPC Gateway API
-// @version 1.0
-// @description REST API gateway for gRPC services
-// @host localhost:8080
-// @BasePath /api/v1
+func init() {
+	// Register types for session storage
+	gob.Register(models.User{})
+}
+
 func main() {
+	// Load configuration
+	appConfig := config.Load()
+
+	// Create router
 	r := gin.Default()
 
-	routes.RegisterRoutes(r)
+	// Configure CORS
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{appConfig.FrontendURL},
+		AllowMethods:     []string{"GET", "POST", "DELETE", "PUT", "PATCH"},
+		AllowHeaders:     []string{"Origin", "Content-Type"},
+		AllowCredentials: true,
+	}))
 
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// Setup sessions
+	store := cookie.NewStore([]byte(appConfig.SessionSecret))
+	r.Use(sessions.Sessions("discord_auth", store))
 
-	log.Fatal(r.Run(":8080"))
+	// Setup gRPC connection
+	grpcConn, err := grpc.NewClient(appConfig.GRPCServerAddress)
+	if err != nil {
+		log.Fatalf("Failed to connect to gRPC server: %v", err)
+	}
+	defer grpcConn.Close()
+
+	userGrpcClient := proto.NewUserServiceClient(grpcConn)
+	//noteGrpcClient := proto.NewNoteServiceClient(grpcConn)
+
+	// Initialize controllers
+	authController := controllers.NewAuthController(appConfig.DiscordOAuthConfig, userGrpcClient)
+	// Setup routes
+	routes.SetupRouter(
+		r,
+		authController,
+	)
+
+	// Start the server
+	if err := r.Run(":8080"); err != nil {
+		log.Fatalf("Failed to run server: %v", err)
+	}
 }
