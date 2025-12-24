@@ -22,6 +22,7 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func init() {
@@ -49,7 +50,10 @@ func main() {
 	r.Use(sessions.Sessions("discord_auth", store))
 
 	// Setup gRPC connection
-	grpcConn, err := grpc.NewClient(appConfig.GRPCServerAddress)
+	grpcConn, err := grpc.NewClient(
+		appConfig.GRPCServerAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if err != nil {
 		log.Fatalf("Failed to connect to gRPC server: %v", err)
 	}
