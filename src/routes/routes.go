@@ -13,6 +13,7 @@ func SetupRouter(
 	r *gin.Engine,
 	authController *controllers.AuthController,
 	noteController *controllers.NoteController,
+	noteSearchController *controllers.SearchNotesController,
 ) {
 
 	// API routes
@@ -27,6 +28,7 @@ func SetupRouter(
 		notes := api.Group("/notes")
 		{
 			notes.GET("/:id", noteController.GetNote)
+			notes.GET("/search", noteSearchController.GetNotes)
 			notes.POST("", noteController.PostNote)
 		}
 
