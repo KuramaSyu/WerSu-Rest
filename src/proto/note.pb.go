@@ -7,12 +7,13 @@
 package proto
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -81,6 +82,7 @@ func (GetSearchNotesRequest_SearchType) EnumDescriptor() ([]byte, []int) {
 type GetNoteRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	UserId        int32                  `protobuf:"varint,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -122,14 +124,23 @@ func (x *GetNoteRequest) GetId() int32 {
 	return 0
 }
 
+func (x *GetNoteRequest) GetUserId() int32 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
 type GetSearchNotesRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Search parameters
 	SearchType GetSearchNotesRequest_SearchType `protobuf:"varint,1,opt,name=search_type,json=searchType,proto3,enum=proto.GetSearchNotesRequest_SearchType" json:"search_type,omitempty"`
 	Query      string                           `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`
 	// Pagination
-	Limit         int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
-	Offset        int32 `protobuf:"varint,4,opt,name=offset,proto3" json:"offset,omitempty"`
+	Limit  int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset int32 `protobuf:"varint,4,opt,name=offset,proto3" json:"offset,omitempty"`
+	// authentication
+	UserId        int32 `protobuf:"varint,5,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -188,6 +199,13 @@ func (x *GetSearchNotesRequest) GetLimit() int32 {
 func (x *GetSearchNotesRequest) GetOffset() int32 {
 	if x != nil {
 		return x.Offset
+	}
+	return 0
+}
+
+func (x *GetSearchNotesRequest) GetUserId() int32 {
+	if x != nil {
+		return x.UserId
 	}
 	return 0
 }
@@ -584,15 +602,17 @@ var File_src_proto_note_proto protoreflect.FileDescriptor
 
 const file_src_proto_note_proto_rawDesc = "" +
 	"\n" +
-	"\x14src/proto/note.proto\x12\x05proto\x1a\x1fgoogle/protobuf/timestamp.proto\" \n" +
+	"\x14src/proto/note.proto\x12\x05proto\x1a\x1fgoogle/protobuf/timestamp.proto\"9\n" +
 	"\x0eGetNoteRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x05R\x02id\"\xfb\x01\n" +
+	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\x05R\x06userId\"\x94\x02\n" +
 	"\x15GetSearchNotesRequest\x12H\n" +
 	"\vsearch_type\x18\x01 \x01(\x0e2'.proto.GetSearchNotesRequest.SearchTypeR\n" +
 	"searchType\x12\x14\n" +
 	"\x05query\x18\x02 \x01(\tR\x05query\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06offset\x18\x04 \x01(\x05R\x06offset\"T\n" +
+	"\x06offset\x18\x04 \x01(\x05R\x06offset\x12\x17\n" +
+	"\auser_id\x18\x05 \x01(\x05R\x06userId\"T\n" +
 	"\n" +
 	"SearchType\x12\r\n" +
 	"\tUndefined\x10\x00\x12\f\n" +
