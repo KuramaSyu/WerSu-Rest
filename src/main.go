@@ -66,12 +66,14 @@ func main() {
 	// Initialize RSET controllers
 	authController := controllers.NewAuthController(appConfig.DiscordOAuthConfig, &userGrpcClient)
 	noteController := controllers.NewNoteController(&noteGrpcClient)
+	noteSearchController := controllers.NewSearchNoteController(&noteGrpcClient)
 
 	// Setup routes
 	routes.SetupRouter(
 		r,
 		authController,
 		noteController,
+		noteSearchController,
 	)
 
 	// Start the server
