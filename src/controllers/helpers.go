@@ -24,12 +24,12 @@ func UserFromSession(c *gin.Context) (*models.User, int, error) {
 		return nil, http.StatusUnauthorized, fmt.Errorf("not logged in")
 	}
 
-	user_go, ok := userData.(models.User)
+	grpc_user, ok := userData.(models.User)
 	if !ok {
 		return nil, http.StatusInternalServerError, fmt.Errorf("wrong user format: %v %v", userData, ok)
 	}
 
-	return &user_go, http.StatusOK, nil
+	return &grpc_user, http.StatusOK, nil
 }
 
 // SetGinError is a helper function that sends a JSON error response.

@@ -94,18 +94,14 @@ func (ac *AuthController) Callback(c *gin.Context) {
 	}
 	defer resp.Body.Close()
 
-	var d_user models.JsUser
+	var d_user models.DiscordUser
 	if err := json.NewDecoder(resp.Body).Decode(&d_user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse user info"})
 		return
 	}
-	user, err := d_user.Parse()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID was not parsable to int"})
-	}
 
-	session.Set("user", *user)
-	discordId := int64(user.DiscordId)
+	//session.Set("d_user", *user)
+	discordId := int64(d_user.DiscordId)
 	grpcUser, err := (*ac.userService).GetUser(c, &proto.GetUserRequest{
 		DiscordId: &discordId,
 	})
@@ -114,21 +110,30 @@ func (ac *AuthController) Callback(c *gin.Context) {
 		println("%v", err.Error())
 		// failed to get user -> post user
 		grpcUser, err = (*ac.userService).PostUser(c, &proto.PostUserRequest{
-			DiscordId:     int64(user.DiscordId),
-			Avatar:        user.Avatar,
-			Username:      user.Username,
-			Discriminator: user.Discriminator,
-			Email:         user.Email,
+			DiscordId:     int64(d_user.DiscordId),
+			Avatar:        d_user.Avatar,
+			Username:      d_user.Username,
+			Discriminator: d_user.Discriminator,
+			Email:         d_user.Email,
 		})
 		if err != nil {
 			// failed to post user -> error
-			log.Printf("user: %v; Error: %v", user, err)
+			log.Printf("user: %v; Error: %v", d_user, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to post user to gRPC service"})
 			return
 		}
 	}
+	user := models.User{
+		ID:            grpcUser.Id,
+		DiscordId:     models.Snowflake(grpcUser.DiscordId),
+		Username:      grpcUser.Username,
+		Discriminator: grpcUser.Discriminator,
+		Avatar:        grpcUser.Avatar,
+		Email:         grpcUser.Email,
+	}
+	session.Set("user", user)
 
-	log.Printf("User %v logged in via Discord OAuth, gRPC ID: %v", user.Username, grpcUser.Id)
+	log.Printf("User %v logged in via Discord OAuth, gRPC ID: %v", grpcUser.Username, grpcUser.Id)
 	if err := session.Save(); err != nil {
 		log.Printf("user: %v; Error: %v", grpcUser, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save session"})
