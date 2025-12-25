@@ -20,31 +20,15 @@ import (
 // AuthController handles authentication logic
 type AuthController struct {
 	OAuthConfig *oauth2.Config
-	userService proto.UserServiceClient
+	userService *proto.UserServiceClient
 }
 
 // NewAuthController creates a new auth controller
-func NewAuthController(oauthConfig *oauth2.Config, userService proto.UserServiceClient) *AuthController {
+func NewAuthController(oauthConfig *oauth2.Config, userService *proto.UserServiceClient) *AuthController {
 	return &AuthController{
 		OAuthConfig: oauthConfig,
 		userService: userService,
 	}
-}
-
-// retrieves the user  by Context and session
-func UserFromSession(c *gin.Context) (*models.User, int, error) {
-	session := sessions.Default(c)
-	userData := session.Get("user")
-	if userData == nil {
-		return nil, http.StatusUnauthorized, fmt.Errorf("not logged in")
-	}
-
-	user_go, ok := userData.(models.User)
-	if !ok {
-		return nil, http.StatusInternalServerError, fmt.Errorf("wrong user format: %v %v", userData, ok)
-	}
-
-	return &user_go, http.StatusOK, nil
 }
 
 // GenerateState creates a random state string for OAuth
@@ -122,14 +106,14 @@ func (ac *AuthController) Callback(c *gin.Context) {
 
 	session.Set("user", *user)
 	discordId := int64(user.DiscordId)
-	grpcUser, err := ac.userService.GetUser(c, &proto.GetUserRequest{
+	grpcUser, err := (*ac.userService).GetUser(c, &proto.GetUserRequest{
 		DiscordId: &discordId,
 	})
 
 	if err != nil {
 		println("%v", err.Error())
 		// failed to get user -> post user
-		grpcUser, err = ac.userService.PostUser(c, &proto.PostUserRequest{
+		grpcUser, err = (*ac.userService).PostUser(c, &proto.PostUserRequest{
 			DiscordId:     int64(user.DiscordId),
 			Avatar:        user.Avatar,
 			Username:      user.Username,
@@ -166,7 +150,7 @@ func (ac *AuthController) GetUser(c *gin.Context) {
 	user_go_old := user.(models.User)
 	// fetch again
 	discord_id := int64(user_go_old.DiscordId)
-	user_go, err := ac.userService.GetUser(c, &proto.GetUserRequest{DiscordId: &discord_id})
+	user_go, err := (*ac.userService).GetUser(c, &proto.GetUserRequest{DiscordId: &discord_id})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user from gRPC service"})
 		return
