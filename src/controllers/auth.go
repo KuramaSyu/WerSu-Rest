@@ -121,18 +121,27 @@ func (ac *AuthController) Callback(c *gin.Context) {
 	}
 
 	session.Set("user", *user)
-	grpcUser, err := ac.userService.PostUser(c, &proto.PostUserRequest{
-		DiscordId:     int64(user.ID),
-		Avatar:        user.Avatar,
-		Username:      user.Username,
-		Discriminator: user.Discriminator,
-		Email:         user.Email,
+	discordId := int64(user.DiscordId)
+	grpcUser, err := ac.userService.GetUser(c, &proto.GetUserRequest{
+		DiscordId: &discordId,
 	})
 
 	if err != nil {
-		log.Printf("user: %v; Error: %v", user, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to post user to gRPC service"})
-		return
+		println("%v", err.Error())
+		// failed to get user -> post user
+		grpcUser, err = ac.userService.PostUser(c, &proto.PostUserRequest{
+			DiscordId:     int64(user.DiscordId),
+			Avatar:        user.Avatar,
+			Username:      user.Username,
+			Discriminator: user.Discriminator,
+			Email:         user.Email,
+		})
+		if err != nil {
+			// failed to post user -> error
+			log.Printf("user: %v; Error: %v", user, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to post user to gRPC service"})
+			return
+		}
 	}
 
 	log.Printf("User %v logged in via Discord OAuth, gRPC ID: %v", user.Username, grpcUser.Id)
@@ -153,9 +162,11 @@ func (ac *AuthController) GetUser(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not logged in"})
 		return
 	}
-	user_go_old := user.(*proto.User)
+	println("%v", user)
+	user_go_old := user.(models.User)
 	// fetch again
-	user_go, err := ac.userService.GetUser(c, &proto.GetUserRequest{Id: &user_go_old.Id})
+	discord_id := int64(user_go_old.DiscordId)
+	user_go, err := ac.userService.GetUser(c, &proto.GetUserRequest{DiscordId: &discord_id})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user from gRPC service"})
 		return
