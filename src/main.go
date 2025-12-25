@@ -63,7 +63,7 @@ func main() {
 	//noteGrpcClient := proto.NewNoteServiceClient(grpcConn)
 
 	// Initialize controllers
-	authController := controllers.NewAuthController(appConfig.DiscordOAuthConfig, userGrpcClient)
+	authController := controllers.NewAuthController(appConfig.DiscordOAuthConfig, &userGrpcClient)
 	// Setup routes
 	routes.SetupRouter(
 		r,
