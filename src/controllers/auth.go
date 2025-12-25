@@ -140,22 +140,20 @@ func (ac *AuthController) Callback(c *gin.Context) {
 
 // GetUser returns the current authenticated user
 func (ac *AuthController) GetUser(c *gin.Context) {
-	session := sessions.Default(c)
-	user := session.Get("user")
+	user, _, err := UserFromSession(c)
 	if user == nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not logged in"})
 		return
 	}
-	println("%v", user)
-	user_go_old := user.(models.User)
+
 	// fetch again
-	discord_id := int64(user_go_old.DiscordId)
-	user_go, err := (*ac.userService).GetUser(c, &proto.GetUserRequest{DiscordId: &discord_id})
+	discord_id := int64(user.DiscordId)
+	user_backend, err := (*ac.userService).GetUser(c, &proto.GetUserRequest{DiscordId: &discord_id})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user from gRPC service"})
 		return
 	}
-	c.JSON(http.StatusOK, user_go.ParseJS())
+	c.JSON(http.StatusOK, user_backend.ParseJS())
 }
 
 // Logout clears the user session
