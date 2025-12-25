@@ -5,6 +5,14 @@ import (
 	"strconv"
 )
 
+type DiscordUser struct {
+	DiscordId     Snowflake `json:"id"`
+	Username      string    `json:"username"`
+	Discriminator string    `json:"discriminator"`
+	Avatar        string    `json:"avatar"`
+	Email         string    `json:"email"`
+}
+
 // Discord User + WerSu ID Representation
 type User struct {
 	ID            int32     `json:"id"`
