@@ -45,14 +45,14 @@ func MapSearchTypeToProto(searchType SearchType) proto.GetSearchNotesRequest_Sea
 
 type GetSearchNotesRequest struct {
 	// the algorithm used to perform the search
-	SearchType SearchType `json:"search_type" binding:"required" example:"context"`
+	SearchType SearchType `form:"search_type" binding:"required" example:"context"`
 
 	// the query string to search for
-	Query string `json:"query" binding:"required" example:"Python programming"`
+	Query string `form:"query" binding:"omitempty" example:"Python programming"`
 
 	// maximum number of results to return
-	Limit  int32 `json:"limit" binding:"required" example:"10"`
-	Offset int32 `json:"offset" binding:"required" example:"0"`
+	Limit  int32 `form:"limit" binding:"omitempty" example:"10"`
+	Offset int32 `form:"offset" binding:"omitempty" example:"0"`
 }
 
 type MinimalNote struct {
@@ -85,7 +85,10 @@ func ConvertProtoMinimalNoteToRest(protoNote *proto.MinimalNote) MinimalNote {
 // @Tags users
 // @Accept json
 // @Produce json
-// @Param payload body GetSearchNotesRequest true "Search Notes Request"
+// @Param search_type query string true "Search algorithm" Enums(context, keyword, typo_tolerant, latest)
+// @Param query query string true "Search query"
+// @Param limit query int true "Maximum results to return"
+// @Param offset query int true "Pagination offset"
 // @Success 200 {object} []MinimalNote
 // @Failure 400 {object} map[string]string
 // @Router /notes/search [get]
@@ -97,10 +100,10 @@ func (uc *SearchNotesController) GetNotes(c *gin.Context) {
 		return
 	}
 
-	// read body
+	// read query parameters
 	var getSearchNotesRequest GetSearchNotesRequest
-	if err := c.ShouldBindJSON(&getSearchNotesRequest); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
+	if err := c.ShouldBindQuery(&getSearchNotesRequest); err != nil {
+		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
 		return
 	}
 
@@ -114,7 +117,7 @@ func (uc *SearchNotesController) GetNotes(c *gin.Context) {
 	}
 	stream, err := (*uc.NoteService).SearchNotes(c, &grpcSearchNotesRequest)
 	// collect all notes from stream
-	var notes []MinimalNote
+	var notes []MinimalNote = []MinimalNote{}
 	for {
 		note, err := stream.Recv()
 		if err != nil {
