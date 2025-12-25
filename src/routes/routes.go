@@ -1,8 +1,8 @@
 package routes
 
 import (
-	_ "github.com/KuramaSyu/WerSu-Rest/docs" // load docs
 	"github.com/KuramaSyu/WerSu-Rest/src/controllers"
+	_ "github.com/KuramaSyu/WerSu-Rest/src/docs" // load docs
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -23,14 +23,15 @@ func SetupRouter(
 			c.JSON(200, gin.H{"message": "pong"})
 		})
 
-		// route for swagger API docs
-		api.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
 		// Note routes
 		notes := api.Group("/notes")
 		{
 			notes.GET("/:id", noteController.GetNote)
+			notes.POST("", noteController.PostNote)
 		}
+
+		// route for swagger API docs
+		api.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
 
 	// Auth routes
