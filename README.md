@@ -11,6 +11,20 @@
     ```bash
     protoc --go_out=. --go_opt=paths=source_relative     --go-grpc_out=. --go-grpc_opt=paths=source_relative     src/proto/*.proto
     ```
+
+### Building swagger docs out of Go comments:
+
+install `swag`:
+
+```
+go install github.com/swaggo/swag/cmd/swag@latest
+```
+
+```
+cd src/
+swag init
+```
+
 ##### setup discord
 1. Go to the [Discord Developer Portal](https://discord.com/developers/applications) and create a new application.
 2. Go to OAuth2 section and add a redirect URL: `https://{backend_url}/api/auth/discord/callback`
