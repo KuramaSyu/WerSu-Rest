@@ -58,6 +58,49 @@ const docTemplate = `{
                 }
             }
         },
+        "/notes/search": {
+            "get": {
+                "description": "Search notes via gRPC service",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get notes by search criteria",
+                "parameters": [
+                    {
+                        "description": "Search Notes Request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.GetSearchNotesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.NoteReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/notes/{id}": {
             "get": {
                 "description": "Fetch note via gRPC service",
@@ -101,6 +144,40 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "controllers.GetSearchNotesRequest": {
+            "type": "object",
+            "required": [
+                "limit",
+                "offset",
+                "query",
+                "search_type"
+            ],
+            "properties": {
+                "limit": {
+                    "description": "maximum number of results to return",
+                    "type": "integer",
+                    "example": 10
+                },
+                "offset": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "query": {
+                    "description": "the query string to search for",
+                    "type": "string",
+                    "example": "Python programming"
+                },
+                "search_type": {
+                    "description": "the algorithm used to perform the search",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/controllers.SearchType"
+                        }
+                    ],
+                    "example": "context"
+                }
+            }
+        },
         "controllers.NoteReply": {
             "type": "object",
             "properties": {
@@ -137,6 +214,21 @@ const docTemplate = `{
                     "example": "My Note Title"
                 }
             }
+        },
+        "controllers.SearchType": {
+            "type": "string",
+            "enum": [
+                "context",
+                "keyword",
+                "typo_tolerant",
+                "latest"
+            ],
+            "x-enum-varnames": [
+                "SearchByContext",
+                "SearchByKeyword",
+                "SearchByTypoTolerant",
+                "SearchByLatest"
+            ]
         }
     },
     "securityDefinitions": {

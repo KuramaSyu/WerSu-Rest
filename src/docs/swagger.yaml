@@ -1,4 +1,28 @@
 definitions:
+  controllers.GetSearchNotesRequest:
+    properties:
+      limit:
+        description: maximum number of results to return
+        example: 10
+        type: integer
+      offset:
+        example: 0
+        type: integer
+      query:
+        description: the query string to search for
+        example: Python programming
+        type: string
+      search_type:
+        allOf:
+        - $ref: '#/definitions/controllers.SearchType'
+        description: the algorithm used to perform the search
+        example: context
+    required:
+    - limit
+    - offset
+    - query
+    - search_type
+    type: object
   controllers.NoteReply:
     properties:
       author_id:
@@ -24,6 +48,18 @@ definitions:
     - content
     - title
     type: object
+  controllers.SearchType:
+    enum:
+    - context
+    - keyword
+    - typo_tolerant
+    - latest
+    type: string
+    x-enum-varnames:
+    - SearchByContext
+    - SearchByKeyword
+    - SearchByTypoTolerant
+    - SearchByLatest
 info:
   contact: {}
   description: Provides all methods to persist data for GoToHell
@@ -82,6 +118,34 @@ paths:
               type: string
             type: object
       summary: Get note by ID
+      tags:
+      - users
+  /notes/search:
+    get:
+      consumes:
+      - application/json
+      description: Search notes via gRPC service
+      parameters:
+      - description: Search Notes Request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.GetSearchNotesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.NoteReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get notes by search criteria
       tags:
       - users
 securityDefinitions:
