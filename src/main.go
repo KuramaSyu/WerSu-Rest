@@ -59,15 +59,19 @@ func main() {
 	}
 	defer grpcConn.Close()
 
+	// Initialize gRPC clients
 	userGrpcClient := proto.NewUserServiceClient(grpcConn)
-	//noteGrpcClient := proto.NewNoteServiceClient(grpcConn)
+	noteGrpcClient := proto.NewNoteServiceClient(grpcConn)
 
-	// Initialize controllers
+	// Initialize RSET controllers
 	authController := controllers.NewAuthController(appConfig.DiscordOAuthConfig, &userGrpcClient)
+	noteController := controllers.NewNoteController(&noteGrpcClient)
+
 	// Setup routes
 	routes.SetupRouter(
 		r,
 		authController,
+		noteController,
 	)
 
 	// Start the server
