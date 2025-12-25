@@ -7,7 +7,7 @@ import (
 
 // Discord User + WerSu ID Representation
 type User struct {
-	ID            int64     `json:"id"`
+	ID            int32     `json:"id"`
 	DiscordId     Snowflake `json:"discord_id"`
 	Username      string    `json:"username"`
 	Discriminator string    `json:"discriminator"`
@@ -51,7 +51,7 @@ func (s *JsUser) Parse() (*User, error) {
 	id := -1
 
 	return &User{
-		ID:            int64(id),
+		ID:            int32(id),
 		DiscordId:     Snowflake(discord_id),
 		Username:      s.Username,
 		Discriminator: s.Discriminator,
