@@ -86,7 +86,10 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/controllers.NoteReply"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/controllers.MinimalNote"
+                            }
                         }
                     },
                     "400": {
@@ -175,6 +178,27 @@ const docTemplate = `{
                         }
                     ],
                     "example": "context"
+                }
+            }
+        },
+        "controllers.MinimalNote": {
+            "type": "object",
+            "properties": {
+                "author_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "stripped_content": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "ISO 8601 format",
+                    "type": "string"
                 }
             }
         },

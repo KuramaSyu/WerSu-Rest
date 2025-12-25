@@ -23,6 +23,20 @@ definitions:
     - query
     - search_type
     type: object
+  controllers.MinimalNote:
+    properties:
+      author_id:
+        type: integer
+      id:
+        type: integer
+      stripped_content:
+        type: string
+      title:
+        type: string
+      updated_at:
+        description: ISO 8601 format
+        type: string
+    type: object
   controllers.NoteReply:
     properties:
       author_id:
@@ -138,7 +152,9 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/controllers.NoteReply'
+            items:
+              $ref: '#/definitions/controllers.MinimalNote'
+            type: array
         "400":
           description: Bad Request
           schema:
