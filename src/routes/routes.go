@@ -12,6 +12,7 @@ import (
 func SetupRouter(
 	r *gin.Engine,
 	authController *controllers.AuthController,
+	noteController *controllers.NoteController,
 ) {
 
 	// API routes
@@ -24,6 +25,12 @@ func SetupRouter(
 
 		// route for swagger API docs
 		api.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+		// Note routes
+		notes := api.Group("/notes")
+		{
+			notes.GET("/:id", noteController.GetNote)
+		}
 	}
 
 	// Auth routes
