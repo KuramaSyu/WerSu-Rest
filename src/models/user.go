@@ -31,7 +31,7 @@ func (s *User) ParseJS() JsUser {
 }
 
 type JsUser struct {
-	ID            string `json:"id"`
+	ID            string `json:"id,omitempty"`
 	DiscordId     string `json:"discord_id"`
 	Username      string `json:"username"`
 	Discriminator string `json:"discriminator"`
@@ -39,16 +39,16 @@ type JsUser struct {
 	Email         string `json:"email"`
 }
 
+// Parse the return value from disccord
 func (s *JsUser) Parse() (*User, error) {
-	discord_id, err := strconv.Atoi(s.DiscordId)
+	// parse the discord ID out of the JSON
+	discord_id, err := strconv.Atoi(s.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	id, err := strconv.Atoi(s.ID)
-	if err != nil {
-		return nil, err
-	}
+	// grpc backend id unknown at this point
+	id := -1
 
 	return &User{
 		ID:            int64(id),
