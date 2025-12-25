@@ -12,11 +12,51 @@ definitions:
       updated_at:
         type: string
     type: object
+  controllers.PostNoteRequest:
+    properties:
+      content:
+        example: This is the content of my note.
+        type: string
+      title:
+        example: My Note Title
+        type: string
+    required:
+    - content
+    - title
+    type: object
 info:
   contact: {}
   description: Provides all methods to persist data for GoToHell
   title: GoToHell Gin REST API
 paths:
+  /notes:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new Note via gRPC service
+      parameters:
+      - description: Note ID
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.PostNoteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.NoteReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Post a Note
+      tags:
+      - users
   /notes/{id}:
     get:
       consumes:
