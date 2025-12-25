@@ -81,4 +81,5 @@ func PrintConfig(cfg *Config) {
 	log.Println("  Scopes:        ", cfg.DiscordOAuthConfig.Scopes)
 	// Avoid printing sensitive values: clientSecret and sessionSecret.
 	log.Println("Frontend URL:     ", cfg.FrontendURL)
+	log.Println("gRPC Server Addr:", cfg.GRPCServerAddress)
 }
