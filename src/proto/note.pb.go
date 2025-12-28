@@ -7,13 +7,12 @@
 package proto
 
 import (
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
-
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (
@@ -469,7 +468,7 @@ func (x *NotePermission) GetRoleId() int32 {
 	return 0
 }
 
-// Request to add/Update a note
+// Request to add a note
 type PostNoteRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Title         string                 `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`
@@ -530,6 +529,59 @@ func (x *PostNoteRequest) GetAuthorId() int32 {
 	return 0
 }
 
+// Request to delete a note
+type DeleteNoteRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	AuthorId      int32                  `protobuf:"varint,2,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteNoteRequest) Reset() {
+	*x = DeleteNoteRequest{}
+	mi := &file_src_proto_note_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteNoteRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteNoteRequest) ProtoMessage() {}
+
+func (x *DeleteNoteRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_src_proto_note_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteNoteRequest.ProtoReflect.Descriptor instead.
+func (*DeleteNoteRequest) Descriptor() ([]byte, []int) {
+	return file_src_proto_note_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *DeleteNoteRequest) GetId() int32 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *DeleteNoteRequest) GetAuthorId() int32 {
+	if x != nil {
+		return x.AuthorId
+	}
+	return 0
+}
+
 type AlterNoteRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -542,7 +594,7 @@ type AlterNoteRequest struct {
 
 func (x *AlterNoteRequest) Reset() {
 	*x = AlterNoteRequest{}
-	mi := &file_src_proto_note_proto_msgTypes[7]
+	mi := &file_src_proto_note_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -554,7 +606,7 @@ func (x *AlterNoteRequest) String() string {
 func (*AlterNoteRequest) ProtoMessage() {}
 
 func (x *AlterNoteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[7]
+	mi := &file_src_proto_note_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -567,7 +619,7 @@ func (x *AlterNoteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AlterNoteRequest.ProtoReflect.Descriptor instead.
 func (*AlterNoteRequest) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{7}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *AlterNoteRequest) GetId() int32 {
@@ -645,7 +697,10 @@ const file_src_proto_note_proto_rawDesc = "" +
 	"\acontent\x18\x02 \x01(\tH\x00R\acontent\x88\x01\x01\x12\x1b\n" +
 	"\tauthor_id\x18\x03 \x01(\x05R\bauthorIdB\n" +
 	"\n" +
-	"\b_content\"\xa2\x01\n" +
+	"\b_content\"@\n" +
+	"\x11DeleteNoteRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x1b\n" +
+	"\tauthor_id\x18\x02 \x01(\x05R\bauthorId\"\xa2\x01\n" +
 	"\x10AlterNoteRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x19\n" +
 	"\x05title\x18\x02 \x01(\tH\x00R\x05title\x88\x01\x01\x12\x1d\n" +
@@ -655,10 +710,13 @@ const file_src_proto_note_proto_rawDesc = "" +
 	"\n" +
 	"\b_contentB\f\n" +
 	"\n" +
-	"_author_id2\xb0\x01\n" +
+	"_author_id2\x98\x02\n" +
 	"\vNoteService\x12-\n" +
 	"\aGetNote\x12\x15.proto.GetNoteRequest\x1a\v.proto.Note\x12/\n" +
-	"\bPostNote\x12\x16.proto.PostNoteRequest\x1a\v.proto.Note\x12A\n" +
+	"\bPostNote\x12\x16.proto.PostNoteRequest\x1a\v.proto.Note\x121\n" +
+	"\tPatchNote\x12\x17.proto.AlterNoteRequest\x1a\v.proto.Note\x123\n" +
+	"\n" +
+	"DeleteNote\x12\x18.proto.DeleteNoteRequest\x1a\v.proto.Note\x12A\n" +
 	"\vSearchNotes\x12\x1c.proto.GetSearchNotesRequest\x1a\x12.proto.MinimalNote0\x01B1Z/github.com/KuramaSyu/Wersu-Rest/src/proto;protob\x06proto3"
 
 var (
@@ -674,7 +732,7 @@ func file_src_proto_note_proto_rawDescGZIP() []byte {
 }
 
 var file_src_proto_note_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_src_proto_note_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_src_proto_note_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_src_proto_note_proto_goTypes = []any{
 	(GetSearchNotesRequest_SearchType)(0), // 0: proto.GetSearchNotesRequest.SearchType
 	(*GetNoteRequest)(nil),                // 1: proto.GetNoteRequest
@@ -684,25 +742,30 @@ var file_src_proto_note_proto_goTypes = []any{
 	(*NoteEmbedding)(nil),                 // 5: proto.NoteEmbedding
 	(*NotePermission)(nil),                // 6: proto.NotePermission
 	(*PostNoteRequest)(nil),               // 7: proto.PostNoteRequest
-	(*AlterNoteRequest)(nil),              // 8: proto.AlterNoteRequest
-	(*timestamppb.Timestamp)(nil),         // 9: google.protobuf.Timestamp
+	(*DeleteNoteRequest)(nil),             // 8: proto.DeleteNoteRequest
+	(*AlterNoteRequest)(nil),              // 9: proto.AlterNoteRequest
+	(*timestamppb.Timestamp)(nil),         // 10: google.protobuf.Timestamp
 }
 var file_src_proto_note_proto_depIdxs = []int32{
-	0, // 0: proto.GetSearchNotesRequest.search_type:type_name -> proto.GetSearchNotesRequest.SearchType
-	9, // 1: proto.MinimalNote.updated_at:type_name -> google.protobuf.Timestamp
-	9, // 2: proto.Note.updated_at:type_name -> google.protobuf.Timestamp
-	6, // 3: proto.Note.permissions:type_name -> proto.NotePermission
-	1, // 4: proto.NoteService.GetNote:input_type -> proto.GetNoteRequest
-	7, // 5: proto.NoteService.PostNote:input_type -> proto.PostNoteRequest
-	2, // 6: proto.NoteService.SearchNotes:input_type -> proto.GetSearchNotesRequest
-	4, // 7: proto.NoteService.GetNote:output_type -> proto.Note
-	4, // 8: proto.NoteService.PostNote:output_type -> proto.Note
-	3, // 9: proto.NoteService.SearchNotes:output_type -> proto.MinimalNote
-	7, // [7:10] is the sub-list for method output_type
-	4, // [4:7] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	0,  // 0: proto.GetSearchNotesRequest.search_type:type_name -> proto.GetSearchNotesRequest.SearchType
+	10, // 1: proto.MinimalNote.updated_at:type_name -> google.protobuf.Timestamp
+	10, // 2: proto.Note.updated_at:type_name -> google.protobuf.Timestamp
+	6,  // 3: proto.Note.permissions:type_name -> proto.NotePermission
+	1,  // 4: proto.NoteService.GetNote:input_type -> proto.GetNoteRequest
+	7,  // 5: proto.NoteService.PostNote:input_type -> proto.PostNoteRequest
+	9,  // 6: proto.NoteService.PatchNote:input_type -> proto.AlterNoteRequest
+	8,  // 7: proto.NoteService.DeleteNote:input_type -> proto.DeleteNoteRequest
+	2,  // 8: proto.NoteService.SearchNotes:input_type -> proto.GetSearchNotesRequest
+	4,  // 9: proto.NoteService.GetNote:output_type -> proto.Note
+	4,  // 10: proto.NoteService.PostNote:output_type -> proto.Note
+	4,  // 11: proto.NoteService.PatchNote:output_type -> proto.Note
+	4,  // 12: proto.NoteService.DeleteNote:output_type -> proto.Note
+	3,  // 13: proto.NoteService.SearchNotes:output_type -> proto.MinimalNote
+	9,  // [9:14] is the sub-list for method output_type
+	4,  // [4:9] is the sub-list for method input_type
+	4,  // [4:4] is the sub-list for extension type_name
+	4,  // [4:4] is the sub-list for extension extendee
+	0,  // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_src_proto_note_proto_init() }
@@ -711,14 +774,14 @@ func file_src_proto_note_proto_init() {
 		return
 	}
 	file_src_proto_note_proto_msgTypes[6].OneofWrappers = []any{}
-	file_src_proto_note_proto_msgTypes[7].OneofWrappers = []any{}
+	file_src_proto_note_proto_msgTypes[8].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_src_proto_note_proto_rawDesc), len(file_src_proto_note_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   8,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

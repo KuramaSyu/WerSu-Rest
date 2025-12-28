@@ -21,6 +21,8 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	NoteService_GetNote_FullMethodName     = "/proto.NoteService/GetNote"
 	NoteService_PostNote_FullMethodName    = "/proto.NoteService/PostNote"
+	NoteService_PatchNote_FullMethodName   = "/proto.NoteService/PatchNote"
+	NoteService_DeleteNote_FullMethodName  = "/proto.NoteService/DeleteNote"
 	NoteService_SearchNotes_FullMethodName = "/proto.NoteService/SearchNotes"
 )
 
@@ -32,6 +34,8 @@ const (
 type NoteServiceClient interface {
 	GetNote(ctx context.Context, in *GetNoteRequest, opts ...grpc.CallOption) (*Note, error)
 	PostNote(ctx context.Context, in *PostNoteRequest, opts ...grpc.CallOption) (*Note, error)
+	PatchNote(ctx context.Context, in *AlterNoteRequest, opts ...grpc.CallOption) (*Note, error)
+	DeleteNote(ctx context.Context, in *DeleteNoteRequest, opts ...grpc.CallOption) (*Note, error)
 	SearchNotes(ctx context.Context, in *GetSearchNotesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[MinimalNote], error)
 }
 
@@ -57,6 +61,26 @@ func (c *noteServiceClient) PostNote(ctx context.Context, in *PostNoteRequest, o
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Note)
 	err := c.cc.Invoke(ctx, NoteService_PostNote_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *noteServiceClient) PatchNote(ctx context.Context, in *AlterNoteRequest, opts ...grpc.CallOption) (*Note, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Note)
+	err := c.cc.Invoke(ctx, NoteService_PatchNote_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *noteServiceClient) DeleteNote(ctx context.Context, in *DeleteNoteRequest, opts ...grpc.CallOption) (*Note, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Note)
+	err := c.cc.Invoke(ctx, NoteService_DeleteNote_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -90,6 +114,8 @@ type NoteService_SearchNotesClient = grpc.ServerStreamingClient[MinimalNote]
 type NoteServiceServer interface {
 	GetNote(context.Context, *GetNoteRequest) (*Note, error)
 	PostNote(context.Context, *PostNoteRequest) (*Note, error)
+	PatchNote(context.Context, *AlterNoteRequest) (*Note, error)
+	DeleteNote(context.Context, *DeleteNoteRequest) (*Note, error)
 	SearchNotes(*GetSearchNotesRequest, grpc.ServerStreamingServer[MinimalNote]) error
 	mustEmbedUnimplementedNoteServiceServer()
 }
@@ -106,6 +132,12 @@ func (UnimplementedNoteServiceServer) GetNote(context.Context, *GetNoteRequest) 
 }
 func (UnimplementedNoteServiceServer) PostNote(context.Context, *PostNoteRequest) (*Note, error) {
 	return nil, status.Error(codes.Unimplemented, "method PostNote not implemented")
+}
+func (UnimplementedNoteServiceServer) PatchNote(context.Context, *AlterNoteRequest) (*Note, error) {
+	return nil, status.Error(codes.Unimplemented, "method PatchNote not implemented")
+}
+func (UnimplementedNoteServiceServer) DeleteNote(context.Context, *DeleteNoteRequest) (*Note, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteNote not implemented")
 }
 func (UnimplementedNoteServiceServer) SearchNotes(*GetSearchNotesRequest, grpc.ServerStreamingServer[MinimalNote]) error {
 	return status.Error(codes.Unimplemented, "method SearchNotes not implemented")
@@ -167,6 +199,42 @@ func _NoteService_PostNote_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NoteService_PatchNote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AlterNoteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NoteServiceServer).PatchNote(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NoteService_PatchNote_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NoteServiceServer).PatchNote(ctx, req.(*AlterNoteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NoteService_DeleteNote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteNoteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NoteServiceServer).DeleteNote(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NoteService_DeleteNote_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NoteServiceServer).DeleteNote(ctx, req.(*DeleteNoteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _NoteService_SearchNotes_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(GetSearchNotesRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -192,6 +260,14 @@ var NoteService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "PostNote",
 			Handler:    _NoteService_PostNote_Handler,
+		},
+		{
+			MethodName: "PatchNote",
+			Handler:    _NoteService_PatchNote_Handler,
+		},
+		{
+			MethodName: "DeleteNote",
+			Handler:    _NoteService_DeleteNote_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
