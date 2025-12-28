@@ -134,6 +134,17 @@ func (uc *NoteController) PostNote(c *gin.Context) {
 	c.JSON(http.StatusOK, NoteReplyFromProto(note))
 }
 
+// PatchNote godoc
+// @Summary Update a note
+// @Description Updates an existing note via gRPC service
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param payload body PatchNoteRequest true "Update Note Request"
+// @Success 200 {object} NoteReply
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /notes [patch]
 func (uc *NoteController) PatchNote(c *gin.Context) {
 	// get user from session
 	user, code, err := UserFromSession(c)
@@ -150,15 +161,56 @@ func (uc *NoteController) PatchNote(c *gin.Context) {
 	}
 
 	// gRPC service call
-	grpcPostNoteRequest := proto.AlterNoteRequest{
+	grpcAlterNoteRequest := proto.AlterNoteRequest{
 		Id:       patchNoteRequest.Id,
 		Title:    &patchNoteRequest.Title,
 		Content:  &patchNoteRequest.Content,
 		AuthorId: &user.ID,
 	}
-	note, err := (*uc.NoteService).PatchNote(c, &grpcPostNoteRequest)
+	note, err := (*uc.NoteService).PatchNote(c, &grpcAlterNoteRequest)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to post note via gRPC service: %w", err))
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to patch note via gRPC service: %w", err))
+		return
+	}
+
+	// respond with created note
+	c.JSON(http.StatusOK, NoteReplyFromProto(note))
+}
+
+// DeleteNote godoc
+// @Summary Delete a note
+// @Description Deletes an existing note via gRPC service
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path int true "Note ID"
+// @Success 200 {object} NoteReply
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /notes/{id} [delete]
+func (uc *NoteController) DeleteNote(c *gin.Context) {
+	// get user from session
+	user, code, err := UserFromSession(c)
+	if err != nil {
+		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		return
+	}
+
+	// parse path id
+	id, err := strconv.Atoi(c.Params.ByName("id"))
+	if err != nil {
+		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid ID format: %w", err))
+		return
+	}
+
+	// gRPC service call
+	grpcDeleteNoteRequest := proto.DeleteNoteRequest{
+		Id:       int32(id),
+		AuthorId: int32(user.ID),
+	}
+	note, err := (*uc.NoteService).DeleteNote(c, &grpcDeleteNoteRequest)
+	if err != nil {
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to delete note via gRPC service: %w", err))
 		return
 	}
 
