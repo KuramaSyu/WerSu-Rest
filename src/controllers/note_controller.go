@@ -34,6 +34,12 @@ type PostNoteRequest struct {
 	Content string `json:"content" binding:"required" example:"This is the content of my note."`
 }
 
+type PatchNoteRequest struct {
+	Id      int32  `json:"id" binding:"required" example:"1"`
+	Title   string `json:"title" binding:"omitempty" example:"Updated Note Title"`
+	Content string `json:"content" binding:"omitempty" example:"This is the updated content of my note."`
+}
+
 // NoteReplyFromProto converts a protobuf Note message to a NoteReply struct.
 //
 // Parameters:
@@ -119,6 +125,38 @@ func (uc *NoteController) PostNote(c *gin.Context) {
 		AuthorId: user.ID,
 	}
 	note, err := (*uc.NoteService).PostNote(c, &grpcPostNoteRequest)
+	if err != nil {
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to post note via gRPC service: %w", err))
+		return
+	}
+
+	// respond with created note
+	c.JSON(http.StatusOK, NoteReplyFromProto(note))
+}
+
+func (uc *NoteController) PatchNote(c *gin.Context) {
+	// get user from session
+	user, code, err := UserFromSession(c)
+	if err != nil {
+		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		return
+	}
+
+	// parse request body
+	var patchNoteRequest PatchNoteRequest
+	if err := c.ShouldBindJSON(&patchNoteRequest); err != nil {
+		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
+		return
+	}
+
+	// gRPC service call
+	grpcPostNoteRequest := proto.AlterNoteRequest{
+		Id:       patchNoteRequest.Id,
+		Title:    &patchNoteRequest.Title,
+		Content:  &patchNoteRequest.Content,
+		AuthorId: &user.ID,
+	}
+	note, err := (*uc.NoteService).PatchNote(c, &grpcPostNoteRequest)
 	if err != nil {
 		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to post note via gRPC service: %w", err))
 		return
