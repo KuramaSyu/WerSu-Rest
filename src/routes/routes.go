@@ -28,8 +28,11 @@ func SetupRouter(
 		notes := api.Group("/notes")
 		{
 			notes.GET("/:id", noteController.GetNote)
-			notes.GET("/search", noteSearchController.GetNotes)
 			notes.POST("", noteController.PostNote)
+			notes.PATCH("", noteController.PatchNote)
+			notes.DELETE("/:id", noteController.DeleteNote)
+
+			notes.GET("/search", noteSearchController.GetNotes)
 		}
 
 		// route for swagger API docs
