@@ -24,7 +24,7 @@ const (
 // User Messages
 type User struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	DiscordId     int64                  `protobuf:"varint,2,opt,name=discord_id,json=discordId,proto3" json:"discord_id,omitempty"`
 	Avatar        string                 `protobuf:"bytes,3,opt,name=avatar,proto3" json:"avatar,omitempty"`
 	Username      string                 `protobuf:"bytes,4,opt,name=username,proto3" json:"username,omitempty"`
@@ -64,11 +64,11 @@ func (*User) Descriptor() ([]byte, []int) {
 	return file_src_proto_user_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *User) GetId() int32 {
+func (x *User) GetId() string {
 	if x != nil {
 		return x.Id
 	}
-	return 0
+	return ""
 }
 
 func (x *User) GetDiscordId() int64 {
@@ -108,7 +108,7 @@ func (x *User) GetEmail() string {
 
 type GetUserRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            *int32                 `protobuf:"varint,1,opt,name=id,proto3,oneof" json:"id,omitempty"`
+	Id            *string                `protobuf:"bytes,1,opt,name=id,proto3,oneof" json:"id,omitempty"`
 	DiscordId     *int64                 `protobuf:"varint,2,opt,name=discord_id,json=discordId,proto3,oneof" json:"discord_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -144,11 +144,11 @@ func (*GetUserRequest) Descriptor() ([]byte, []int) {
 	return file_src_proto_user_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *GetUserRequest) GetId() int32 {
+func (x *GetUserRequest) GetId() string {
 	if x != nil && x.Id != nil {
 		return *x.Id
 	}
-	return 0
+	return ""
 }
 
 func (x *GetUserRequest) GetDiscordId() int64 {
@@ -236,7 +236,7 @@ func (x *PostUserRequest) GetEmail() string {
 
 type AlterUserRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	DiscordId     *int64                 `protobuf:"varint,2,opt,name=discord_id,json=discordId,proto3,oneof" json:"discord_id,omitempty"`
 	Avatar        *string                `protobuf:"bytes,3,opt,name=avatar,proto3,oneof" json:"avatar,omitempty"`
 	Username      *string                `protobuf:"bytes,4,opt,name=username,proto3,oneof" json:"username,omitempty"`
@@ -276,11 +276,11 @@ func (*AlterUserRequest) Descriptor() ([]byte, []int) {
 	return file_src_proto_user_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *AlterUserRequest) GetId() int32 {
+func (x *AlterUserRequest) GetId() string {
 	if x != nil {
 		return x.Id
 	}
-	return 0
+	return ""
 }
 
 func (x *AlterUserRequest) GetDiscordId() int64 {
@@ -320,7 +320,7 @@ func (x *AlterUserRequest) GetEmail() string {
 
 type DeleteUserRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -355,11 +355,11 @@ func (*DeleteUserRequest) Descriptor() ([]byte, []int) {
 	return file_src_proto_user_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *DeleteUserRequest) GetId() int32 {
+func (x *DeleteUserRequest) GetId() string {
 	if x != nil {
 		return x.Id
 	}
-	return 0
+	return ""
 }
 
 type DeleteUserResponse struct {
@@ -412,7 +412,7 @@ const file_src_proto_user_proto_rawDesc = "" +
 	"\n" +
 	"\x14src/proto/user.proto\x12\x05proto\"\xa5\x01\n" +
 	"\x04User\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x1d\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
 	"discord_id\x18\x02 \x01(\x03R\tdiscordId\x12\x16\n" +
 	"\x06avatar\x18\x03 \x01(\tR\x06avatar\x12\x1a\n" +
@@ -420,7 +420,7 @@ const file_src_proto_user_proto_rawDesc = "" +
 	"\rdiscriminator\x18\x05 \x01(\tR\rdiscriminator\x12\x14\n" +
 	"\x05email\x18\x06 \x01(\tR\x05email\"_\n" +
 	"\x0eGetUserRequest\x12\x13\n" +
-	"\x02id\x18\x01 \x01(\x05H\x00R\x02id\x88\x01\x01\x12\"\n" +
+	"\x02id\x18\x01 \x01(\tH\x00R\x02id\x88\x01\x01\x12\"\n" +
 	"\n" +
 	"discord_id\x18\x02 \x01(\x03H\x01R\tdiscordId\x88\x01\x01B\x05\n" +
 	"\x03_idB\r\n" +
@@ -433,7 +433,7 @@ const file_src_proto_user_proto_rawDesc = "" +
 	"\rdiscriminator\x18\x04 \x01(\tR\rdiscriminator\x12\x14\n" +
 	"\x05email\x18\x05 \x01(\tR\x05email\"\x8d\x02\n" +
 	"\x10AlterUserRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x05R\x02id\x12\"\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
 	"\n" +
 	"discord_id\x18\x02 \x01(\x03H\x00R\tdiscordId\x88\x01\x01\x12\x1b\n" +
 	"\x06avatar\x18\x03 \x01(\tH\x01R\x06avatar\x88\x01\x01\x12\x1f\n" +
@@ -446,7 +446,7 @@ const file_src_proto_user_proto_rawDesc = "" +
 	"\x0e_discriminatorB\b\n" +
 	"\x06_email\"#\n" +
 	"\x11DeleteUserRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x05R\x02id\".\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\".\n" +
 	"\x12DeleteUserResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess2\xe3\x01\n" +
 	"\vUserService\x12-\n" +

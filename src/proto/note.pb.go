@@ -80,8 +80,8 @@ func (GetSearchNotesRequest_SearchType) EnumDescriptor() ([]byte, []int) {
 // Request for getting a note by id
 type GetNoteRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	UserId        int32                  `protobuf:"varint,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -116,18 +116,18 @@ func (*GetNoteRequest) Descriptor() ([]byte, []int) {
 	return file_src_proto_note_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *GetNoteRequest) GetId() int32 {
+func (x *GetNoteRequest) GetId() string {
 	if x != nil {
 		return x.Id
 	}
-	return 0
+	return ""
 }
 
-func (x *GetNoteRequest) GetUserId() int32 {
+func (x *GetNoteRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
 	}
-	return 0
+	return ""
 }
 
 type GetSearchNotesRequest struct {
@@ -139,7 +139,7 @@ type GetSearchNotesRequest struct {
 	Limit  int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
 	Offset int32 `protobuf:"varint,4,opt,name=offset,proto3" json:"offset,omitempty"`
 	// authentication
-	UserId        int32 `protobuf:"varint,5,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserId        string `protobuf:"bytes,5,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -202,19 +202,19 @@ func (x *GetSearchNotesRequest) GetOffset() int32 {
 	return 0
 }
 
-func (x *GetSearchNotesRequest) GetUserId() int32 {
+func (x *GetSearchNotesRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
 	}
-	return 0
+	return ""
 }
 
 // Response: represents a minimal Note for search results
 type MinimalNote struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
-	Id              int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"` // Note ID (eg 42)
+	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // Note ID (UUIDv4 string)
 	Title           string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	AuthorId        int32                  `protobuf:"varint,3,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	AuthorId        string                 `protobuf:"bytes,3,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
 	UpdatedAt       *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	StrippedContent string                 `protobuf:"bytes,5,opt,name=stripped_content,json=strippedContent,proto3" json:"stripped_content,omitempty"`
 	unknownFields   protoimpl.UnknownFields
@@ -251,11 +251,11 @@ func (*MinimalNote) Descriptor() ([]byte, []int) {
 	return file_src_proto_note_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *MinimalNote) GetId() int32 {
+func (x *MinimalNote) GetId() string {
 	if x != nil {
 		return x.Id
 	}
-	return 0
+	return ""
 }
 
 func (x *MinimalNote) GetTitle() string {
@@ -265,11 +265,11 @@ func (x *MinimalNote) GetTitle() string {
 	return ""
 }
 
-func (x *MinimalNote) GetAuthorId() int32 {
+func (x *MinimalNote) GetAuthorId() string {
 	if x != nil {
 		return x.AuthorId
 	}
-	return 0
+	return ""
 }
 
 func (x *MinimalNote) GetUpdatedAt() *timestamppb.Timestamp {
@@ -289,11 +289,11 @@ func (x *MinimalNote) GetStrippedContent() string {
 // Response: represents a Note
 type Note struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
-	Id        int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Title     string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
 	Content   string                 `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
 	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	AuthorId  int32                  `protobuf:"varint,5,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	AuthorId  string                 `protobuf:"bytes,5,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
 	// repeated NoteEmbedding embeddings = 6;
 	Permissions   []*NotePermission `protobuf:"bytes,7,rep,name=permissions,proto3" json:"permissions,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -330,11 +330,11 @@ func (*Note) Descriptor() ([]byte, []int) {
 	return file_src_proto_note_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *Note) GetId() int32 {
+func (x *Note) GetId() string {
 	if x != nil {
 		return x.Id
 	}
-	return 0
+	return ""
 }
 
 func (x *Note) GetTitle() string {
@@ -358,11 +358,11 @@ func (x *Note) GetUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
-func (x *Note) GetAuthorId() int32 {
+func (x *Note) GetAuthorId() string {
 	if x != nil {
 		return x.AuthorId
 	}
-	return 0
+	return ""
 }
 
 func (x *Note) GetPermissions() []*NotePermission {
@@ -473,7 +473,7 @@ type PostNoteRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Title         string                 `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`
 	Content       *string                `protobuf:"bytes,2,opt,name=content,proto3,oneof" json:"content,omitempty"`
-	AuthorId      int32                  `protobuf:"varint,3,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	AuthorId      string                 `protobuf:"bytes,3,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -522,18 +522,18 @@ func (x *PostNoteRequest) GetContent() string {
 	return ""
 }
 
-func (x *PostNoteRequest) GetAuthorId() int32 {
+func (x *PostNoteRequest) GetAuthorId() string {
 	if x != nil {
 		return x.AuthorId
 	}
-	return 0
+	return ""
 }
 
 // Request to delete a note
 type DeleteNoteRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	AuthorId      int32                  `protobuf:"varint,2,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	AuthorId      string                 `protobuf:"bytes,2,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -568,26 +568,26 @@ func (*DeleteNoteRequest) Descriptor() ([]byte, []int) {
 	return file_src_proto_note_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *DeleteNoteRequest) GetId() int32 {
+func (x *DeleteNoteRequest) GetId() string {
 	if x != nil {
 		return x.Id
 	}
-	return 0
+	return ""
 }
 
-func (x *DeleteNoteRequest) GetAuthorId() int32 {
+func (x *DeleteNoteRequest) GetAuthorId() string {
 	if x != nil {
 		return x.AuthorId
 	}
-	return 0
+	return ""
 }
 
 type AlterNoteRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Title         *string                `protobuf:"bytes,2,opt,name=title,proto3,oneof" json:"title,omitempty"`
 	Content       *string                `protobuf:"bytes,3,opt,name=content,proto3,oneof" json:"content,omitempty"`
-	AuthorId      *int32                 `protobuf:"varint,4,opt,name=author_id,json=authorId,proto3,oneof" json:"author_id,omitempty"`
+	AuthorId      *string                `protobuf:"bytes,4,opt,name=author_id,json=authorId,proto3,oneof" json:"author_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -622,11 +622,11 @@ func (*AlterNoteRequest) Descriptor() ([]byte, []int) {
 	return file_src_proto_note_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *AlterNoteRequest) GetId() int32 {
+func (x *AlterNoteRequest) GetId() string {
 	if x != nil {
 		return x.Id
 	}
-	return 0
+	return ""
 }
 
 func (x *AlterNoteRequest) GetTitle() string {
@@ -643,11 +643,11 @@ func (x *AlterNoteRequest) GetContent() string {
 	return ""
 }
 
-func (x *AlterNoteRequest) GetAuthorId() int32 {
+func (x *AlterNoteRequest) GetAuthorId() string {
 	if x != nil && x.AuthorId != nil {
 		return *x.AuthorId
 	}
-	return 0
+	return ""
 }
 
 var File_src_proto_note_proto protoreflect.FileDescriptor
@@ -656,15 +656,15 @@ const file_src_proto_note_proto_rawDesc = "" +
 	"\n" +
 	"\x14src/proto/note.proto\x12\x05proto\x1a\x1fgoogle/protobuf/timestamp.proto\"9\n" +
 	"\x0eGetNoteRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x17\n" +
-	"\auser_id\x18\x02 \x01(\x05R\x06userId\"\x94\x02\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"\x94\x02\n" +
 	"\x15GetSearchNotesRequest\x12H\n" +
 	"\vsearch_type\x18\x01 \x01(\x0e2'.proto.GetSearchNotesRequest.SearchTypeR\n" +
 	"searchType\x12\x14\n" +
 	"\x05query\x18\x02 \x01(\tR\x05query\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x16\n" +
 	"\x06offset\x18\x04 \x01(\x05R\x06offset\x12\x17\n" +
-	"\auser_id\x18\x05 \x01(\x05R\x06userId\"T\n" +
+	"\auser_id\x18\x05 \x01(\tR\x06userId\"T\n" +
 	"\n" +
 	"SearchType\x12\r\n" +
 	"\tUndefined\x10\x00\x12\f\n" +
@@ -673,19 +673,19 @@ const file_src_proto_note_proto_rawDesc = "" +
 	"\x05Fuzzy\x10\x03\x12\v\n" +
 	"\aContext\x10\x04\"\xb6\x01\n" +
 	"\vMinimalNote\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x14\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1b\n" +
-	"\tauthor_id\x18\x03 \x01(\x05R\bauthorId\x129\n" +
+	"\tauthor_id\x18\x03 \x01(\tR\bauthorId\x129\n" +
 	"\n" +
 	"updated_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12)\n" +
 	"\x10stripped_content\x18\x05 \x01(\tR\x0fstrippedContent\"\xdd\x01\n" +
 	"\x04Note\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x14\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x18\n" +
 	"\acontent\x18\x03 \x01(\tR\acontent\x129\n" +
 	"\n" +
 	"updated_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1b\n" +
-	"\tauthor_id\x18\x05 \x01(\x05R\bauthorId\x127\n" +
+	"\tauthor_id\x18\x05 \x01(\tR\bauthorId\x127\n" +
 	"\vpermissions\x18\a \x03(\v2\x15.proto.NotePermissionR\vpermissionsJ\x04\b\x06\x10\a\"C\n" +
 	"\rNoteEmbedding\x12\x14\n" +
 	"\x05model\x18\x01 \x01(\tR\x05model\x12\x1c\n" +
@@ -695,17 +695,17 @@ const file_src_proto_note_proto_rawDesc = "" +
 	"\x0fPostNoteRequest\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12\x1d\n" +
 	"\acontent\x18\x02 \x01(\tH\x00R\acontent\x88\x01\x01\x12\x1b\n" +
-	"\tauthor_id\x18\x03 \x01(\x05R\bauthorIdB\n" +
+	"\tauthor_id\x18\x03 \x01(\tR\bauthorIdB\n" +
 	"\n" +
 	"\b_content\"@\n" +
 	"\x11DeleteNoteRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x1b\n" +
-	"\tauthor_id\x18\x02 \x01(\x05R\bauthorId\"\xa2\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
+	"\tauthor_id\x18\x02 \x01(\tR\bauthorId\"\xa2\x01\n" +
 	"\x10AlterNoteRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x19\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\x05title\x18\x02 \x01(\tH\x00R\x05title\x88\x01\x01\x12\x1d\n" +
 	"\acontent\x18\x03 \x01(\tH\x01R\acontent\x88\x01\x01\x12 \n" +
-	"\tauthor_id\x18\x04 \x01(\x05H\x02R\bauthorId\x88\x01\x01B\b\n" +
+	"\tauthor_id\x18\x04 \x01(\tH\x02R\bauthorId\x88\x01\x01B\b\n" +
 	"\x06_titleB\n" +
 	"\n" +
 	"\b_contentB\f\n" +
