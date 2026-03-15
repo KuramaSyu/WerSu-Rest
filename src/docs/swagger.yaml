@@ -1,34 +1,10 @@
 definitions:
-  controllers.GetSearchNotesRequest:
-    properties:
-      limit:
-        description: maximum number of results to return
-        example: 10
-        type: integer
-      offset:
-        example: 0
-        type: integer
-      query:
-        description: the query string to search for
-        example: Python programming
-        type: string
-      search_type:
-        allOf:
-        - $ref: '#/definitions/controllers.SearchType'
-        description: the algorithm used to perform the search
-        example: context
-    required:
-    - limit
-    - offset
-    - query
-    - search_type
-    type: object
   controllers.MinimalNote:
     properties:
       author_id:
-        type: integer
+        type: string
       id:
-        type: integer
+        type: string
       stripped_content:
         type: string
       title:
@@ -40,15 +16,29 @@ definitions:
   controllers.NoteReply:
     properties:
       author_id:
-        type: integer
+        type: string
       content:
         type: string
       id:
-        type: integer
+        type: string
       title:
         type: string
       updated_at:
         type: string
+    type: object
+  controllers.PatchNoteRequest:
+    properties:
+      content:
+        example: This is the updated content of my note.
+        type: string
+      id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        type: string
+      title:
+        example: Updated Note Title
+        type: string
+    required:
+    - id
     type: object
   controllers.PostNoteRequest:
     properties:
@@ -62,24 +52,45 @@ definitions:
     - content
     - title
     type: object
-  controllers.SearchType:
-    enum:
-    - context
-    - keyword
-    - typo_tolerant
-    - latest
-    type: string
-    x-enum-varnames:
-    - SearchByContext
-    - SearchByKeyword
-    - SearchByTypoTolerant
-    - SearchByLatest
 info:
   contact: {}
   description: Provides all methods to persist data for GoToHell
   title: GoToHell Gin REST API
 paths:
   /notes:
+    patch:
+      consumes:
+      - application/json
+      description: Updates an existing note via gRPC service
+      parameters:
+      - description: Update Note Request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.PatchNoteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.NoteReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update a note
+      tags:
+      - users
     post:
       consumes:
       - application/json
@@ -108,16 +119,48 @@ paths:
       tags:
       - users
   /notes/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes an existing note via gRPC service
+      parameters:
+      - description: Note ID (UUIDv7)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.NoteReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a note
+      tags:
+      - users
     get:
       consumes:
       - application/json
       description: Fetch note via gRPC service
       parameters:
-      - description: Note ID
+      - description: Note ID (UUIDv7)
         in: path
         name: id
         required: true
-        type: integer
+        type: string
       produces:
       - application/json
       responses:
@@ -140,12 +183,31 @@ paths:
       - application/json
       description: Search notes via gRPC service
       parameters:
-      - description: Search Notes Request
-        in: body
-        name: payload
+      - description: Search algorithm
+        enum:
+        - context
+        - keyword
+        - typo_tolerant
+        - latest
+        in: query
+        name: search_type
         required: true
-        schema:
-          $ref: '#/definitions/controllers.GetSearchNotesRequest'
+        type: string
+      - description: Search query
+        in: query
+        name: query
+        required: true
+        type: string
+      - description: Maximum results to return
+        in: query
+        name: limit
+        required: true
+        type: integer
+      - description: Pagination offset
+        in: query
+        name: offset
+        required: true
+        type: integer
       produces:
       - application/json
       responses:

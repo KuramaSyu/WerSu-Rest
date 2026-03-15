@@ -56,6 +56,56 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "patch": {
+                "description": "Updates an existing note via gRPC service",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update a note",
+                "parameters": [
+                    {
+                        "description": "Update Note Request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PatchNoteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.NoteReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
             }
         },
         "/notes/search": {
@@ -73,13 +123,38 @@ const docTemplate = `{
                 "summary": "Get notes by search criteria",
                 "parameters": [
                     {
-                        "description": "Search Notes Request",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/controllers.GetSearchNotesRequest"
-                        }
+                        "enum": [
+                            "context",
+                            "keyword",
+                            "typo_tolerant",
+                            "latest"
+                        ],
+                        "type": "string",
+                        "description": "Search algorithm",
+                        "name": "search_type",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search query",
+                        "name": "query",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum results to return",
+                        "name": "limit",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination offset",
+                        "name": "offset",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -119,8 +194,8 @@ const docTemplate = `{
                 "summary": "Get note by ID",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "Note ID",
+                        "type": "string",
+                        "description": "Note ID (UUIDv7)",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -143,52 +218,66 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "delete": {
+                "description": "Deletes an existing note via gRPC service",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Delete a note",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Note ID (UUIDv7)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.NoteReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
             }
         }
     },
     "definitions": {
-        "controllers.GetSearchNotesRequest": {
-            "type": "object",
-            "required": [
-                "limit",
-                "offset",
-                "query",
-                "search_type"
-            ],
-            "properties": {
-                "limit": {
-                    "description": "maximum number of results to return",
-                    "type": "integer",
-                    "example": 10
-                },
-                "offset": {
-                    "type": "integer",
-                    "example": 0
-                },
-                "query": {
-                    "description": "the query string to search for",
-                    "type": "string",
-                    "example": "Python programming"
-                },
-                "search_type": {
-                    "description": "the algorithm used to perform the search",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/controllers.SearchType"
-                        }
-                    ],
-                    "example": "context"
-                }
-            }
-        },
         "controllers.MinimalNote": {
             "type": "object",
             "properties": {
                 "author_id": {
-                    "type": "integer"
+                    "type": "string"
                 },
                 "id": {
-                    "type": "integer"
+                    "type": "string"
                 },
                 "stripped_content": {
                     "type": "string"
@@ -206,19 +295,39 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "author_id": {
-                    "type": "integer"
+                    "type": "string"
                 },
                 "content": {
                     "type": "string"
                 },
                 "id": {
-                    "type": "integer"
+                    "type": "string"
                 },
                 "title": {
                     "type": "string"
                 },
                 "updated_at": {
                     "type": "string"
+                }
+            }
+        },
+        "controllers.PatchNoteRequest": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "example": "This is the updated content of my note."
+                },
+                "id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Updated Note Title"
                 }
             }
         },
@@ -238,21 +347,6 @@ const docTemplate = `{
                     "example": "My Note Title"
                 }
             }
-        },
-        "controllers.SearchType": {
-            "type": "string",
-            "enum": [
-                "context",
-                "keyword",
-                "typo_tolerant",
-                "latest"
-            ],
-            "x-enum-varnames": [
-                "SearchByContext",
-                "SearchByKeyword",
-                "SearchByTypoTolerant",
-                "SearchByLatest"
-            ]
         }
     },
     "securityDefinitions": {

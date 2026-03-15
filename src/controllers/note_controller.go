@@ -3,10 +3,8 @@ package controllers
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
-	"github.com/KuramaSyu/WerSu-Rest/src/models"
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
 	"github.com/gin-gonic/gin"
 )
@@ -18,15 +16,15 @@ type NoteController struct {
 
 // swagger:response GetNoteRequest
 type GetNoteRequest struct {
-	ID models.Snowflake `json:"id" binding:"required" example:"42"`
+	ID string `json:"id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 }
 
 type NoteReply struct {
-	Id        int32     `json:"id"`
+	Id        string    `json:"id"`
 	Title     string    `json:"title"`
 	Content   string    `json:"content"`
 	UpdatedAt time.Time `json:"updated_at"`
-	AuthorId  int32     `json:"author_id"`
+	AuthorId  string    `json:"author_id"`
 }
 
 type PostNoteRequest struct {
@@ -35,7 +33,7 @@ type PostNoteRequest struct {
 }
 
 type PatchNoteRequest struct {
-	Id      int32  `json:"id" binding:"required" example:"1"`
+	Id      string `json:"id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 	Title   string `json:"title" binding:"omitempty" example:"Updated Note Title"`
 	Content string `json:"content" binding:"omitempty" example:"This is the updated content of my note."`
 }
@@ -67,7 +65,7 @@ func NewNoteController(noteService *proto.NoteServiceClient) *NoteController {
 // @Tags users
 // @Accept json
 // @Produce json
-// @Param id path int true "Note ID"
+// @Param id path string true "Note ID (UUIDv7)"
 // @Success 200 {object} NoteReply
 // @Failure 400 {object} map[string]string
 // @Router /notes/{id} [get]
@@ -79,17 +77,21 @@ func (uc *NoteController) GetNote(c *gin.Context) {
 		return
 	}
 
-	// read path
-	id, err := strconv.Atoi(c.Params.ByName("id"))
-	if err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid ID format: %w", err))
+	// read path UUID
+	id := c.Params.ByName("id")
+	if id == "" {
+		SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing note ID"))
 		return
 	}
 
 	// gRPC service
 	note, err := (*uc.NoteService).GetNote(
-		c, &proto.GetNoteRequest{Id: int32(id), UserId: user.ID},
+		c, &proto.GetNoteRequest{Id: id, UserId: user.ID},
 	)
+	if err != nil {
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch note via gRPC service: %w", err))
+		return
+	}
 	c.JSON(http.StatusOK, NoteReplyFromProto(note))
 }
 
@@ -183,7 +185,7 @@ func (uc *NoteController) PatchNote(c *gin.Context) {
 // @Tags users
 // @Accept json
 // @Produce json
-// @Param id path int true "Note ID"
+// @Param id path string true "Note ID (UUIDv7)"
 // @Success 200 {object} NoteReply
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
@@ -196,17 +198,17 @@ func (uc *NoteController) DeleteNote(c *gin.Context) {
 		return
 	}
 
-	// parse path id
-	id, err := strconv.Atoi(c.Params.ByName("id"))
-	if err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid ID format: %w", err))
+	// parse path UUID
+	id := c.Params.ByName("id")
+	if id == "" {
+		SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing note ID"))
 		return
 	}
 
 	// gRPC service call
 	grpcDeleteNoteRequest := proto.DeleteNoteRequest{
-		Id:       int32(id),
-		AuthorId: int32(user.ID),
+		Id:       id,
+		AuthorId: user.ID,
 	}
 	note, err := (*uc.NoteService).DeleteNote(c, &grpcDeleteNoteRequest)
 	if err != nil {

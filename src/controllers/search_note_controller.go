@@ -56,9 +56,9 @@ type GetSearchNotesRequest struct {
 }
 
 type MinimalNote struct {
-	Id              int32  `json:"id"`
+	Id              string `json:"id"`
 	Title           string `json:"title"`
-	AuthorId        int32  `json:"author_id"`
+	AuthorId        string `json:"author_id"`
 	UpdatedAt       string `json:"updated_at"` // ISO 8601 format
 	StrippedContent string `json:"stripped_content"`
 }
