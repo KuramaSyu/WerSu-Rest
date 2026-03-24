@@ -107,7 +107,7 @@ func (ac *AuthController) Callback(c *gin.Context) {
 	})
 
 	if err != nil {
-		println("%v", err.Error())
+		println("Failed to get user:%v", err.Error())
 		// failed to get user -> post user
 		grpcUser, err = (*ac.userService).PostUser(c, &proto.PostUserRequest{
 			DiscordId:     int64(d_user.DiscordId),
