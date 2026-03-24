@@ -20,11 +20,50 @@ type GetNoteRequest struct {
 }
 
 type NoteReply struct {
-	Id        string    `json:"id"`
-	Title     string    `json:"title"`
-	Content   string    `json:"content"`
-	UpdatedAt time.Time `json:"updated_at"`
-	AuthorId  string    `json:"author_id"`
+	Id          string                        `json:"id"`
+	Title       string                        `json:"title"`
+	Content     string                        `json:"content"`
+	UpdatedAt   time.Time                     `json:"updated_at"`
+	AuthorId    string                        `json:"author_id"`
+	Permissions []PermissionRelationshipReply `json:"permissions"`
+}
+
+type PermissionSubjectReply struct {
+	ObjectType string `json:"object_type"`
+	ObjectId   string `json:"object_id"`
+}
+
+type PermissionResourceReply struct {
+	ObjectType string `json:"object_type"`
+	ObjectId   string `json:"object_id"`
+}
+
+type PermissionRelationshipReply struct {
+	Relation string                   `json:"relation"`
+	Subject  *PermissionSubjectReply  `json:"subject,omitempty"`
+	Resource *PermissionResourceReply `json:"resource,omitempty"`
+}
+
+func PermissionRelationshipReplyFromProto(relationship *proto.PermissionRelationship) PermissionRelationshipReply {
+	permissionReply := PermissionRelationshipReply{
+		Relation: relationship.GetRelation(),
+	}
+
+	if relationship.GetSubject() != nil {
+		permissionReply.Subject = &PermissionSubjectReply{
+			ObjectType: relationship.GetSubject().GetObjectType(),
+			ObjectId:   relationship.GetSubject().GetObjectId(),
+		}
+	}
+
+	if relationship.GetResource() != nil {
+		permissionReply.Resource = &PermissionResourceReply{
+			ObjectType: relationship.GetResource().GetObjectType().String(),
+			ObjectId:   relationship.GetResource().GetObjectId(),
+		}
+	}
+
+	return permissionReply
 }
 
 type PostNoteRequest struct {
@@ -46,12 +85,18 @@ type PatchNoteRequest struct {
 // Returns:
 //   - NoteReply: A NoteReply struct populated with data from the proto.Note
 func NoteReplyFromProto(note *proto.Note) NoteReply {
+	permissions := make([]PermissionRelationshipReply, 0, len(note.GetPermissions()))
+	for _, permission := range note.GetPermissions() {
+		permissions = append(permissions, PermissionRelationshipReplyFromProto(permission))
+	}
+
 	return NoteReply{
-		Id:        note.Id,
-		Title:     note.Title,
-		Content:   note.Content,
-		UpdatedAt: note.UpdatedAt.AsTime(),
-		AuthorId:  note.AuthorId,
+		Id:          note.Id,
+		Title:       note.Title,
+		Content:     note.Content,
+		UpdatedAt:   note.UpdatedAt.AsTime(),
+		AuthorId:    note.AuthorId,
+		Permissions: permissions,
 	}
 }
 

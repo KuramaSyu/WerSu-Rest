@@ -14,6 +14,7 @@ func SetupRouter(
 	authController *controllers.AuthController,
 	noteController *controllers.NoteController,
 	noteSearchController *controllers.SearchNotesController,
+	permissionController *controllers.PermissionController,
 ) {
 
 	// API routes
@@ -33,6 +34,15 @@ func SetupRouter(
 			notes.DELETE("/:id", noteController.DeleteNote)
 
 			notes.GET("/search", noteSearchController.GetNotes)
+		}
+
+		// Permission routes
+		permissions := api.Group("/permissions")
+		{
+			permissions.GET("", permissionController.GetPermissions)
+			permissions.POST("", permissionController.CreatePermission)
+			permissions.DELETE("", permissionController.DeletePermission)
+			permissions.PUT("", permissionController.ReplacePermissions)
 		}
 
 		// route for swagger API docs
