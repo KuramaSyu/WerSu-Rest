@@ -48,16 +48,12 @@ message Note {
     google.protobuf.Timestamp updated_at = 4;
     string author_id = 5;
     //repeated NoteEmbedding embeddings = 6;
-    repeated NotePermission permissions = 7;
+    repeated PermissionRelationship permissions = 7;
 }
 
 message NoteEmbedding {
     string model = 1;
     repeated float embedding = 2;
-}
-
-message NotePermission {
-    int32 role_id = 1;
 }
 
 // Request to add a note
@@ -80,6 +76,61 @@ message AlterNoteRequest {
     optional string author_id = 4;
 }
 
+enum PermissionObjectType {
+    PERMISSION_OBJECT_TYPE_UNSPECIFIED = 0;
+    PERMISSION_OBJECT_TYPE_NOTE = 1;
+    PERMISSION_OBJECT_TYPE_DIRECTORY = 2;
+}
+
+message PermissionSubject {
+    string object_type = 1;
+    string object_id = 2;
+}
+
+message PermissionResource {
+    PermissionObjectType object_type = 1;
+    string object_id = 2;
+}
+
+message PermissionRelationship {
+    string relation = 1;
+    PermissionSubject subject = 2;
+    PermissionResource resource = 3;
+}
+
+message GetPermissionsRequest {
+    PermissionObjectType object_type = 1;
+    string object_id = 2;
+    string user_id = 3;
+}
+
+message CreatePermissionRequest {
+    PermissionObjectType object_type = 1;
+    string object_id = 2;
+    PermissionRelationship relationship = 3;
+    string user_id = 4;
+}
+
+message DeletePermissionRequest {
+    PermissionObjectType object_type = 1;
+    string object_id = 2;
+    PermissionRelationship relationship = 3;
+    string user_id = 4;
+}
+
+message ReplacePermissionsRequest {
+    PermissionObjectType object_type = 1;
+    string object_id = 2;
+    repeated PermissionRelationship relationships = 3;
+    string user_id = 4;
+}
+
+message PermissionsResponse {
+    PermissionObjectType object_type = 1;
+    string object_id = 2;
+    repeated PermissionRelationship relationships = 3;
+}
+
 // Note Service
 service NoteService {
     rpc GetNote(GetNoteRequest) returns (Note);
@@ -87,4 +138,11 @@ service NoteService {
     rpc PatchNote(AlterNoteRequest) returns (Note);
     rpc DeleteNote(DeleteNoteRequest) returns (Note);
     rpc SearchNotes(GetSearchNotesRequest) returns (stream MinimalNote);
+}
+
+service PermissionService {
+    rpc GetPermissions(GetPermissionsRequest) returns (PermissionsResponse);
+    rpc CreatePermission(CreatePermissionRequest) returns (PermissionsResponse);
+    rpc DeletePermission(DeletePermissionRequest) returns (PermissionsResponse);
+    rpc ReplacePermissions(ReplacePermissionsRequest) returns (PermissionsResponse);
 }
