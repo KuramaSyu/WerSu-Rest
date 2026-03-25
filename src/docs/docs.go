@@ -267,9 +267,270 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/permissions": {
+            "get": {
+                "description": "Fetch permissions via gRPC PermissionService",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "permissions"
+                ],
+                "summary": "Get permissions for an object",
+                "parameters": [
+                    {
+                        "enum": [
+                            "note",
+                            "directory"
+                        ],
+                        "type": "string",
+                        "description": "Object type",
+                        "name": "object_type",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Object ID",
+                        "name": "object_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PermissionsReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Replace permissions via gRPC PermissionService",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "permissions"
+                ],
+                "summary": "Replace all permissions for an object",
+                "parameters": [
+                    {
+                        "description": "Replace permissions request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ReplacePermissionsBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PermissionsReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create permission via gRPC PermissionService",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "permissions"
+                ],
+                "summary": "Create a permission relationship",
+                "parameters": [
+                    {
+                        "description": "Create permission request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.CreatePermissionBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PermissionsReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete permission via gRPC PermissionService",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "permissions"
+                ],
+                "summary": "Delete a permission relationship",
+                "parameters": [
+                    {
+                        "description": "Delete permission request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.DeletePermissionBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PermissionsReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "controllers.CreatePermissionBody": {
+            "type": "object",
+            "required": [
+                "object_id",
+                "object_type",
+                "relationship"
+            ],
+            "properties": {
+                "object_id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                },
+                "object_type": {
+                    "type": "string",
+                    "enum": [
+                        "note",
+                        "directory"
+                    ],
+                    "example": "note"
+                },
+                "relationship": {
+                    "$ref": "#/definitions/controllers.PermissionRelationshipRequest"
+                }
+            }
+        },
+        "controllers.DeletePermissionBody": {
+            "type": "object",
+            "required": [
+                "object_id",
+                "object_type",
+                "relationship"
+            ],
+            "properties": {
+                "object_id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                },
+                "object_type": {
+                    "type": "string",
+                    "enum": [
+                        "note",
+                        "directory"
+                    ],
+                    "example": "note"
+                },
+                "relationship": {
+                    "$ref": "#/definitions/controllers.PermissionRelationshipRequest"
+                }
+            }
+        },
         "controllers.MinimalNote": {
             "type": "object",
             "properties": {
@@ -303,6 +564,12 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controllers.PermissionRelationshipReply"
+                    }
+                },
                 "title": {
                     "type": "string"
                 },
@@ -331,6 +598,131 @@ const docTemplate = `{
                 }
             }
         },
+        "controllers.PermissionRelationshipReply": {
+            "type": "object",
+            "properties": {
+                "relation": {
+                    "type": "string"
+                },
+                "resource": {
+                    "$ref": "#/definitions/controllers.PermissionResourceReply"
+                },
+                "subject": {
+                    "$ref": "#/definitions/controllers.PermissionSubjectReply"
+                }
+            }
+        },
+        "controllers.PermissionRelationshipRequest": {
+            "type": "object",
+            "required": [
+                "relation"
+            ],
+            "properties": {
+                "relation": {
+                    "type": "string",
+                    "enum": [
+                        "owner",
+                        "admin",
+                        "writer",
+                        "reader",
+                        "parent",
+                        "parent_directory"
+                    ],
+                    "example": "reader"
+                },
+                "resource": {
+                    "$ref": "#/definitions/controllers.PermissionResourceRequest"
+                },
+                "subject": {
+                    "$ref": "#/definitions/controllers.PermissionSubjectRequest"
+                }
+            }
+        },
+        "controllers.PermissionResourceReply": {
+            "type": "object",
+            "properties": {
+                "object_id": {
+                    "type": "string"
+                },
+                "object_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "controllers.PermissionResourceRequest": {
+            "type": "object",
+            "required": [
+                "object_id",
+                "object_type"
+            ],
+            "properties": {
+                "object_id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                },
+                "object_type": {
+                    "type": "string",
+                    "enum": [
+                        "note",
+                        "directory"
+                    ],
+                    "example": "note"
+                }
+            }
+        },
+        "controllers.PermissionSubjectReply": {
+            "type": "object",
+            "properties": {
+                "object_id": {
+                    "type": "string"
+                },
+                "object_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "controllers.PermissionSubjectRequest": {
+            "type": "object",
+            "required": [
+                "object_id",
+                "object_type"
+            ],
+            "properties": {
+                "object_id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                },
+                "object_type": {
+                    "type": "string",
+                    "enum": [
+                        "user"
+                    ],
+                    "example": "user"
+                }
+            }
+        },
+        "controllers.PermissionsReply": {
+            "type": "object",
+            "properties": {
+                "object_id": {
+                    "type": "string"
+                },
+                "object_type": {
+                    "type": "string",
+                    "enum": [
+                        "PERMISSION_OBJECT_TYPE_UNSPECIFIED",
+                        "PERMISSION_OBJECT_TYPE_NOTE",
+                        "PERMISSION_OBJECT_TYPE_DIRECTORY"
+                    ]
+                },
+                "relationships": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controllers.PermissionRelationshipReply"
+                    }
+                }
+            }
+        },
         "controllers.PostNoteRequest": {
             "type": "object",
             "required": [
@@ -345,6 +737,34 @@ const docTemplate = `{
                 "title": {
                     "type": "string",
                     "example": "My Note Title"
+                }
+            }
+        },
+        "controllers.ReplacePermissionsBody": {
+            "type": "object",
+            "required": [
+                "object_id",
+                "object_type",
+                "relationships"
+            ],
+            "properties": {
+                "object_id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                },
+                "object_type": {
+                    "type": "string",
+                    "enum": [
+                        "note",
+                        "directory"
+                    ],
+                    "example": "note"
+                },
+                "relationships": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controllers.PermissionRelationshipRequest"
+                    }
                 }
             }
         }

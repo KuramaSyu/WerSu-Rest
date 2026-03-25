@@ -1,4 +1,40 @@
 definitions:
+  controllers.CreatePermissionBody:
+    properties:
+      object_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        type: string
+      object_type:
+        enum:
+        - note
+        - directory
+        example: note
+        type: string
+      relationship:
+        $ref: '#/definitions/controllers.PermissionRelationshipRequest'
+    required:
+    - object_id
+    - object_type
+    - relationship
+    type: object
+  controllers.DeletePermissionBody:
+    properties:
+      object_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        type: string
+      object_type:
+        enum:
+        - note
+        - directory
+        example: note
+        type: string
+      relationship:
+        $ref: '#/definitions/controllers.PermissionRelationshipRequest'
+    required:
+    - object_id
+    - object_type
+    - relationship
+    type: object
   controllers.MinimalNote:
     properties:
       author_id:
@@ -21,6 +57,10 @@ definitions:
         type: string
       id:
         type: string
+      permissions:
+        items:
+          $ref: '#/definitions/controllers.PermissionRelationshipReply'
+        type: array
       title:
         type: string
       updated_at:
@@ -40,6 +80,92 @@ definitions:
     required:
     - id
     type: object
+  controllers.PermissionRelationshipReply:
+    properties:
+      relation:
+        type: string
+      resource:
+        $ref: '#/definitions/controllers.PermissionResourceReply'
+      subject:
+        $ref: '#/definitions/controllers.PermissionSubjectReply'
+    type: object
+  controllers.PermissionRelationshipRequest:
+    properties:
+      relation:
+        enum:
+        - owner
+        - admin
+        - writer
+        - reader
+        - parent
+        - parent_directory
+        example: reader
+        type: string
+      resource:
+        $ref: '#/definitions/controllers.PermissionResourceRequest'
+      subject:
+        $ref: '#/definitions/controllers.PermissionSubjectRequest'
+    required:
+    - relation
+    type: object
+  controllers.PermissionResourceReply:
+    properties:
+      object_id:
+        type: string
+      object_type:
+        type: string
+    type: object
+  controllers.PermissionResourceRequest:
+    properties:
+      object_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        type: string
+      object_type:
+        enum:
+        - note
+        - directory
+        example: note
+        type: string
+    required:
+    - object_id
+    - object_type
+    type: object
+  controllers.PermissionSubjectReply:
+    properties:
+      object_id:
+        type: string
+      object_type:
+        type: string
+    type: object
+  controllers.PermissionSubjectRequest:
+    properties:
+      object_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        type: string
+      object_type:
+        enum:
+        - user
+        example: user
+        type: string
+    required:
+    - object_id
+    - object_type
+    type: object
+  controllers.PermissionsReply:
+    properties:
+      object_id:
+        type: string
+      object_type:
+        enum:
+        - PERMISSION_OBJECT_TYPE_UNSPECIFIED
+        - PERMISSION_OBJECT_TYPE_NOTE
+        - PERMISSION_OBJECT_TYPE_DIRECTORY
+        type: string
+      relationships:
+        items:
+          $ref: '#/definitions/controllers.PermissionRelationshipReply'
+        type: array
+    type: object
   controllers.PostNoteRequest:
     properties:
       content:
@@ -51,6 +177,26 @@ definitions:
     required:
     - content
     - title
+    type: object
+  controllers.ReplacePermissionsBody:
+    properties:
+      object_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        type: string
+      object_type:
+        enum:
+        - note
+        - directory
+        example: note
+        type: string
+      relationships:
+        items:
+          $ref: '#/definitions/controllers.PermissionRelationshipRequest'
+        type: array
+    required:
+    - object_id
+    - object_type
+    - relationships
     type: object
 info:
   contact: {}
@@ -226,6 +372,146 @@ paths:
       summary: Get notes by search criteria
       tags:
       - users
+  /permissions:
+    delete:
+      consumes:
+      - application/json
+      description: Delete permission via gRPC PermissionService
+      parameters:
+      - description: Delete permission request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.DeletePermissionBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.PermissionsReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a permission relationship
+      tags:
+      - permissions
+    get:
+      consumes:
+      - application/json
+      description: Fetch permissions via gRPC PermissionService
+      parameters:
+      - description: Object type
+        enum:
+        - note
+        - directory
+        in: query
+        name: object_type
+        required: true
+        type: string
+      - description: Object ID
+        in: query
+        name: object_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.PermissionsReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get permissions for an object
+      tags:
+      - permissions
+    post:
+      consumes:
+      - application/json
+      description: Create permission via gRPC PermissionService
+      parameters:
+      - description: Create permission request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreatePermissionBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.PermissionsReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a permission relationship
+      tags:
+      - permissions
+    put:
+      consumes:
+      - application/json
+      description: Replace permissions via gRPC PermissionService
+      parameters:
+      - description: Replace permissions request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.ReplacePermissionsBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.PermissionsReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Replace all permissions for an object
+      tags:
+      - permissions
 securityDefinitions:
   CookieAuth:
     in: cookie
