@@ -41,6 +41,10 @@ definitions:
         type: string
       id:
         type: string
+      permissions:
+        items:
+          $ref: '#/definitions/controllers.PermissionRelationshipReply'
+        type: array
       stripped_content:
         type: string
       title:

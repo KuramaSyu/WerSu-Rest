@@ -540,6 +540,12 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controllers.PermissionRelationshipReply"
+                    }
+                },
                 "stripped_content": {
                     "type": "string"
                 },
