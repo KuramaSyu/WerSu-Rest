@@ -56,11 +56,12 @@ type GetSearchNotesRequest struct {
 }
 
 type MinimalNote struct {
-	Id              string `json:"id"`
-	Title           string `json:"title"`
-	AuthorId        string `json:"author_id"`
-	UpdatedAt       string `json:"updated_at"` // ISO 8601 format
-	StrippedContent string `json:"stripped_content"`
+	Id              string                        `json:"id"`
+	Title           string                        `json:"title"`
+	AuthorId        string                        `json:"author_id"`
+	UpdatedAt       string                        `json:"updated_at"` // ISO 8601 format
+	StrippedContent string                        `json:"stripped_content"`
+	Permissions     []PermissionRelationshipReply `json:"permissions"`
 }
 
 // ConvertProtoMinimalNoteToRest converts a proto.MinimalNote to REST MinimalNote
@@ -70,12 +71,19 @@ func ConvertProtoMinimalNoteToRest(protoNote *proto.MinimalNote) MinimalNote {
 		updatedAt = protoNote.UpdatedAt.AsTime().Format(time.RFC3339)
 	}
 
+	// Convert proto permission entries to the REST response type.
+	permissions := make([]PermissionRelationshipReply, 0, len(protoNote.GetPermissions()))
+	for _, permission := range protoNote.GetPermissions() {
+		permissions = append(permissions, PermissionRelationshipReplyFromProto(permission))
+	}
+
 	return MinimalNote{
 		Id:              protoNote.Id,
 		Title:           protoNote.Title,
 		AuthorId:        protoNote.AuthorId,
 		UpdatedAt:       updatedAt,
 		StrippedContent: protoNote.StrippedContent,
+		Permissions:     permissions,
 	}
 }
 
