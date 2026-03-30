@@ -701,7 +701,8 @@ const docTemplate = `{
                 "object_type": {
                     "type": "string",
                     "enum": [
-                        "user"
+                        "user",
+                        "PERMISSION_OBJECT_TYPE_USER"
                     ],
                     "example": "user"
                 }

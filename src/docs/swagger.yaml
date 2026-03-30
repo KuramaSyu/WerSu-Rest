@@ -149,6 +149,7 @@ definitions:
       object_type:
         enum:
         - user
+        - PERMISSION_OBJECT_TYPE_USER
         example: user
         type: string
     required:
