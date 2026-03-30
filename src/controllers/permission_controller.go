@@ -20,6 +20,7 @@ func NewPermissionController(permissionService *proto.PermissionServiceClient) *
 const (
 	PermissionObjectTypeNote      = "note"
 	PermissionObjectTypeDirectory = "directory"
+	PermissionObjectTypeUser      = "user"
 
 	PermissionRelationOwner           = "owner"
 	PermissionRelationAdmin           = "admin"
@@ -37,7 +38,7 @@ type GetPermissionsQuery struct {
 
 // PermissionSubjectRequest defines the subject side of a relationship.
 type PermissionSubjectRequest struct {
-	ObjectType string `json:"object_type" binding:"required,oneof=user" enums:"user" example:"user"`
+	ObjectType string `json:"object_type" binding:"required,oneof=user PERMISSION_OBJECT_TYPE_USER" enums:"user,PERMISSION_OBJECT_TYPE_USER" example:"user"`
 	ObjectId   string `json:"object_id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 }
 
@@ -88,6 +89,7 @@ type PermissionsReply struct {
 // Accepted values:
 //   - "note" / "PERMISSION_OBJECT_TYPE_NOTE"
 //   - "directory" / "PERMISSION_OBJECT_TYPE_DIRECTORY"
+//   - "user" / "PERMISSION_OBJECT_TYPE_USER"
 //   - "unspecified" / "PERMISSION_OBJECT_TYPE_UNSPECIFIED"
 //
 // Used by:
@@ -103,6 +105,8 @@ func parsePermissionObjectType(objectType string) (proto.PermissionObjectType, e
 		return proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_NOTE, nil
 	case "DIRECTORY", "PERMISSION_OBJECT_TYPE_DIRECTORY":
 		return proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_DIRECTORY, nil
+	case "USER", "PERMISSION_OBJECT_TYPE_USER":
+		return proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_USER, nil
 	case "UNSPECIFIED", "PERMISSION_OBJECT_TYPE_UNSPECIFIED":
 		return proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_UNSPECIFIED, nil
 	default:
@@ -152,8 +156,13 @@ func permissionRelationshipRequestToProto(relationship PermissionRelationshipReq
 	}
 
 	if relationship.Subject != nil {
+		subjectType, err := parsePermissionObjectType(relationship.Subject.ObjectType)
+		if err != nil {
+			return nil, err
+		}
+
 		grpcRelationship.Subject = &proto.PermissionSubject{
-			ObjectType: relationship.Subject.ObjectType,
+			ObjectType: subjectType,
 			ObjectId:   relationship.Subject.ObjectId,
 		}
 	}

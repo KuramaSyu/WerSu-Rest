@@ -28,22 +28,34 @@ type NoteReply struct {
 	Permissions []PermissionRelationshipReply `json:"permissions"`
 }
 
+// PermissionSubjectReply represents the subject side of a permission tuple in REST responses.
+//
+// ObjectType contains the protobuf enum label (for example: PERMISSION_OBJECT_TYPE_USER).
 type PermissionSubjectReply struct {
 	ObjectType string `json:"object_type"`
 	ObjectId   string `json:"object_id"`
 }
 
+// PermissionResourceReply represents the resource side of a permission tuple in REST responses.
+//
+// ObjectType contains the protobuf enum label (for example: PERMISSION_OBJECT_TYPE_NOTE).
 type PermissionResourceReply struct {
 	ObjectType string `json:"object_type"`
 	ObjectId   string `json:"object_id"`
 }
 
+// PermissionRelationshipReply represents one permission relationship returned by REST handlers.
 type PermissionRelationshipReply struct {
 	Relation string                   `json:"relation"`
 	Subject  *PermissionSubjectReply  `json:"subject,omitempty"`
 	Resource *PermissionResourceReply `json:"resource,omitempty"`
 }
 
+// PermissionRelationshipReplyFromProto converts a protobuf PermissionRelationship
+// into the REST response shape.
+//
+// Enum-based object types for both subject and resource are serialized as enum
+// names via .String() (for example: PERMISSION_OBJECT_TYPE_USER).
 func PermissionRelationshipReplyFromProto(relationship *proto.PermissionRelationship) PermissionRelationshipReply {
 	permissionReply := PermissionRelationshipReply{
 		Relation: relationship.GetRelation(),
@@ -51,7 +63,7 @@ func PermissionRelationshipReplyFromProto(relationship *proto.PermissionRelation
 
 	if relationship.GetSubject() != nil {
 		permissionReply.Subject = &PermissionSubjectReply{
-			ObjectType: relationship.GetSubject().GetObjectType(),
+			ObjectType: relationship.GetSubject().GetObjectType().String(),
 			ObjectId:   relationship.GetSubject().GetObjectId(),
 		}
 	}

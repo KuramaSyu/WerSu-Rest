@@ -28,6 +28,7 @@ const (
 	PermissionObjectType_PERMISSION_OBJECT_TYPE_UNSPECIFIED PermissionObjectType = 0
 	PermissionObjectType_PERMISSION_OBJECT_TYPE_NOTE        PermissionObjectType = 1
 	PermissionObjectType_PERMISSION_OBJECT_TYPE_DIRECTORY   PermissionObjectType = 2
+	PermissionObjectType_PERMISSION_OBJECT_TYPE_USER        PermissionObjectType = 3
 )
 
 // Enum value maps for PermissionObjectType.
@@ -36,11 +37,13 @@ var (
 		0: "PERMISSION_OBJECT_TYPE_UNSPECIFIED",
 		1: "PERMISSION_OBJECT_TYPE_NOTE",
 		2: "PERMISSION_OBJECT_TYPE_DIRECTORY",
+		3: "PERMISSION_OBJECT_TYPE_USER",
 	}
 	PermissionObjectType_value = map[string]int32{
 		"PERMISSION_OBJECT_TYPE_UNSPECIFIED": 0,
 		"PERMISSION_OBJECT_TYPE_NOTE":        1,
 		"PERMISSION_OBJECT_TYPE_DIRECTORY":   2,
+		"PERMISSION_OBJECT_TYPE_USER":        3,
 	}
 )
 
@@ -665,7 +668,7 @@ func (x *AlterNoteRequest) GetAuthorId() string {
 
 type PermissionSubject struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ObjectType    string                 `protobuf:"bytes,1,opt,name=object_type,json=objectType,proto3" json:"object_type,omitempty"`
+	ObjectType    PermissionObjectType   `protobuf:"varint,1,opt,name=object_type,json=objectType,proto3,enum=proto.PermissionObjectType" json:"object_type,omitempty"`
 	ObjectId      string                 `protobuf:"bytes,2,opt,name=object_id,json=objectId,proto3" json:"object_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -701,11 +704,11 @@ func (*PermissionSubject) Descriptor() ([]byte, []int) {
 	return file_src_proto_note_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *PermissionSubject) GetObjectType() string {
+func (x *PermissionSubject) GetObjectType() PermissionObjectType {
 	if x != nil {
 		return x.ObjectType
 	}
-	return ""
+	return PermissionObjectType_PERMISSION_OBJECT_TYPE_UNSPECIFIED
 }
 
 func (x *PermissionSubject) GetObjectId() string {
@@ -1210,9 +1213,9 @@ const file_src_proto_note_proto_rawDesc = "" +
 	"\n" +
 	"\b_contentB\f\n" +
 	"\n" +
-	"_author_id\"Q\n" +
-	"\x11PermissionSubject\x12\x1f\n" +
-	"\vobject_type\x18\x01 \x01(\tR\n" +
+	"_author_id\"n\n" +
+	"\x11PermissionSubject\x12<\n" +
+	"\vobject_type\x18\x01 \x01(\x0e2\x1b.proto.PermissionObjectTypeR\n" +
 	"objectType\x12\x1b\n" +
 	"\tobject_id\x18\x02 \x01(\tR\bobjectId\"o\n" +
 	"\x12PermissionResource\x12<\n" +
@@ -1250,11 +1253,12 @@ const file_src_proto_note_proto_rawDesc = "" +
 	"\vobject_type\x18\x01 \x01(\x0e2\x1b.proto.PermissionObjectTypeR\n" +
 	"objectType\x12\x1b\n" +
 	"\tobject_id\x18\x02 \x01(\tR\bobjectId\x12C\n" +
-	"\rrelationships\x18\x03 \x03(\v2\x1d.proto.PermissionRelationshipR\rrelationships*\x85\x01\n" +
+	"\rrelationships\x18\x03 \x03(\v2\x1d.proto.PermissionRelationshipR\rrelationships*\xa6\x01\n" +
 	"\x14PermissionObjectType\x12&\n" +
 	"\"PERMISSION_OBJECT_TYPE_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bPERMISSION_OBJECT_TYPE_NOTE\x10\x01\x12$\n" +
-	" PERMISSION_OBJECT_TYPE_DIRECTORY\x10\x022\x98\x02\n" +
+	" PERMISSION_OBJECT_TYPE_DIRECTORY\x10\x02\x12\x1f\n" +
+	"\x1bPERMISSION_OBJECT_TYPE_USER\x10\x032\x98\x02\n" +
 	"\vNoteService\x12-\n" +
 	"\aGetNote\x12\x15.proto.GetNoteRequest\x1a\v.proto.Note\x12/\n" +
 	"\bPostNote\x12\x16.proto.PostNoteRequest\x1a\v.proto.Note\x121\n" +
@@ -1309,41 +1313,42 @@ var file_src_proto_note_proto_depIdxs = []int32{
 	12, // 2: proto.MinimalNote.permissions:type_name -> proto.PermissionRelationship
 	18, // 3: proto.Note.updated_at:type_name -> google.protobuf.Timestamp
 	12, // 4: proto.Note.permissions:type_name -> proto.PermissionRelationship
-	0,  // 5: proto.PermissionResource.object_type:type_name -> proto.PermissionObjectType
-	10, // 6: proto.PermissionRelationship.subject:type_name -> proto.PermissionSubject
-	11, // 7: proto.PermissionRelationship.resource:type_name -> proto.PermissionResource
-	0,  // 8: proto.GetPermissionsRequest.object_type:type_name -> proto.PermissionObjectType
-	0,  // 9: proto.CreatePermissionRequest.object_type:type_name -> proto.PermissionObjectType
-	12, // 10: proto.CreatePermissionRequest.relationship:type_name -> proto.PermissionRelationship
-	0,  // 11: proto.DeletePermissionRequest.object_type:type_name -> proto.PermissionObjectType
-	12, // 12: proto.DeletePermissionRequest.relationship:type_name -> proto.PermissionRelationship
-	0,  // 13: proto.ReplacePermissionsRequest.object_type:type_name -> proto.PermissionObjectType
-	12, // 14: proto.ReplacePermissionsRequest.relationships:type_name -> proto.PermissionRelationship
-	0,  // 15: proto.PermissionsResponse.object_type:type_name -> proto.PermissionObjectType
-	12, // 16: proto.PermissionsResponse.relationships:type_name -> proto.PermissionRelationship
-	2,  // 17: proto.NoteService.GetNote:input_type -> proto.GetNoteRequest
-	7,  // 18: proto.NoteService.PostNote:input_type -> proto.PostNoteRequest
-	9,  // 19: proto.NoteService.PatchNote:input_type -> proto.AlterNoteRequest
-	8,  // 20: proto.NoteService.DeleteNote:input_type -> proto.DeleteNoteRequest
-	3,  // 21: proto.NoteService.SearchNotes:input_type -> proto.GetSearchNotesRequest
-	13, // 22: proto.PermissionService.GetPermissions:input_type -> proto.GetPermissionsRequest
-	14, // 23: proto.PermissionService.CreatePermission:input_type -> proto.CreatePermissionRequest
-	15, // 24: proto.PermissionService.DeletePermission:input_type -> proto.DeletePermissionRequest
-	16, // 25: proto.PermissionService.ReplacePermissions:input_type -> proto.ReplacePermissionsRequest
-	5,  // 26: proto.NoteService.GetNote:output_type -> proto.Note
-	5,  // 27: proto.NoteService.PostNote:output_type -> proto.Note
-	5,  // 28: proto.NoteService.PatchNote:output_type -> proto.Note
-	5,  // 29: proto.NoteService.DeleteNote:output_type -> proto.Note
-	4,  // 30: proto.NoteService.SearchNotes:output_type -> proto.MinimalNote
-	17, // 31: proto.PermissionService.GetPermissions:output_type -> proto.PermissionsResponse
-	17, // 32: proto.PermissionService.CreatePermission:output_type -> proto.PermissionsResponse
-	17, // 33: proto.PermissionService.DeletePermission:output_type -> proto.PermissionsResponse
-	17, // 34: proto.PermissionService.ReplacePermissions:output_type -> proto.PermissionsResponse
-	26, // [26:35] is the sub-list for method output_type
-	17, // [17:26] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	0,  // 5: proto.PermissionSubject.object_type:type_name -> proto.PermissionObjectType
+	0,  // 6: proto.PermissionResource.object_type:type_name -> proto.PermissionObjectType
+	10, // 7: proto.PermissionRelationship.subject:type_name -> proto.PermissionSubject
+	11, // 8: proto.PermissionRelationship.resource:type_name -> proto.PermissionResource
+	0,  // 9: proto.GetPermissionsRequest.object_type:type_name -> proto.PermissionObjectType
+	0,  // 10: proto.CreatePermissionRequest.object_type:type_name -> proto.PermissionObjectType
+	12, // 11: proto.CreatePermissionRequest.relationship:type_name -> proto.PermissionRelationship
+	0,  // 12: proto.DeletePermissionRequest.object_type:type_name -> proto.PermissionObjectType
+	12, // 13: proto.DeletePermissionRequest.relationship:type_name -> proto.PermissionRelationship
+	0,  // 14: proto.ReplacePermissionsRequest.object_type:type_name -> proto.PermissionObjectType
+	12, // 15: proto.ReplacePermissionsRequest.relationships:type_name -> proto.PermissionRelationship
+	0,  // 16: proto.PermissionsResponse.object_type:type_name -> proto.PermissionObjectType
+	12, // 17: proto.PermissionsResponse.relationships:type_name -> proto.PermissionRelationship
+	2,  // 18: proto.NoteService.GetNote:input_type -> proto.GetNoteRequest
+	7,  // 19: proto.NoteService.PostNote:input_type -> proto.PostNoteRequest
+	9,  // 20: proto.NoteService.PatchNote:input_type -> proto.AlterNoteRequest
+	8,  // 21: proto.NoteService.DeleteNote:input_type -> proto.DeleteNoteRequest
+	3,  // 22: proto.NoteService.SearchNotes:input_type -> proto.GetSearchNotesRequest
+	13, // 23: proto.PermissionService.GetPermissions:input_type -> proto.GetPermissionsRequest
+	14, // 24: proto.PermissionService.CreatePermission:input_type -> proto.CreatePermissionRequest
+	15, // 25: proto.PermissionService.DeletePermission:input_type -> proto.DeletePermissionRequest
+	16, // 26: proto.PermissionService.ReplacePermissions:input_type -> proto.ReplacePermissionsRequest
+	5,  // 27: proto.NoteService.GetNote:output_type -> proto.Note
+	5,  // 28: proto.NoteService.PostNote:output_type -> proto.Note
+	5,  // 29: proto.NoteService.PatchNote:output_type -> proto.Note
+	5,  // 30: proto.NoteService.DeleteNote:output_type -> proto.Note
+	4,  // 31: proto.NoteService.SearchNotes:output_type -> proto.MinimalNote
+	17, // 32: proto.PermissionService.GetPermissions:output_type -> proto.PermissionsResponse
+	17, // 33: proto.PermissionService.CreatePermission:output_type -> proto.PermissionsResponse
+	17, // 34: proto.PermissionService.DeletePermission:output_type -> proto.PermissionsResponse
+	17, // 35: proto.PermissionService.ReplacePermissions:output_type -> proto.PermissionsResponse
+	27, // [27:36] is the sub-list for method output_type
+	18, // [18:27] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_src_proto_note_proto_init() }
