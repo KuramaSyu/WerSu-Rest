@@ -14,6 +14,7 @@ func SetupRouter(
 	authController *controllers.AuthController,
 	noteController *controllers.NoteController,
 	noteSearchController *controllers.SearchNotesController,
+	directoryController *controllers.DirectoryController,
 	permissionController *controllers.PermissionController,
 ) {
 
@@ -43,6 +44,16 @@ func SetupRouter(
 			permissions.POST("", permissionController.CreatePermission)
 			permissions.DELETE("", permissionController.DeletePermission)
 			permissions.PUT("", permissionController.ReplacePermissions)
+		}
+
+		// Directory routes
+		directories := api.Group("/directories")
+		{
+			directories.GET("/:id", directoryController.GetDirectory)
+			directories.GET("", directoryController.GetDirectories)
+			directories.POST("", directoryController.CreateDirectory)
+			directories.PATCH("", directoryController.PatchDirectory)
+			directories.DELETE("/:id", directoryController.DeleteDirectory)
 		}
 
 		// route for swagger API docs

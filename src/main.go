@@ -62,12 +62,14 @@ func main() {
 	// Initialize gRPC clients
 	userGrpcClient := proto.NewUserServiceClient(grpcConn)
 	noteGrpcClient := proto.NewNoteServiceClient(grpcConn)
+	directoryGrpcClient := proto.NewDirectoryServiceClient(grpcConn)
 	permissionGrpcClient := proto.NewPermissionServiceClient(grpcConn)
 
 	// Initialize RSET controllers
 	authController := controllers.NewAuthController(appConfig.DiscordOAuthConfig, &userGrpcClient)
 	noteController := controllers.NewNoteController(&noteGrpcClient)
 	noteSearchController := controllers.NewSearchNoteController(&noteGrpcClient)
+	directoryController := controllers.NewDirectoryController(&directoryGrpcClient)
 	permissionController := controllers.NewPermissionController(&permissionGrpcClient)
 
 	// Setup routes
@@ -76,6 +78,7 @@ func main() {
 		authController,
 		noteController,
 		noteSearchController,
+		directoryController,
 		permissionController,
 	)
 
