@@ -281,6 +281,264 @@ var NoteService_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
+	DirectoryService_GetDirectory_FullMethodName    = "/proto.DirectoryService/GetDirectory"
+	DirectoryService_GetDirectories_FullMethodName  = "/proto.DirectoryService/GetDirectories"
+	DirectoryService_CreateDirectory_FullMethodName = "/proto.DirectoryService/CreateDirectory"
+	DirectoryService_PatchDirectory_FullMethodName  = "/proto.DirectoryService/PatchDirectory"
+	DirectoryService_DeleteDirectory_FullMethodName = "/proto.DirectoryService/DeleteDirectory"
+)
+
+// DirectoryServiceClient is the client API for DirectoryService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type DirectoryServiceClient interface {
+	GetDirectory(ctx context.Context, in *GetDirectoryRequest, opts ...grpc.CallOption) (*Directory, error)
+	GetDirectories(ctx context.Context, in *GetDirectoriesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Directory], error)
+	CreateDirectory(ctx context.Context, in *CreateDirectoryRequest, opts ...grpc.CallOption) (*Directory, error)
+	PatchDirectory(ctx context.Context, in *AlterDirectoryRequest, opts ...grpc.CallOption) (*Directory, error)
+	DeleteDirectory(ctx context.Context, in *DeleteDirectoryRequest, opts ...grpc.CallOption) (*Directory, error)
+}
+
+type directoryServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewDirectoryServiceClient(cc grpc.ClientConnInterface) DirectoryServiceClient {
+	return &directoryServiceClient{cc}
+}
+
+func (c *directoryServiceClient) GetDirectory(ctx context.Context, in *GetDirectoryRequest, opts ...grpc.CallOption) (*Directory, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Directory)
+	err := c.cc.Invoke(ctx, DirectoryService_GetDirectory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *directoryServiceClient) GetDirectories(ctx context.Context, in *GetDirectoriesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Directory], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &DirectoryService_ServiceDesc.Streams[0], DirectoryService_GetDirectories_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[GetDirectoriesRequest, Directory]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type DirectoryService_GetDirectoriesClient = grpc.ServerStreamingClient[Directory]
+
+func (c *directoryServiceClient) CreateDirectory(ctx context.Context, in *CreateDirectoryRequest, opts ...grpc.CallOption) (*Directory, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Directory)
+	err := c.cc.Invoke(ctx, DirectoryService_CreateDirectory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *directoryServiceClient) PatchDirectory(ctx context.Context, in *AlterDirectoryRequest, opts ...grpc.CallOption) (*Directory, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Directory)
+	err := c.cc.Invoke(ctx, DirectoryService_PatchDirectory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *directoryServiceClient) DeleteDirectory(ctx context.Context, in *DeleteDirectoryRequest, opts ...grpc.CallOption) (*Directory, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Directory)
+	err := c.cc.Invoke(ctx, DirectoryService_DeleteDirectory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// DirectoryServiceServer is the server API for DirectoryService service.
+// All implementations must embed UnimplementedDirectoryServiceServer
+// for forward compatibility.
+type DirectoryServiceServer interface {
+	GetDirectory(context.Context, *GetDirectoryRequest) (*Directory, error)
+	GetDirectories(*GetDirectoriesRequest, grpc.ServerStreamingServer[Directory]) error
+	CreateDirectory(context.Context, *CreateDirectoryRequest) (*Directory, error)
+	PatchDirectory(context.Context, *AlterDirectoryRequest) (*Directory, error)
+	DeleteDirectory(context.Context, *DeleteDirectoryRequest) (*Directory, error)
+	mustEmbedUnimplementedDirectoryServiceServer()
+}
+
+// UnimplementedDirectoryServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedDirectoryServiceServer struct{}
+
+func (UnimplementedDirectoryServiceServer) GetDirectory(context.Context, *GetDirectoryRequest) (*Directory, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDirectory not implemented")
+}
+func (UnimplementedDirectoryServiceServer) GetDirectories(*GetDirectoriesRequest, grpc.ServerStreamingServer[Directory]) error {
+	return status.Error(codes.Unimplemented, "method GetDirectories not implemented")
+}
+func (UnimplementedDirectoryServiceServer) CreateDirectory(context.Context, *CreateDirectoryRequest) (*Directory, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateDirectory not implemented")
+}
+func (UnimplementedDirectoryServiceServer) PatchDirectory(context.Context, *AlterDirectoryRequest) (*Directory, error) {
+	return nil, status.Error(codes.Unimplemented, "method PatchDirectory not implemented")
+}
+func (UnimplementedDirectoryServiceServer) DeleteDirectory(context.Context, *DeleteDirectoryRequest) (*Directory, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteDirectory not implemented")
+}
+func (UnimplementedDirectoryServiceServer) mustEmbedUnimplementedDirectoryServiceServer() {}
+func (UnimplementedDirectoryServiceServer) testEmbeddedByValue()                          {}
+
+// UnsafeDirectoryServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to DirectoryServiceServer will
+// result in compilation errors.
+type UnsafeDirectoryServiceServer interface {
+	mustEmbedUnimplementedDirectoryServiceServer()
+}
+
+func RegisterDirectoryServiceServer(s grpc.ServiceRegistrar, srv DirectoryServiceServer) {
+	// If the following call panics, it indicates UnimplementedDirectoryServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&DirectoryService_ServiceDesc, srv)
+}
+
+func _DirectoryService_GetDirectory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDirectoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DirectoryServiceServer).GetDirectory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DirectoryService_GetDirectory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DirectoryServiceServer).GetDirectory(ctx, req.(*GetDirectoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DirectoryService_GetDirectories_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(GetDirectoriesRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(DirectoryServiceServer).GetDirectories(m, &grpc.GenericServerStream[GetDirectoriesRequest, Directory]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type DirectoryService_GetDirectoriesServer = grpc.ServerStreamingServer[Directory]
+
+func _DirectoryService_CreateDirectory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateDirectoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DirectoryServiceServer).CreateDirectory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DirectoryService_CreateDirectory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DirectoryServiceServer).CreateDirectory(ctx, req.(*CreateDirectoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DirectoryService_PatchDirectory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AlterDirectoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DirectoryServiceServer).PatchDirectory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DirectoryService_PatchDirectory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DirectoryServiceServer).PatchDirectory(ctx, req.(*AlterDirectoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DirectoryService_DeleteDirectory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteDirectoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DirectoryServiceServer).DeleteDirectory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DirectoryService_DeleteDirectory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DirectoryServiceServer).DeleteDirectory(ctx, req.(*DeleteDirectoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// DirectoryService_ServiceDesc is the grpc.ServiceDesc for DirectoryService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var DirectoryService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.DirectoryService",
+	HandlerType: (*DirectoryServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetDirectory",
+			Handler:    _DirectoryService_GetDirectory_Handler,
+		},
+		{
+			MethodName: "CreateDirectory",
+			Handler:    _DirectoryService_CreateDirectory_Handler,
+		},
+		{
+			MethodName: "PatchDirectory",
+			Handler:    _DirectoryService_PatchDirectory_Handler,
+		},
+		{
+			MethodName: "DeleteDirectory",
+			Handler:    _DirectoryService_DeleteDirectory_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "GetDirectories",
+			Handler:       _DirectoryService_GetDirectories_Handler,
+			ServerStreams: true,
+		},
+	},
+	Metadata: "src/proto/note.proto",
+}
+
+const (
 	PermissionService_GetPermissions_FullMethodName     = "/proto.PermissionService/GetPermissions"
 	PermissionService_CreatePermission_FullMethodName   = "/proto.PermissionService/CreatePermission"
 	PermissionService_DeletePermission_FullMethodName   = "/proto.PermissionService/DeletePermission"

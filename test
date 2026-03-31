@@ -1,17 +1,94 @@
 diff --git a/src/proto/note.proto b/src/proto/note.proto
-index 57c8dc9..db14971 100644
+index db14971..0293e9d 100644
 --- a/src/proto/note.proto
 +++ b/src/proto/note.proto
-@@ -81,10 +81,11 @@ enum PermissionObjectType {
+@@ -77,6 +77,52 @@ message AlterNoteRequest {
+     optional string author_id = 4;
+ }
+ 
++message Directory {
++    string id = 1;
++    string name = 2;
++    string display_name = 3;
++    string description = 4;
++    string image_url = 5;
++    optional string parent_id = 6;
++    repeated PermissionRelationship relationships = 7;
++}
++
++message GetDirectoryRequest {
++    string id = 1;
++    string user_id = 2;
++}
++
++message GetDirectoriesRequest {
++    string user_id = 1;
++    optional string parent_id = 2;
++    optional int32 limit = 3;
++    optional int32 offset = 4;
++}
++
++message CreateDirectoryRequest {
++    string name = 1;
++    optional string display_name = 2;
++    optional string description = 3;
++    optional string image_url = 4;
++    optional string parent_id = 5;
++    string user_id = 6;
++}
++
++message AlterDirectoryRequest {
++    string id = 1;
++    optional string name = 2;
++    optional string display_name = 3;
++    optional string description = 4;
++    optional string image_url = 5;
++    optional string parent_id = 6;
++    string user_id = 7;
++}
++
++message DeleteDirectoryRequest {
++    string id = 1;
++    string user_id = 2;
++}
++
+ enum PermissionObjectType {
      PERMISSION_OBJECT_TYPE_UNSPECIFIED = 0;
      PERMISSION_OBJECT_TYPE_NOTE = 1;
-     PERMISSION_OBJECT_TYPE_DIRECTORY = 2;
-+    PERMISSION_OBJECT_TYPE_USER = 3;
+@@ -142,6 +188,14 @@ service NoteService {
+     rpc SearchNotes(GetSearchNotesRequest) returns (stream MinimalNote);
  }
  
- message PermissionSubject {
--    string object_type = 1;
-+    PermissionObjectType object_type = 1;
-     string object_id = 2;
- }
- 
++service DirectoryService {
++    rpc GetDirectory(GetDirectoryRequest) returns (Directory);
++    rpc GetDirectories(GetDirectoriesRequest) returns (stream Directory);
++    rpc CreateDirectory(CreateDirectoryRequest) returns (Directory);
++    rpc PatchDirectory(AlterDirectoryRequest) returns (Directory);
++    rpc DeleteDirectory(DeleteDirectoryRequest) returns (Directory);
++}
++
+ service PermissionService {
+     rpc GetPermissions(GetPermissionsRequest) returns (PermissionsResponse);
+     rpc CreatePermission(CreatePermissionRequest) returns (PermissionsResponse);
+diff --git a/test b/test
+index 469b477..e69de29 100644
+--- a/test
++++ b/test
+@@ -1,17 +0,0 @@
+-diff --git a/src/proto/note.proto b/src/proto/note.proto
+-index 57c8dc9..db14971 100644
+---- a/src/proto/note.proto
+-+++ b/src/proto/note.proto
+-@@ -81,10 +81,11 @@ enum PermissionObjectType {
+-     PERMISSION_OBJECT_TYPE_UNSPECIFIED = 0;
+-     PERMISSION_OBJECT_TYPE_NOTE = 1;
+-     PERMISSION_OBJECT_TYPE_DIRECTORY = 2;
+-+    PERMISSION_OBJECT_TYPE_USER = 3;
+- }
+- 
+- message PermissionSubject {
+--    string object_type = 1;
+-+    PermissionObjectType object_type = 1;
+-     string object_id = 2;
+- }
+- 
