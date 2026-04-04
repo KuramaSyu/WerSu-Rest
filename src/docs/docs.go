@@ -1053,7 +1053,7 @@ const docTemplate = `{
                     "type": "string",
                     "enum": [
                         "user",
-                        "PERMISSION_OBJECT_TYPE_USER"
+                        "directory"
                     ],
                     "example": "user"
                 }

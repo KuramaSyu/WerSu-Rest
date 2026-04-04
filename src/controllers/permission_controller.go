@@ -38,7 +38,7 @@ type GetPermissionsQuery struct {
 
 // PermissionSubjectRequest defines the subject side of a relationship.
 type PermissionSubjectRequest struct {
-	ObjectType string `json:"object_type" binding:"required,oneof=user PERMISSION_OBJECT_TYPE_USER" enums:"user,PERMISSION_OBJECT_TYPE_USER" example:"user"`
+	ObjectType string `json:"object_type" binding:"required,oneof=user directory" enums:"user,directory" example:"user"`
 	ObjectId   string `json:"object_id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 }
 
