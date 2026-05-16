@@ -15,6 +15,8 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // AuthController handles authentication logic
@@ -107,7 +109,13 @@ func (ac *AuthController) Callback(c *gin.Context) {
 	})
 
 	if err != nil {
-		println("Failed to get user:%v", err.Error())
+		grpcErr, ok := status.FromError(err)
+		if !ok || grpcErr.Code() != codes.NotFound {
+			log.Printf("Failed to get user from gRPC service: %v", err)
+			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "gRPC service is unavailable"})
+			return
+		}
+
 		// failed to get user -> post user
 		grpcUser, err = (*ac.userService).PostUser(c, &proto.PostUserRequest{
 			DiscordId:     int64(d_user.DiscordId),
