@@ -30,15 +30,23 @@ func SetupRouter(
 		// Note routes
 		notes := api.Group("/notes")
 		{
-			notes.GET("/:id", noteController.GetNote)
+			notes.GET("/search", noteSearchController.GetNotes)
+
 			notes.POST("", noteController.PostNote)
 			notes.PATCH("", noteController.PatchNote)
-			notes.DELETE("/:id", noteController.DeleteNote)
 
-			notes.GET("/search", noteSearchController.GetNotes)
-			notes.GET("/:note_id/versions", noteVersionController.ListNoteVersions)
-			notes.GET("/:note_id/versions/:version_index", noteVersionController.GetNoteVersionContent)
-			notes.POST("/:note_id/versions/:version_index/restore", noteVersionController.RestoreNoteVersion)
+			note := notes.Group("/:note_id")
+			{
+				note.GET("", noteController.GetNote)
+				note.DELETE("", noteController.DeleteNote)
+
+				versions := note.Group("/versions")
+				{
+					versions.GET("", noteVersionController.ListNoteVersions)
+					versions.GET("/:version_index", noteVersionController.GetNoteVersionContent)
+					versions.POST("/:version_index/restore", noteVersionController.RestoreNoteVersion)
+				}
+			}
 		}
 
 		// Permission routes
