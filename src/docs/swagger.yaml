@@ -109,6 +109,38 @@ definitions:
       updated_at:
         type: string
     type: object
+  controllers.NoteVersionContentReply:
+    properties:
+      author_id:
+        type: string
+      content:
+        type: string
+      created_at:
+        type: string
+      note_id:
+        type: string
+      title:
+        type: string
+      version_index:
+        type: integer
+    type: object
+  controllers.NoteVersionSummaryReply:
+    properties:
+      author_id:
+        type: string
+      created_at:
+        type: string
+      is_snapshot:
+        type: boolean
+      note_id:
+        type: string
+      snapshot_id:
+        type: string
+      version_id:
+        type: string
+      version_index:
+        type: integer
+    type: object
   controllers.PatchDirectoryBody:
     properties:
       description:
@@ -561,6 +593,107 @@ paths:
               type: string
             type: object
       summary: Get note by ID
+      tags:
+      - users
+  /notes/{note_id}/versions:
+    get:
+      consumes:
+      - application/json
+      description: Fetch note version summaries via gRPC service
+      parameters:
+      - description: Note ID (UUIDv7)
+        in: path
+        name: note_id
+        required: true
+        type: string
+      - description: Maximum results to return
+        in: query
+        name: limit
+        type: integer
+      - description: Pagination offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/controllers.NoteVersionSummaryReply'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List note versions
+      tags:
+      - users
+  /notes/{note_id}/versions/{version_index}:
+    get:
+      consumes:
+      - application/json
+      description: Fetch note version content via gRPC service
+      parameters:
+      - description: Note ID (UUIDv7)
+        in: path
+        name: note_id
+        required: true
+        type: string
+      - description: Version index
+        in: path
+        name: version_index
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.NoteVersionContentReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get note version content
+      tags:
+      - users
+  /notes/{note_id}/versions/{version_index}/restore:
+    post:
+      consumes:
+      - application/json
+      description: Restore note version via gRPC service
+      parameters:
+      - description: Note ID (UUIDv7)
+        in: path
+        name: note_id
+        required: true
+        type: string
+      - description: Version index
+        in: path
+        name: version_index
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.NoteReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Restore note version
       tags:
       - users
   /notes/search:
