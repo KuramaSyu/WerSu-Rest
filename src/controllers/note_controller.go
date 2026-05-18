@@ -135,7 +135,7 @@ func (uc *NoteController) GetNote(c *gin.Context) {
 	}
 
 	// read path UUID
-	id := c.Params.ByName("id")
+	id := c.Params.ByName("note_id")
 	if id == "" {
 		SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing note ID"))
 		return
@@ -256,7 +256,7 @@ func (uc *NoteController) DeleteNote(c *gin.Context) {
 	}
 
 	// parse path UUID
-	id := c.Params.ByName("id")
+	id := c.Params.ByName("note_id")
 	if id == "" {
 		SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing note ID"))
 		return
