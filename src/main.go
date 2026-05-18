@@ -62,6 +62,7 @@ func main() {
 	// Initialize gRPC clients
 	userGrpcClient := proto.NewUserServiceClient(grpcConn)
 	noteGrpcClient := proto.NewNoteServiceClient(grpcConn)
+	noteVersionGrpcClient := proto.NewNoteVersionServiceClient(grpcConn)
 	directoryGrpcClient := proto.NewDirectoryServiceClient(grpcConn)
 	permissionGrpcClient := proto.NewPermissionServiceClient(grpcConn)
 
@@ -69,6 +70,7 @@ func main() {
 	authController := controllers.NewAuthController(appConfig.DiscordOAuthConfig, &userGrpcClient)
 	noteController := controllers.NewNoteController(&noteGrpcClient)
 	noteSearchController := controllers.NewSearchNoteController(&noteGrpcClient)
+	noteVersionController := controllers.NewNoteVersionController(&noteVersionGrpcClient)
 	directoryController := controllers.NewDirectoryController(&directoryGrpcClient)
 	permissionController := controllers.NewPermissionController(&permissionGrpcClient)
 
@@ -78,6 +80,7 @@ func main() {
 		authController,
 		noteController,
 		noteSearchController,
+		noteVersionController,
 		directoryController,
 		permissionController,
 	)

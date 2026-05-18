@@ -14,6 +14,7 @@ func SetupRouter(
 	authController *controllers.AuthController,
 	noteController *controllers.NoteController,
 	noteSearchController *controllers.SearchNotesController,
+	noteVersionController *controllers.NoteVersionController,
 	directoryController *controllers.DirectoryController,
 	permissionController *controllers.PermissionController,
 ) {
@@ -35,6 +36,9 @@ func SetupRouter(
 			notes.DELETE("/:id", noteController.DeleteNote)
 
 			notes.GET("/search", noteSearchController.GetNotes)
+			notes.GET("/:note_id/versions", noteVersionController.ListNoteVersions)
+			notes.GET("/:note_id/versions/:version_index", noteVersionController.GetNoteVersionContent)
+			notes.POST("/:note_id/versions/:version_index/restore", noteVersionController.RestoreNoteVersion)
 		}
 
 		// Permission routes
