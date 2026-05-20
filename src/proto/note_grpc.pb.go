@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.0
 // - protoc             v6.33.1
-// source: src/proto/note.proto
+// source: note.proto
 
 package proto
 
@@ -277,7 +277,7 @@ var NoteService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "src/proto/note.proto",
+	Metadata: "note.proto",
 }
 
 const (
@@ -535,7 +535,7 @@ var DirectoryService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "src/proto/note.proto",
+	Metadata: "note.proto",
 }
 
 const (
@@ -751,11 +751,12 @@ var PermissionService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "src/proto/note.proto",
+	Metadata: "note.proto",
 }
 
 const (
 	NoteVersionService_GetNoteVersions_FullMethodName       = "/proto.NoteVersionService/GetNoteVersions"
+	NoteVersionService_GetDirectoryActivity_FullMethodName  = "/proto.NoteVersionService/GetDirectoryActivity"
 	NoteVersionService_GetNoteVersionContent_FullMethodName = "/proto.NoteVersionService/GetNoteVersionContent"
 	NoteVersionService_RestoreNoteVersion_FullMethodName    = "/proto.NoteVersionService/RestoreNoteVersion"
 )
@@ -765,6 +766,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type NoteVersionServiceClient interface {
 	GetNoteVersions(ctx context.Context, in *GetNoteVersionsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[NoteVersionSummary], error)
+	GetDirectoryActivity(ctx context.Context, in *GetDirectoryActivityRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[NoteVersionSummary], error)
 	GetNoteVersionContent(ctx context.Context, in *GetNoteVersionContentRequest, opts ...grpc.CallOption) (*NoteVersionContent, error)
 	RestoreNoteVersion(ctx context.Context, in *RestoreNoteVersionRequest, opts ...grpc.CallOption) (*Note, error)
 }
@@ -796,6 +798,25 @@ func (c *noteVersionServiceClient) GetNoteVersions(ctx context.Context, in *GetN
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type NoteVersionService_GetNoteVersionsClient = grpc.ServerStreamingClient[NoteVersionSummary]
 
+func (c *noteVersionServiceClient) GetDirectoryActivity(ctx context.Context, in *GetDirectoryActivityRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[NoteVersionSummary], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &NoteVersionService_ServiceDesc.Streams[1], NoteVersionService_GetDirectoryActivity_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[GetDirectoryActivityRequest, NoteVersionSummary]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type NoteVersionService_GetDirectoryActivityClient = grpc.ServerStreamingClient[NoteVersionSummary]
+
 func (c *noteVersionServiceClient) GetNoteVersionContent(ctx context.Context, in *GetNoteVersionContentRequest, opts ...grpc.CallOption) (*NoteVersionContent, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(NoteVersionContent)
@@ -821,6 +842,7 @@ func (c *noteVersionServiceClient) RestoreNoteVersion(ctx context.Context, in *R
 // for forward compatibility.
 type NoteVersionServiceServer interface {
 	GetNoteVersions(*GetNoteVersionsRequest, grpc.ServerStreamingServer[NoteVersionSummary]) error
+	GetDirectoryActivity(*GetDirectoryActivityRequest, grpc.ServerStreamingServer[NoteVersionSummary]) error
 	GetNoteVersionContent(context.Context, *GetNoteVersionContentRequest) (*NoteVersionContent, error)
 	RestoreNoteVersion(context.Context, *RestoreNoteVersionRequest) (*Note, error)
 	mustEmbedUnimplementedNoteVersionServiceServer()
@@ -835,6 +857,9 @@ type UnimplementedNoteVersionServiceServer struct{}
 
 func (UnimplementedNoteVersionServiceServer) GetNoteVersions(*GetNoteVersionsRequest, grpc.ServerStreamingServer[NoteVersionSummary]) error {
 	return status.Error(codes.Unimplemented, "method GetNoteVersions not implemented")
+}
+func (UnimplementedNoteVersionServiceServer) GetDirectoryActivity(*GetDirectoryActivityRequest, grpc.ServerStreamingServer[NoteVersionSummary]) error {
+	return status.Error(codes.Unimplemented, "method GetDirectoryActivity not implemented")
 }
 func (UnimplementedNoteVersionServiceServer) GetNoteVersionContent(context.Context, *GetNoteVersionContentRequest) (*NoteVersionContent, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetNoteVersionContent not implemented")
@@ -873,6 +898,17 @@ func _NoteVersionService_GetNoteVersions_Handler(srv interface{}, stream grpc.Se
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type NoteVersionService_GetNoteVersionsServer = grpc.ServerStreamingServer[NoteVersionSummary]
+
+func _NoteVersionService_GetDirectoryActivity_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(GetDirectoryActivityRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(NoteVersionServiceServer).GetDirectoryActivity(m, &grpc.GenericServerStream[GetDirectoryActivityRequest, NoteVersionSummary]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type NoteVersionService_GetDirectoryActivityServer = grpc.ServerStreamingServer[NoteVersionSummary]
 
 func _NoteVersionService_GetNoteVersionContent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetNoteVersionContentRequest)
@@ -932,6 +968,11 @@ var NoteVersionService_ServiceDesc = grpc.ServiceDesc{
 			Handler:       _NoteVersionService_GetNoteVersions_Handler,
 			ServerStreams: true,
 		},
+		{
+			StreamName:    "GetDirectoryActivity",
+			Handler:       _NoteVersionService_GetDirectoryActivity_Handler,
+			ServerStreams: true,
+		},
 	},
-	Metadata: "src/proto/note.proto",
+	Metadata: "note.proto",
 }
