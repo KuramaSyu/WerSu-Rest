@@ -75,6 +75,7 @@ func (m *mockNoteVersionStream) RecvMsg(interface{}) error {
 // request payloads and returns canned responses for each RPC.
 type mockNoteVersionServiceClient struct {
 	getNoteVersions       func(ctx context.Context, in *proto.GetNoteVersionsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[proto.NoteVersionSummary], error)
+	getDirectoryActivity  func(ctx context.Context, in *proto.GetDirectoryActivityRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[proto.NoteVersionSummary], error)
 	getNoteVersionContent func(ctx context.Context, in *proto.GetNoteVersionContentRequest, opts ...grpc.CallOption) (*proto.NoteVersionContent, error)
 	restoreNoteVersion    func(ctx context.Context, in *proto.RestoreNoteVersionRequest, opts ...grpc.CallOption) (*proto.Note, error)
 }
@@ -82,6 +83,11 @@ type mockNoteVersionServiceClient struct {
 // GetNoteVersions forwards to the configured fake handler.
 func (m *mockNoteVersionServiceClient) GetNoteVersions(ctx context.Context, in *proto.GetNoteVersionsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[proto.NoteVersionSummary], error) {
 	return m.getNoteVersions(ctx, in, opts...)
+}
+
+// GetDirectoryActivity forwards to the configured fake handler.
+func (m *mockNoteVersionServiceClient) GetDirectoryActivity(ctx context.Context, in *proto.GetDirectoryActivityRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[proto.NoteVersionSummary], error) {
+	return m.getDirectoryActivity(ctx, in, opts...)
 }
 
 // GetNoteVersionContent forwards to the configured fake handler.
@@ -119,6 +125,15 @@ func setupNoteVersionRouter(client proto.NoteVersionServiceClient) *gin.Engine {
 		notes.GET("/:note_id/versions/:version_index", controller.GetNoteVersionContent)
 		// Restore a specific version back to the live note.
 		notes.POST("/:note_id/versions/:version_index/restore", controller.RestoreNoteVersion)
+	}
+
+	directories := api.Group("/directories")
+	{
+		directories.GET("/activity", controller.GetDirectoryActivity)
+		directory := directories.Group("/:id")
+		{
+			directory.GET("/activity", controller.GetDirectoryActivity)
+		}
 	}
 
 	return router
@@ -196,6 +211,74 @@ func TestListNoteVersions(t *testing.T) {
 
 	if !payload[0].CreatedAt.Equal(createdAt) {
 		t.Fatalf("unexpected created_at: %v", payload[0].CreatedAt)
+	}
+}
+
+func TestGetDirectoryActivity(t *testing.T) {
+	createdAt := time.Date(2025, 9, 20, 14, 10, 0, 0, time.UTC)
+	stream := &mockNoteVersionStream{
+		summaries: []*proto.NoteVersionSummary{
+			{
+				VersionId:    "version-10",
+				NoteId:       "note-10",
+				VersionIndex: 10,
+				CreatedAt:    timestamppb.New(createdAt),
+				AuthorId:     "user-2",
+				IsSnapshot:   false,
+				SnapshotId:   "",
+			},
+			{
+				VersionId:    "version-11",
+				NoteId:       "note-11",
+				VersionIndex: 4,
+				CreatedAt:    timestamppb.New(createdAt.Add(30 * time.Minute)),
+				AuthorId:     "user-3",
+				IsSnapshot:   true,
+				SnapshotId:   "snap-2",
+			},
+		},
+	}
+
+	client := &mockNoteVersionServiceClient{}
+	client.getDirectoryActivity = func(ctx context.Context, in *proto.GetDirectoryActivityRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[proto.NoteVersionSummary], error) {
+		if in.DirectoryId == nil || *in.DirectoryId != "dir-1" {
+			t.Fatalf("expected directory_id dir-1, got %v", in.DirectoryId)
+		}
+		if in.MaxDepth == nil || *in.MaxDepth != 3 {
+			t.Fatalf("expected max_depth 3, got %v", in.MaxDepth)
+		}
+		if in.Limit == nil || *in.Limit != 5 {
+			t.Fatalf("expected limit 5, got %v", in.Limit)
+		}
+		if in.Offset == nil || *in.Offset != 2 {
+			t.Fatalf("expected offset 2, got %v", in.Offset)
+		}
+		if in.GetUserId() != "user-1" {
+			t.Fatalf("expected user_id user-1, got %s", in.GetUserId())
+		}
+		return stream, nil
+	}
+
+	router := setupNoteVersionRouter(client)
+	request := httptest.NewRequest(http.MethodGet, "/api/directories/dir-1/activity?max_depth=3&limit=5&offset=2", nil)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", response.Code)
+	}
+
+	var payload []NoteVersionSummaryReply
+	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if len(payload) != 2 {
+		t.Fatalf("expected 2 entries, got %d", len(payload))
+	}
+
+	if payload[0].VersionId != "version-10" || payload[0].NoteId != "note-10" {
+		t.Fatalf("unexpected first entry payload: %+v", payload[0])
 	}
 }
 

@@ -61,11 +61,17 @@ func SetupRouter(
 		// Directory routes
 		directories := api.Group("/directories")
 		{
-			directories.GET("/:id", directoryController.GetDirectory)
 			directories.GET("", directoryController.GetDirectories)
 			directories.POST("", directoryController.CreateDirectory)
 			directories.PATCH("", directoryController.PatchDirectory)
-			directories.DELETE("/:id", directoryController.DeleteDirectory)
+			directories.GET("/activity", noteVersionController.GetDirectoryActivity)
+
+			directory := directories.Group("/:id")
+			{
+				directory.GET("", directoryController.GetDirectory)
+				directory.DELETE("", directoryController.DeleteDirectory)
+				directory.GET("/activity", noteVersionController.GetDirectoryActivity)
+			}
 		}
 
 		// route for swagger API docs

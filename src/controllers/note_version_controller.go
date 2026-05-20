@@ -8,6 +8,8 @@ import (
 
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
 	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // NoteVersionController handles note versioning routes.
@@ -43,6 +45,13 @@ type NoteVersionContentReply struct {
 type GetNoteVersionsQuery struct {
 	Limit  *int32 `form:"limit" binding:"omitempty"`
 	Offset *int32 `form:"offset" binding:"omitempty"`
+}
+
+type GetDirectoryActivityQuery struct {
+	DirectoryId *string `form:"directory_id" binding:"omitempty"`
+	MaxDepth    *int32  `form:"max_depth" binding:"omitempty"`
+	Limit       *int32  `form:"limit" binding:"omitempty"`
+	Offset      *int32  `form:"offset" binding:"omitempty"`
 }
 
 func noteVersionSummaryReplyFromProto(summary *proto.NoteVersionSummary) NoteVersionSummaryReply {
@@ -224,4 +233,76 @@ func (uc *NoteVersionController) RestoreNoteVersion(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, NoteReplyFromProto(note))
+}
+
+// GetDirectoryActivity godoc
+// @Summary Get directory activity
+// @Description Fetch latest note activity for a directory (or root when directory_id is omitted) via gRPC service
+// @Tags directories
+// @Accept json
+// @Produce json
+// @Param id path string false "Directory ID"
+// @Param directory_id query string false "Directory ID (fallback)"
+// @Param max_depth query int false "Maximum recursion depth"
+// @Param limit query int false "Maximum results to return"
+// @Param offset query int false "Pagination offset"
+// @Success 200 {object} []NoteVersionSummaryReply
+// @Failure 400 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /directories/activity [get]
+// @Router /directories/{id}/activity [get]
+func (uc *NoteVersionController) GetDirectoryActivity(c *gin.Context) {
+	user, code, err := UserFromSession(c)
+	if err != nil {
+		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		return
+	}
+
+	var query GetDirectoryActivityQuery
+	if err := c.ShouldBindQuery(&query); err != nil {
+		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
+		return
+	}
+
+	directoryId := c.Params.ByName("id")
+	if directoryId == "" {
+		directoryId = ""
+	}
+
+	var directoryIdPtr *string
+	if directoryId != "" {
+		directoryIdPtr = &directoryId
+	} else {
+		directoryIdPtr = query.DirectoryId
+	}
+
+	grpcRequest := proto.GetDirectoryActivityRequest{
+		DirectoryId: directoryIdPtr,
+		MaxDepth:    query.MaxDepth,
+		Limit:       query.Limit,
+		Offset:      query.Offset,
+		UserId:      user.ID,
+	}
+
+	stream, err := (*uc.NoteVersionService).GetDirectoryActivity(c, &grpcRequest)
+	if err != nil {
+		if status.Code(err) == codes.PermissionDenied {
+			SetGinError(c, http.StatusForbidden, fmt.Errorf("permission denied: %w", err))
+			return
+		}
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch directory activity via gRPC service: %w", err))
+		return
+	}
+
+	entries := make([]NoteVersionSummaryReply, 0)
+	for {
+		summary, err := stream.Recv()
+		if err != nil {
+			break
+		}
+		entries = append(entries, noteVersionSummaryReplyFromProto(summary))
+	}
+
+	c.JSON(http.StatusOK, entries)
 }
