@@ -73,6 +73,7 @@ func main() {
 	noteVersionController := controllers.NewNoteVersionController(&noteVersionGrpcClient)
 	directoryController := controllers.NewDirectoryController(&directoryGrpcClient)
 	permissionController := controllers.NewPermissionController(&permissionGrpcClient)
+	openinaryController := controllers.NewOpeninaryController(appConfig.OpeninaryBaseURL, appConfig.OpeninaryAPIKey)
 
 	// Setup routes
 	routes.SetupRouter(
@@ -83,6 +84,7 @@ func main() {
 		noteVersionController,
 		directoryController,
 		permissionController,
+		openinaryController,
 	)
 
 	// Start the server

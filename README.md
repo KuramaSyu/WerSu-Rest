@@ -38,3 +38,14 @@ swag init
 go run src/main.go
 ```
 
+##### proxy Openinary requests
+
+Set the following environment variables to forward media requests through this API:
+
+```bash
+OPENINARY_BASE_URL=https://your-openinary-instance.com
+OPENINARY_API_KEY=your-openinary-api-key
+```
+
+The proxy is exposed under `/api/openinary/*path`, so your website can send requests such as `POST /api/openinary/upload`, `DELETE /api/openinary/storage/photo.jpg`, and `GET /api/openinary/t/w_800,image.jpg` through this backend.
+

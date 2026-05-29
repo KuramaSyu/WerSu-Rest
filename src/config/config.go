@@ -14,6 +14,8 @@ type Config struct {
 	SessionSecret      string
 	FrontendURL        string
 	GRPCServerAddress  string
+	OpeninaryBaseURL   string
+	OpeninaryAPIKey    string
 }
 
 var AppConfig *Config
@@ -31,6 +33,8 @@ func Load() *Config {
 	sessionSecret := os.Getenv("SESSION_SECRET")
 	frontendURL := os.Getenv("FRONTEND_URL")
 	grpcServerAddress := os.Getenv("GRPC_SERVER_ADDRESS")
+	openinaryBaseURL := os.Getenv("OPENINARY_BASE_URL")
+	openinaryAPIKey := os.Getenv("OPENINARY_API_KEY")
 
 	if clientID == "" || clientSecret == "" {
 		log.Fatal("DISCORD_CLIENT_ID or DISCORD_CLIENT_SECRET is not set")
@@ -68,6 +72,8 @@ func Load() *Config {
 		SessionSecret:      sessionSecret,
 		FrontendURL:        frontendURL,
 		GRPCServerAddress:  grpcServerAddress,
+		OpeninaryBaseURL:   openinaryBaseURL,
+		OpeninaryAPIKey:    openinaryAPIKey,
 	}
 	PrintConfig(AppConfig)
 	return AppConfig
@@ -82,4 +88,7 @@ func PrintConfig(cfg *Config) {
 	// Avoid printing sensitive values: clientSecret and sessionSecret.
 	log.Println("Frontend URL:     ", cfg.FrontendURL)
 	log.Println("gRPC Server Addr:", cfg.GRPCServerAddress)
+	if cfg.OpeninaryBaseURL != "" {
+		log.Println("Openinary Base URL:", cfg.OpeninaryBaseURL)
+	}
 }
