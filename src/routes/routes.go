@@ -18,6 +18,8 @@ func SetupRouter(
 	directoryController *controllers.DirectoryController,
 	permissionController *controllers.PermissionController,
 	openinaryController *controllers.OpeninaryController,
+	attachmentController *controllers.AttachmentController,
+	attachmentLinkController *controllers.AttachmentLinkController,
 ) {
 
 	// API routes
@@ -57,6 +59,21 @@ func SetupRouter(
 			permissions.POST("", permissionController.CreatePermission)
 			permissions.DELETE("", permissionController.DeletePermission)
 			permissions.PUT("", permissionController.ReplacePermissions)
+		}
+
+		// Attachments
+		attachments := api.Group("/attachments")
+		{
+			attachments.POST("", attachmentController.PostAttachment)
+			attachments.GET("/:key", attachmentController.GetAttachment)
+			attachments.GET("/:key/metadata", attachmentController.GetAttachmentMetadata)
+			attachments.DELETE("/:key", attachmentController.DeleteAttachment)
+		}
+
+		attachmentLinks := api.Group("/attachment-links")
+		{
+			attachmentLinks.POST("", attachmentLinkController.PostAttachmentLink)
+			attachmentLinks.DELETE("", attachmentLinkController.DeleteAttachmentLink)
 		}
 
 		// Directory routes

@@ -65,6 +65,7 @@ func main() {
 	noteVersionGrpcClient := proto.NewNoteVersionServiceClient(grpcConn)
 	directoryGrpcClient := proto.NewDirectoryServiceClient(grpcConn)
 	permissionGrpcClient := proto.NewPermissionServiceClient(grpcConn)
+	attachmentGrpcClient := proto.NewAttachmentServiceClient(grpcConn)
 
 	// Initialize RSET controllers
 	authController := controllers.NewAuthController(appConfig.DiscordOAuthConfig, &userGrpcClient)
@@ -74,6 +75,8 @@ func main() {
 	directoryController := controllers.NewDirectoryController(&directoryGrpcClient)
 	permissionController := controllers.NewPermissionController(&permissionGrpcClient)
 	openinaryController := controllers.NewOpeninaryController(appConfig.OpeninaryBaseURL, appConfig.OpeninaryAPIKey)
+	attachmentController := controllers.NewAttachmentController(&attachmentGrpcClient)
+	attachmentLinkController := controllers.NewAttachmentLinkController(&attachmentGrpcClient)
 
 	// Setup routes
 	routes.SetupRouter(
@@ -85,6 +88,8 @@ func main() {
 		directoryController,
 		permissionController,
 		openinaryController,
+		attachmentController,
+		attachmentLinkController,
 	)
 
 	// Start the server

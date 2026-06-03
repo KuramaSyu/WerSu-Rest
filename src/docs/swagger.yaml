@@ -1,4 +1,33 @@
 definitions:
+  controllers.AttachmentLinkBody:
+    properties:
+      attachment_key:
+        type: string
+      note_id:
+        type: string
+    required:
+    - attachment_key
+    - note_id
+    type: object
+  controllers.AttachmentMetadataReply:
+    properties:
+      content_type:
+        type: string
+      created_at:
+        type: string
+      filename:
+        type: string
+      filepath:
+        type: string
+      key:
+        type: string
+      sha256:
+        type: string
+      size:
+        type: integer
+      updated_at:
+        type: string
+    type: object
   controllers.CreateDirectoryBody:
     properties:
       description:
@@ -265,6 +294,24 @@ definitions:
           $ref: '#/definitions/controllers.PermissionRelationshipReply'
         type: array
     type: object
+  controllers.PostAttachmentBody:
+    properties:
+      content:
+        items:
+          type: integer
+        type: array
+      content_type:
+        type: string
+      filename:
+        type: string
+      filepath:
+        type: string
+    required:
+    - content
+    - content_type
+    - filename
+    - filepath
+    type: object
   controllers.PostNoteRequest:
     properties:
       content:
@@ -297,11 +344,123 @@ definitions:
     - object_type
     - relationships
     type: object
+  proto.DeleteAttachmentResponse:
+    properties:
+      success:
+        type: boolean
+    type: object
 info:
   contact: {}
   description: Provides all methods to persist data for GoToHell
   title: GoToHell Gin REST API
 paths:
+  /attachment-links:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: Unlink payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.AttachmentLinkBody'
+      responses:
+        "204":
+          description: No Content
+      summary: Unlink attachment from note
+      tags:
+      - attachment-links
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Link payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.AttachmentLinkBody'
+      responses:
+        "204":
+          description: No Content
+      summary: Link attachment to note
+      tags:
+      - attachment-links
+  /attachments:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Attachment payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.PostAttachmentBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.AttachmentMetadataReply'
+      summary: Create attachment
+      tags:
+      - attachments
+  /attachments/{key}:
+    delete:
+      parameters:
+      - description: Attachment key
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/proto.DeleteAttachmentResponse'
+      summary: Delete attachment
+      tags:
+      - attachments
+    get:
+      parameters:
+      - description: Attachment key
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+      summary: Get attachment
+      tags:
+      - attachments
+  /attachments/{key}/metadata:
+    get:
+      parameters:
+      - description: Attachment key
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.AttachmentMetadataReply'
+      summary: Get attachment metadata
+      tags:
+      - attachments
   /directories:
     get:
       consumes:

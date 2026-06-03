@@ -6,6 +6,173 @@
         "contact": {}
     },
     "paths": {
+        "/attachment-links": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "attachment-links"
+                ],
+                "summary": "Link attachment to note",
+                "parameters": [
+                    {
+                        "description": "Link payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.AttachmentLinkBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            },
+            "delete": {
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "attachment-links"
+                ],
+                "summary": "Unlink attachment from note",
+                "parameters": [
+                    {
+                        "description": "Unlink payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.AttachmentLinkBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/attachments": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "attachments"
+                ],
+                "summary": "Create attachment",
+                "parameters": [
+                    {
+                        "description": "Attachment payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PostAttachmentBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.AttachmentMetadataReply"
+                        }
+                    }
+                }
+            }
+        },
+        "/attachments/{key}": {
+            "get": {
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "attachments"
+                ],
+                "summary": "Get attachment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Attachment key",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "attachments"
+                ],
+                "summary": "Delete attachment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Attachment key",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/proto.DeleteAttachmentResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/attachments/{key}/metadata": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "attachments"
+                ],
+                "summary": "Get attachment metadata",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Attachment key",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.AttachmentMetadataReply"
+                        }
+                    }
+                }
+            }
+        },
         "/directories": {
             "get": {
                 "description": "Fetch directories via gRPC service",
@@ -1050,6 +1217,50 @@
         }
     },
     "definitions": {
+        "controllers.AttachmentLinkBody": {
+            "type": "object",
+            "required": [
+                "attachment_key",
+                "note_id"
+            ],
+            "properties": {
+                "attachment_key": {
+                    "type": "string"
+                },
+                "note_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "controllers.AttachmentMetadataReply": {
+            "type": "object",
+            "properties": {
+                "content_type": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "filename": {
+                    "type": "string"
+                },
+                "filepath": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "sha256": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
         "controllers.CreateDirectoryBody": {
             "type": "object",
             "required": [
@@ -1437,6 +1648,32 @@
                 }
             }
         },
+        "controllers.PostAttachmentBody": {
+            "type": "object",
+            "required": [
+                "content",
+                "content_type",
+                "filename",
+                "filepath"
+            ],
+            "properties": {
+                "content": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "content_type": {
+                    "type": "string"
+                },
+                "filename": {
+                    "type": "string"
+                },
+                "filepath": {
+                    "type": "string"
+                }
+            }
+        },
         "controllers.PostNoteRequest": {
             "type": "object",
             "required": [
@@ -1479,6 +1716,14 @@
                     "items": {
                         "$ref": "#/definitions/controllers.PermissionRelationshipRequest"
                     }
+                }
+            }
+        },
+        "proto.DeleteAttachmentResponse": {
+            "type": "object",
+            "properties": {
+                "success": {
+                    "type": "boolean"
                 }
             }
         }
