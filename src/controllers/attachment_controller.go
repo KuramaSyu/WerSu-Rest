@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -66,31 +67,47 @@ func attachmentMetadataReplyFromProto(
 
 // @Summary Create attachment
 // @Tags attachments
-// @Accept json
+// @Accept multiplart/form-data
 // @Produce json
-// @Param payload body PostAttachmentBody true "Attachment payload"
+// @Param file formData file true "Attachment"
 // @Success 200 {object} AttachmentMetadataReply
 // @Router /attachments [post]
 func (ac *AttachmentController) PostAttachment(c *gin.Context) {
-	_, code, err := UserFromSession(c)
+	user, code, err := UserFromSession(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
-	var body PostAttachmentBody
-	if err := c.ShouldBindJSON(&body); err != nil {
+	file, err := c.FormFile("file")
+	if err != nil {
 		SetGinError(c, http.StatusBadRequest, err)
 		return
 	}
 
+	fileReader, err := file.Open()
+	if err != nil {
+		SetGinError(c, http.StatusBadRequest, err)
+		return
+	}
+	defer fileReader.Close()
+
+	fileContent, err := io.ReadAll(fileReader)
+	if err != nil {
+		SetGinError(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	contentType := http.DetectContentType(fileContent)
+
 	attachment, err := (*ac.AttachmentService).PostAttachment(
 		c,
 		&proto.PostAttachmentRequest{
-			Filename:    body.Filename,
-			Filepath:    body.Filepath,
-			ContentType: body.ContentType,
-			Content:     body.Content,
+			Filename:    file.Filename,
+			Filepath:    "",
+			ContentType: contentType,
+			Content:     fileContent,
+			UserId:      user.ID,
 		},
 	)
 	if err != nil {
@@ -111,7 +128,7 @@ func (ac *AttachmentController) PostAttachment(c *gin.Context) {
 // @Success 200 {file} binary
 // @Router /attachments/{key} [get]
 func (ac *AttachmentController) GetAttachment(c *gin.Context) {
-	_, code, err := UserFromSession(c)
+	user, code, err := UserFromSession(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -126,7 +143,8 @@ func (ac *AttachmentController) GetAttachment(c *gin.Context) {
 	attachment, err := (*ac.AttachmentService).GetAttachment(
 		c,
 		&proto.GetAttachmentRequest{
-			Key: key,
+			Key:    key,
+			UserId: user.ID,
 		},
 	)
 	if err != nil {
@@ -155,7 +173,7 @@ func (ac *AttachmentController) GetAttachment(c *gin.Context) {
 // @Success 200 {object} AttachmentMetadataReply
 // @Router /attachments/{key}/metadata [get]
 func (ac *AttachmentController) GetAttachmentMetadata(c *gin.Context) {
-	_, code, err := UserFromSession(c)
+	user, code, err := UserFromSession(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -166,7 +184,8 @@ func (ac *AttachmentController) GetAttachmentMetadata(c *gin.Context) {
 	metadata, err := (*ac.AttachmentService).GetAttachmentMetadata(
 		c,
 		&proto.GetAttachmentMetadataRequest{
-			Key: key,
+			Key:    key,
+			UserId: user.ID,
 		},
 	)
 	if err != nil {
@@ -187,7 +206,7 @@ func (ac *AttachmentController) GetAttachmentMetadata(c *gin.Context) {
 // @Success 200 {object} proto.DeleteAttachmentResponse
 // @Router /attachments/{key} [delete]
 func (ac *AttachmentController) DeleteAttachment(c *gin.Context) {
-	_, code, err := UserFromSession(c)
+	user, code, err := UserFromSession(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -198,7 +217,8 @@ func (ac *AttachmentController) DeleteAttachment(c *gin.Context) {
 	response, err := (*ac.AttachmentService).DeleteAttachment(
 		c,
 		&proto.DeleteAttachmentRequest{
-			Key: key,
+			Key:    key,
+			UserId: user.ID,
 		},
 	)
 	if err != nil {

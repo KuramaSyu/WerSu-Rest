@@ -32,7 +32,7 @@ type AttachmentLinkBody struct {
 // @Success 204
 // @Router /attachment-links [post]
 func (alc *AttachmentLinkController) PostAttachmentLink(c *gin.Context) {
-	_, code, err := UserFromSession(c)
+	user, code, err := UserFromSession(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -49,6 +49,7 @@ func (alc *AttachmentLinkController) PostAttachmentLink(c *gin.Context) {
 		&proto.PostAttachmentLinkRequest{
 			AttachmentKey: body.AttachmentKey,
 			NoteId:        body.NoteId,
+			UserId:        user.ID,
 		},
 	)
 
@@ -67,7 +68,7 @@ func (alc *AttachmentLinkController) PostAttachmentLink(c *gin.Context) {
 // @Success 204
 // @Router /attachment-links [delete]
 func (alc *AttachmentLinkController) DeleteAttachmentLink(c *gin.Context) {
-	_, code, err := UserFromSession(c)
+	user, code, err := UserFromSession(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -84,6 +85,7 @@ func (alc *AttachmentLinkController) DeleteAttachmentLink(c *gin.Context) {
 		&proto.DeleteAttachmentLinkRequest{
 			AttachmentKey: body.AttachmentKey,
 			NoteId:        body.NoteId,
+			UserId:        user.ID,
 		},
 	)
 

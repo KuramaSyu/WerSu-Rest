@@ -181,6 +181,7 @@ type PostAttachmentRequest struct {
 	Filepath      string                 `protobuf:"bytes,2,opt,name=filepath,proto3" json:"filepath,omitempty"`
 	ContentType   string                 `protobuf:"bytes,3,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
 	Content       []byte                 `protobuf:"bytes,4,opt,name=content,proto3" json:"content,omitempty"`
+	UserId        string                 `protobuf:"bytes,5,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -243,10 +244,18 @@ func (x *PostAttachmentRequest) GetContent() []byte {
 	return nil
 }
 
+func (x *PostAttachmentRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
 type PostAttachmentLinkRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AttachmentKey string                 `protobuf:"bytes,1,opt,name=attachment_key,json=attachmentKey,proto3" json:"attachment_key,omitempty"`
 	NoteId        string                 `protobuf:"bytes,2,opt,name=note_id,json=noteId,proto3" json:"note_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -295,10 +304,18 @@ func (x *PostAttachmentLinkRequest) GetNoteId() string {
 	return ""
 }
 
+func (x *PostAttachmentLinkRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
 type DeleteAttachmentLinkRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AttachmentKey string                 `protobuf:"bytes,1,opt,name=attachment_key,json=attachmentKey,proto3" json:"attachment_key,omitempty"`
 	NoteId        string                 `protobuf:"bytes,2,opt,name=note_id,json=noteId,proto3" json:"note_id,omitempty"`
+	UserId        string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -347,9 +364,17 @@ func (x *DeleteAttachmentLinkRequest) GetNoteId() string {
 	return ""
 }
 
+func (x *DeleteAttachmentLinkRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
 type GetAttachmentRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -391,9 +416,17 @@ func (x *GetAttachmentRequest) GetKey() string {
 	return ""
 }
 
+func (x *GetAttachmentRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
 type GetAttachmentMetadataRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -435,9 +468,17 @@ func (x *GetAttachmentMetadataRequest) GetKey() string {
 	return ""
 }
 
+func (x *GetAttachmentMetadataRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
 type DeleteAttachmentRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -475,6 +516,13 @@ func (*DeleteAttachmentRequest) Descriptor() ([]byte, []int) {
 func (x *DeleteAttachmentRequest) GetKey() string {
 	if x != nil {
 		return x.Key
+	}
+	return ""
+}
+
+func (x *DeleteAttachmentRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
 	}
 	return ""
 }
@@ -542,24 +590,30 @@ const file_src_proto_attachments_proto_rawDesc = "" +
 	"\n" +
 	"Attachment\x125\n" +
 	"\bmetadata\x18\x01 \x01(\v2\x19.proto.AttachmentMetadataR\bmetadata\x12\x18\n" +
-	"\acontent\x18\x02 \x01(\fR\acontent\"\x8c\x01\n" +
+	"\acontent\x18\x02 \x01(\fR\acontent\"\xa5\x01\n" +
 	"\x15PostAttachmentRequest\x12\x1a\n" +
 	"\bfilename\x18\x01 \x01(\tR\bfilename\x12\x1a\n" +
 	"\bfilepath\x18\x02 \x01(\tR\bfilepath\x12!\n" +
 	"\fcontent_type\x18\x03 \x01(\tR\vcontentType\x12\x18\n" +
-	"\acontent\x18\x04 \x01(\fR\acontent\"[\n" +
+	"\acontent\x18\x04 \x01(\fR\acontent\x12\x17\n" +
+	"\auser_id\x18\x05 \x01(\tR\x06userId\"t\n" +
 	"\x19PostAttachmentLinkRequest\x12%\n" +
 	"\x0eattachment_key\x18\x01 \x01(\tR\rattachmentKey\x12\x17\n" +
-	"\anote_id\x18\x02 \x01(\tR\x06noteId\"]\n" +
+	"\anote_id\x18\x02 \x01(\tR\x06noteId\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\"v\n" +
 	"\x1bDeleteAttachmentLinkRequest\x12%\n" +
 	"\x0eattachment_key\x18\x01 \x01(\tR\rattachmentKey\x12\x17\n" +
-	"\anote_id\x18\x02 \x01(\tR\x06noteId\"(\n" +
+	"\anote_id\x18\x02 \x01(\tR\x06noteId\x12\x17\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId\"A\n" +
 	"\x14GetAttachmentRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\"0\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"I\n" +
 	"\x1cGetAttachmentMetadataRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\"+\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"D\n" +
 	"\x17DeleteAttachmentRequest\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\"4\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"4\n" +
 	"\x18DeleteAttachmentResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess2\xe9\x03\n" +
 	"\x11AttachmentService\x12A\n" +

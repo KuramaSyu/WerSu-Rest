@@ -70,7 +70,7 @@ const docTemplate = `{
         "/attachments": {
             "post": {
                 "consumes": [
-                    "application/json"
+                    "multiplart/form-data"
                 ],
                 "produces": [
                     "application/json"
@@ -81,13 +81,11 @@ const docTemplate = `{
                 "summary": "Create attachment",
                 "parameters": [
                     {
-                        "description": "Attachment payload",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/controllers.PostAttachmentBody"
-                        }
+                        "type": "file",
+                        "description": "Attachment",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -1654,32 +1652,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/controllers.PermissionRelationshipReply"
                     }
-                }
-            }
-        },
-        "controllers.PostAttachmentBody": {
-            "type": "object",
-            "required": [
-                "content",
-                "content_type",
-                "filename",
-                "filepath"
-            ],
-            "properties": {
-                "content": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "content_type": {
-                    "type": "string"
-                },
-                "filename": {
-                    "type": "string"
-                },
-                "filepath": {
-                    "type": "string"
                 }
             }
         },

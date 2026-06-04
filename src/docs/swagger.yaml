@@ -294,24 +294,6 @@ definitions:
           $ref: '#/definitions/controllers.PermissionRelationshipReply'
         type: array
     type: object
-  controllers.PostAttachmentBody:
-    properties:
-      content:
-        items:
-          type: integer
-        type: array
-      content_type:
-        type: string
-      filename:
-        type: string
-      filepath:
-        type: string
-    required:
-    - content
-    - content_type
-    - filename
-    - filepath
-    type: object
   controllers.PostNoteRequest:
     properties:
       content:
@@ -390,14 +372,13 @@ paths:
   /attachments:
     post:
       consumes:
-      - application/json
+      - multiplart/form-data
       parameters:
-      - description: Attachment payload
-        in: body
-        name: payload
+      - description: Attachment
+        in: formData
+        name: file
         required: true
-        schema:
-          $ref: '#/definitions/controllers.PostAttachmentBody'
+        type: file
       produces:
       - application/json
       responses:
