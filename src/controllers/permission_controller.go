@@ -48,7 +48,8 @@ type PermissionResourceRequest struct {
 	ObjectId   string `json:"object_id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 }
 
-// PermissionRelationshipRequest defines one relationship tuple.
+// PermissionRelationshipRequest defines one relationship tuple
+// like note:42#parent@directory:24 where 42 and 24 are the actual uuids
 type PermissionRelationshipRequest struct {
 	Relation string                     `json:"relation" binding:"required,oneof=owner admin writer reader parent parent_directory" enums:"owner,admin,writer,reader,parent,parent_directory" example:"reader"`
 	Subject  *PermissionSubjectRequest  `json:"subject,omitempty"`
