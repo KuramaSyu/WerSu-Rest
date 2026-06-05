@@ -64,10 +64,13 @@ func SetupRouter(
 		// Attachments
 		attachments := api.Group("/attachments")
 		{
+			// ! don't use :key but query parameter since it handles the slashes in
+			// the attachment path more reliably
 			attachments.POST("", attachmentController.PostAttachment)
-			attachments.GET("/:key", attachmentController.GetAttachment)
-			attachments.GET("/:key/metadata", attachmentController.GetAttachmentMetadata)
-			attachments.DELETE("/:key", attachmentController.DeleteAttachment)
+			attachments.GET("/", attachmentController.GetAttachment)
+			attachments.GET("/image", attachmentController.GetImage)
+			attachments.GET("/metadata/", attachmentController.GetAttachmentMetadata)
+			attachments.DELETE("/", attachmentController.DeleteAttachment)
 		}
 
 		attachmentLinks := api.Group("/attachment-links")

@@ -40,6 +40,14 @@ type PostAttachmentBody struct {
 	Content     []byte `json:"content" binding:"required"`
 }
 
+// parameters to retrieve an image
+type GetAttachmentRequest struct {
+	Key    string  `form:"key" binding:"required"`
+	Width  *int    `form:"width"` // *int is used, that nil is an option for not provided
+	Height *int    `from:"height"`
+	Format *string `form:"format"`
+}
+
 func attachmentMetadataReplyFromProto(
 	metadata *proto.AttachmentMetadata,
 ) AttachmentMetadataReply {
@@ -144,6 +152,54 @@ func (ac *AttachmentController) GetAttachment(c *gin.Context) {
 		c,
 		&proto.GetAttachmentRequest{
 			Key:    key,
+			UserId: user.ID,
+		},
+	)
+	if err != nil {
+		SetGinError(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	metadata := attachment.GetMetadata()
+
+	c.Header(
+		"Content-Disposition",
+		fmt.Sprintf(`attachment; filename="%s"`, metadata.GetFilename()),
+	)
+
+	c.Data(
+		http.StatusOK,
+		metadata.GetContentType(),
+		attachment.GetContent(),
+	)
+}
+
+// @Summary Get attachment
+// @Tags attachments
+// @Produce image/jpeg,image/png,image/webp
+// @Param key query string true "Attachment key"
+// @Param width query int false "Resize width"
+// @Param height query int false "Resize height"
+// @Param format query string false "Output format (jpeg,png,webp)"
+// @Success 200 {file} binary
+// @Router /attachments [get]
+func (ac *AttachmentController) GetImage(c *gin.Context) {
+	user, code, err := UserFromSession(c)
+	if err != nil {
+		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		return
+	}
+
+	var params GetAttachmentRequest
+	if err := c.ShouldBindQuery(&params); err != nil {
+		SetGinError(c, http.StatusBadRequest, err)
+		return
+	}
+
+	attachment, err := (*ac.AttachmentService).GetAttachment(
+		c,
+		&proto.GetAttachmentRequest{
+			Key:    params.Key,
 			UserId: user.ID,
 		},
 	)
