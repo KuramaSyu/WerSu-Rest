@@ -355,7 +355,8 @@ func buildImgproxyURL(
 	if format != nil {
 		formatPart = *format
 	}
-	s3Part := fmt.Sprintf("/plain/s3://%s", *attachment)
+	bucket := "garage"
+	s3Part := fmt.Sprintf("/plain/s3://%s/%s", bucket, *attachment)
 	return baseURL + resizePart + formatPart + s3Part
 }
 
