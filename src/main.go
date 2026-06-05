@@ -23,6 +23,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/authzed/authzed-go/v1"
+	"github.com/authzed/grpcutil"
 )
 
 func init() {
@@ -49,7 +52,7 @@ func main() {
 	store := cookie.NewStore([]byte(appConfig.SessionSecret))
 	r.Use(sessions.Sessions("discord_auth", store))
 
-	// Setup gRPC connection
+	// Setup gRPC connection to WerSu backend service
 	grpcConn, err := grpc.NewClient(
 		appConfig.GRPCServerAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -58,6 +61,12 @@ func main() {
 		log.Fatalf("Failed to connect to gRPC server: %v", err)
 	}
 	defer grpcConn.Close()
+
+	// Setup SpiceDb gRPC connection
+	auth, err := GetAuthzedCLient(appConfig)
+	if err != nil {
+		log.Fatalf("Failed to connect to SpiceDb: %v", err)
+	}
 
 	// Initialize gRPC clients
 	userGrpcClient := proto.NewUserServiceClient(grpcConn)
@@ -75,7 +84,7 @@ func main() {
 	directoryController := controllers.NewDirectoryController(&directoryGrpcClient)
 	permissionController := controllers.NewPermissionController(&permissionGrpcClient)
 	openinaryController := controllers.NewOpeninaryController(appConfig.OpeninaryBaseURL, appConfig.OpeninaryAPIKey)
-	attachmentController := controllers.NewAttachmentController(&attachmentGrpcClient)
+	attachmentController := controllers.NewAttachmentController(&attachmentGrpcClient, auth, &appConfig.ImgproxyAddress)
 	attachmentLinkController := controllers.NewAttachmentLinkController(&attachmentGrpcClient)
 
 	// Setup routes
@@ -96,4 +105,29 @@ func main() {
 	if err := r.Run(":8080"); err != nil {
 		log.Fatalf("Failed to run server: %v", err)
 	}
+}
+
+// Creates gRPC connection client to SpiceDB using credentials from config
+func GetAuthzedCLient(conf *config.Config) (*authzed.Client, error) {
+	//systemCerts, err := grpcutil.WithSystemCerts(grpcutil.VerifyCA)
+	// if err != nil {
+	// 	log.Fatalf("unable to load system CA certificates: %s", err)
+	// }
+
+	// client, err := authzed.NewClient(
+	// 	conf.SpiceDbAddress,
+	// 	grpc.WithTransportCredentials(insecure.NewCredentials()),
+	// 	grpcutil.WithBearerToken(conf.SpiceDbCredentials),
+	// )
+
+	client, err := authzed.NewClient(
+		conf.SpiceDbAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpcutil.WithInsecureBearerToken(conf.SpiceDbCredentials),
+	)
+
+	if err != nil {
+		log.Fatalf("unable to initialize client: %s", err)
+	}
+	return client, nil
 }

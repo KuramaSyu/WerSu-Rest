@@ -1,24 +1,35 @@
 package controllers
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
+	v1 "github.com/authzed/authzed-go/proto/authzed/api/v1"
+	"github.com/authzed/authzed-go/v1"
 	"github.com/gin-gonic/gin"
 )
 
 type AttachmentController struct {
 	AttachmentService *proto.AttachmentServiceClient
+	authClient        *authzed.Client
+	ImgproxyAddress   *string
 }
 
 func NewAttachmentController(
 	attachmentService *proto.AttachmentServiceClient,
+	authClient *authzed.Client,
+	imgproxyAddress *string,
 ) *AttachmentController {
 	return &AttachmentController{
 		AttachmentService: attachmentService,
+		authClient:        authClient,
+		ImgproxyAddress:   imgproxyAddress,
 	}
 }
 
@@ -184,7 +195,7 @@ func (ac *AttachmentController) GetAttachment(c *gin.Context) {
 // @Success 200 {file} binary
 // @Router /attachments [get]
 func (ac *AttachmentController) GetImage(c *gin.Context) {
-	_user, code, err := UserFromSession(c)
+	user, code, err := UserFromSession(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -195,8 +206,27 @@ func (ac *AttachmentController) GetImage(c *gin.Context) {
 		SetGinError(c, http.StatusBadRequest, err)
 		return
 	}
+	params.Key, err = url.QueryUnescape(params.Key)
+	if err != nil {
+		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid attachment key: %w", err))
+		return
+	}
 
-	url := buildImgproxyURL(&params.Key, params.Width, params.Height, params.Format)
+	// check if user has permission to view this attachment
+	hasPermission, err := HasPermission(ac.authClient, "attachment", params.Key, "view", "user", user.ID)
+	if err != nil {
+		log.Printf("Error while fetching permission on attachment %s: %s", params.Key, err.Error())
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("Error while fetching permission: %s", err.Error()))
+		return
+	}
+	if !hasPermission {
+		log.Printf("User %s does not have permission to view attachment %s", user.ID, params.Key)
+		SetGinError(c, http.StatusForbidden, fmt.Errorf("user does not have permission to view this attachment"))
+		return
+	}
+
+	url := buildImgproxyURL(ac.ImgproxyAddress, &params.Key, params.Width, params.Height, params.Format)
+	log.Printf("Make ImgProxy request to %s", url)
 
 	// attachment, err := (*ac.AttachmentService).GetAttachment(
 	// 	c,
@@ -301,12 +331,13 @@ func (ac *AttachmentController) DeleteAttachment(c *gin.Context) {
 // @param format the output format (jpeg, png, webp), or nil for original format
 // @returns the imgproxy url
 func buildImgproxyURL(
+	address *string,
 	attachment *string,
 	width *int,
 	height *int,
 	format *string,
 ) string {
-	const baseURL = "http://imgproxy:8080/insecure"
+	var baseURL = *address + "/insecure/"
 	var resizePart string
 	if width != nil {
 		// width is provided, height is auto
@@ -326,4 +357,29 @@ func buildImgproxyURL(
 	}
 	s3Part := fmt.Sprintf("/plain/s3://%s", *attachment)
 	return baseURL + resizePart + formatPart + s3Part
+}
+
+// Helper function to call SpiceDB with format resource:id#permission@subjectType:subjectId
+func HasPermission(client *authzed.Client, resourceType, resourceID, permission, subjectType, subjectID string) (bool, error) {
+	log.Printf("resourceType=%q resourceID=%q", resourceType, resourceID)
+	resp, err := client.CheckPermission(
+		context.Background(),
+		&v1.CheckPermissionRequest{
+			Resource: &v1.ObjectReference{
+				ObjectType: resourceType,
+				ObjectId:   resourceID,
+			},
+			Permission: permission,
+			Subject: &v1.SubjectReference{
+				Object: &v1.ObjectReference{
+					ObjectType: subjectType,
+					ObjectId:   subjectID,
+				},
+			},
+		},
+	)
+	if err != nil {
+		return false, err
+	}
+	return resp.Permissionship == v1.CheckPermissionResponse_PERMISSIONSHIP_HAS_PERMISSION, nil
 }

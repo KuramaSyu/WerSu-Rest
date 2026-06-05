@@ -8,3 +8,10 @@ GRPC_SERVER_ADDRESS=localhost:50051
 
 # how the backend is reachable from view of user
 BACKEND_URL=http://localhost:8080
+
+# SpiceDB connection
+GRPC_SPICEDB_CREDENTIALS="somerandomkeyhere"
+GRPC_SPICEDB_ADDRESS="spicedb:50051"
+
+# imgproxy configuration
+IMGPROXY_ADDRESS=http://localhost:8083

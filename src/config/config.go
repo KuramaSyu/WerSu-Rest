@@ -16,6 +16,9 @@ type Config struct {
 	GRPCServerAddress  string
 	OpeninaryBaseURL   string
 	OpeninaryAPIKey    string
+	SpiceDbCredentials string
+	SpiceDbAddress     string
+	ImgproxyAddress    string
 }
 
 var AppConfig *Config
@@ -35,6 +38,11 @@ func Load() *Config {
 	grpcServerAddress := os.Getenv("GRPC_SERVER_ADDRESS")
 	openinaryBaseURL := os.Getenv("OPENINARY_BASE_URL")
 	openinaryAPIKey := os.Getenv("OPENINARY_API_KEY")
+	spiceDbCredentials := os.Getenv("GRPC_SPICEDB_CREDENTIALS")
+	spiceDbAddress := os.Getenv("GRPC_SPICEDB_ADDRESS")
+	ImgproxyAddress := os.Getenv("IMGPROXY_ADDRESS")
+
+	// Validate required configuration
 
 	if clientID == "" || clientSecret == "" {
 		log.Fatal("DISCORD_CLIENT_ID or DISCORD_CLIENT_SECRET is not set")
@@ -42,6 +50,14 @@ func Load() *Config {
 
 	if grpcServerAddress == "" {
 		log.Fatal("GRPC_SERVER_ADDRESS environment variable is required")
+	}
+
+	if spiceDbCredentials == "" {
+		log.Fatal("GRPC_SPICEDB_CREDENTIALS environment variable is required")
+	}
+
+	if spiceDbAddress == "" {
+		log.Fatal("GRPC_SPICEDB_ADDRESS environment variable is required")
 	}
 
 	if sessionSecret == "" {
@@ -54,6 +70,10 @@ func Load() *Config {
 
 	if frontendURL == "" {
 		frontendURL = "http://localhost:5173"
+	}
+
+	if ImgproxyAddress == "" {
+		log.Fatal("IMGPROXY_ADDRESS environment variable is required")
 	}
 
 	discordOAuthConfig := &oauth2.Config{
@@ -74,6 +94,9 @@ func Load() *Config {
 		GRPCServerAddress:  grpcServerAddress,
 		OpeninaryBaseURL:   openinaryBaseURL,
 		OpeninaryAPIKey:    openinaryAPIKey,
+		SpiceDbCredentials: spiceDbCredentials,
+		SpiceDbAddress:     spiceDbAddress,
+		ImgproxyAddress:    ImgproxyAddress,
 	}
 	PrintConfig(AppConfig)
 	return AppConfig
@@ -87,7 +110,9 @@ func PrintConfig(cfg *Config) {
 	log.Println("  Scopes:        ", cfg.DiscordOAuthConfig.Scopes)
 	// Avoid printing sensitive values: clientSecret and sessionSecret.
 	log.Println("Frontend URL:     ", cfg.FrontendURL)
-	log.Println("gRPC Server Addr:", cfg.GRPCServerAddress)
+	log.Println("WerSu gRPC Server Addr:", cfg.GRPCServerAddress)
+	log.Println("SpiceDB gRPC Server Addr:", cfg.SpiceDbAddress)
+	log.Println("Imgproxy Address:", cfg.ImgproxyAddress)
 	if cfg.OpeninaryBaseURL != "" {
 		log.Println("Openinary Base URL:", cfg.OpeninaryBaseURL)
 	}
