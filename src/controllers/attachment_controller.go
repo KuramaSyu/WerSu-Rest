@@ -184,7 +184,7 @@ func (ac *AttachmentController) GetAttachment(c *gin.Context) {
 // @Success 200 {file} binary
 // @Router /attachments [get]
 func (ac *AttachmentController) GetImage(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	_user, code, err := UserFromSession(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -196,30 +196,39 @@ func (ac *AttachmentController) GetImage(c *gin.Context) {
 		return
 	}
 
-	attachment, err := (*ac.AttachmentService).GetAttachment(
-		c,
-		&proto.GetAttachmentRequest{
-			Key:    params.Key,
-			UserId: user.ID,
-		},
-	)
+	url := buildImgproxyURL(&params.Key, params.Width, params.Height, params.Format)
+
+	// attachment, err := (*ac.AttachmentService).GetAttachment(
+	// 	c,
+	// 	&proto.GetAttachmentRequest{
+	// 		Key:    params.Key,
+	// 		UserId: user.ID,
+	// 	},
+	// )
+	resp, err := http.Get(url)
+	if err != nil {
+		SetGinError(c, http.StatusInternalServerError, err)
+		return
+	}
+	defer resp.Body.Close()
+
+	// copy header
+	for k, values := range resp.Header {
+		for _, v := range values {
+			c.Writer.Header().Add(k, v)
+		}
+	}
+
+	// copy status code
+	c.Status(resp.StatusCode)
+
+	// copy image content to response body
+	_, err = io.Copy(c.Writer, resp.Body)
 	if err != nil {
 		SetGinError(c, http.StatusInternalServerError, err)
 		return
 	}
 
-	metadata := attachment.GetMetadata()
-
-	c.Header(
-		"Content-Disposition",
-		fmt.Sprintf(`attachment; filename="%s"`, metadata.GetFilename()),
-	)
-
-	c.Data(
-		http.StatusOK,
-		metadata.GetContentType(),
-		attachment.GetContent(),
-	)
 }
 
 // @Summary Get attachment metadata
@@ -283,4 +292,38 @@ func (ac *AttachmentController) DeleteAttachment(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+// build imgproxy url with given parameters
+// @param attachment the attachment to build url for
+// @param width the width to resize to, or nil for auto width (hence height is required)
+// @param height the height to resize to, or nil for auto height (hence width is required)
+// @param format the output format (jpeg, png, webp), or nil for original format
+// @returns the imgproxy url
+func buildImgproxyURL(
+	attachment *string,
+	width *int,
+	height *int,
+	format *string,
+) string {
+	const baseURL = "http://imgproxy:8080/insecure"
+	var resizePart string
+	if width != nil {
+		// width is provided, height is auto
+		resizePart += fmt.Sprintf("rs:fit:%d:0:0,", *width)
+	}
+	if height != nil {
+		// height is provided, width is auto
+		resizePart += fmt.Sprintf("rs:fit:0:%d:0,", *height)
+	}
+	if format != nil {
+		// format is provided, convert to it
+		resizePart += fmt.Sprintf("f:%s,", *format)
+	}
+	formatPart := "webp"
+	if format != nil {
+		formatPart = *format
+	}
+	s3Part := fmt.Sprintf("/plain/s3://%s", *attachment)
+	return baseURL + resizePart + formatPart + s3Part
 }
