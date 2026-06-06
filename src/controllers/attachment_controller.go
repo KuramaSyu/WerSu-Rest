@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
@@ -337,7 +338,7 @@ func (ac *AttachmentController) DeleteAttachment(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// puts an attachment to S3 and returns the S3 key (including bucket path)
+// puts an attachment to S3 and returns the S3 key (excluding bucket)
 func (ac *AttachmentController) PutToS3(file io.Reader) (string, error) {
 	// generate uuidv7 key for attachment
 	id, err := uuid.NewV7()
@@ -355,7 +356,7 @@ func (ac *AttachmentController) PutToS3(file io.Reader) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s/%s", ac.S3DefaultBucket, key), nil
+	return key, nil
 }
 
 // build imgproxy url with given parameters
@@ -390,6 +391,9 @@ func buildImgproxyURL(
 		formatPart = *format
 	}
 	bucket := "garage"
+	// eleminate trailing / of attachment
+	*attachment = strings.TrimPrefix(*attachment, "/")
 	s3Part := fmt.Sprintf("/plain/s3://%s/%s", bucket, *attachment)
+
 	return baseURL + resizePart + formatPart + s3Part
 }
