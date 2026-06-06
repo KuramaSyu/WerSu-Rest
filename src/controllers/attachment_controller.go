@@ -10,26 +10,35 @@ import (
 	"time"
 
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
-	v1 "github.com/authzed/authzed-go/proto/authzed/api/v1"
 	"github.com/authzed/authzed-go/v1"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+
+	. "github.com/KuramaSyu/WerSu-Rest/src/utils"
 )
 
 type AttachmentController struct {
 	AttachmentService *proto.AttachmentServiceClient
 	authClient        *authzed.Client
 	ImgproxyAddress   *string
+	S3Client          *s3.Client
+	S3DefaultBucket   string
 }
 
 func NewAttachmentController(
 	attachmentService *proto.AttachmentServiceClient,
 	authClient *authzed.Client,
 	imgproxyAddress *string,
+	s3Client *s3.Client,
+	s3DefaultBucket string,
 ) *AttachmentController {
 	return &AttachmentController{
 		AttachmentService: attachmentService,
 		authClient:        authClient,
 		ImgproxyAddress:   imgproxyAddress,
+		S3Client:          s3Client,
+		S3DefaultBucket:   s3DefaultBucket,
 	}
 }
 
@@ -106,26 +115,30 @@ func (ac *AttachmentController) PostAttachment(c *gin.Context) {
 
 	fileReader, err := file.Open()
 	if err != nil {
-		SetGinError(c, http.StatusBadRequest, err)
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("Failed to open uploaded file: %s", err.Error()))
 		return
 	}
 	defer fileReader.Close()
 
-	fileContent, err := io.ReadAll(fileReader)
+	key, err := ac.PutToS3(fileReader)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, err)
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("Failed to PUT file: %s", err.Error()))
 		return
 	}
 
+	fileContent, err := io.ReadAll(fileReader)
+	if err != nil {
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("Failed to read file content: %s", err.Error()))
+		return
+	}
 	contentType := http.DetectContentType(fileContent)
 
 	attachment, err := (*ac.AttachmentService).PostAttachment(
 		c,
 		&proto.PostAttachmentRequest{
 			Filename:    file.Filename,
-			Filepath:    "",
+			Filepath:    key,
 			ContentType: contentType,
-			Content:     fileContent,
 			UserId:      user.ID,
 		},
 	)
@@ -324,6 +337,27 @@ func (ac *AttachmentController) DeleteAttachment(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// puts an attachment to S3 and returns the S3 key (including bucket path)
+func (ac *AttachmentController) PutToS3(file io.Reader) (string, error) {
+	// generate uuidv7 key for attachment
+	id, err := uuid.NewV7()
+	if err != nil {
+		return "", err
+	}
+
+	key := fmt.Sprintf("attachments/%s", id.String())
+	ctx := context.Background()
+	_, err = ac.S3Client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket: &ac.S3DefaultBucket,
+		Key:    &key,
+		Body:   file,
+	})
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s/%s", ac.S3DefaultBucket, key), nil
+}
+
 // build imgproxy url with given parameters
 // @param attachment the attachment to build url for
 // @param width the width to resize to, or nil for auto width (hence height is required)
@@ -358,29 +392,4 @@ func buildImgproxyURL(
 	bucket := "garage"
 	s3Part := fmt.Sprintf("/plain/s3://%s/%s", bucket, *attachment)
 	return baseURL + resizePart + formatPart + s3Part
-}
-
-// Helper function to call SpiceDB with format resource:id#permission@subjectType:subjectId
-func HasPermission(client *authzed.Client, resourceType, resourceID, permission, subjectType, subjectID string) (bool, error) {
-	log.Printf("resourceType=%q resourceID=%q", resourceType, resourceID)
-	resp, err := client.CheckPermission(
-		context.Background(),
-		&v1.CheckPermissionRequest{
-			Resource: &v1.ObjectReference{
-				ObjectType: resourceType,
-				ObjectId:   resourceID,
-			},
-			Permission: permission,
-			Subject: &v1.SubjectReference{
-				Object: &v1.ObjectReference{
-					ObjectType: subjectType,
-					ObjectId:   subjectID,
-				},
-			},
-		},
-	)
-	if err != nil {
-		return false, err
-	}
-	return resp.Permissionship == v1.CheckPermissionResponse_PERMISSIONSHIP_HAS_PERMISSION, nil
 }
