@@ -23,3 +23,4 @@ GARAGE_DEFAULT_BUCKET=garage
 
 # garage for docker, localhost when running on machine
 S3_ENDPOINT=http://garage:3900
+S3_REGION=garage
