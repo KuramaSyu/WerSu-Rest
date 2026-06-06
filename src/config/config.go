@@ -14,11 +14,14 @@ type Config struct {
 	SessionSecret      string
 	FrontendURL        string
 	GRPCServerAddress  string
-	OpeninaryBaseURL   string
-	OpeninaryAPIKey    string
 	SpiceDbCredentials string
 	SpiceDbAddress     string
 	ImgproxyAddress    string
+	S3Endpoint         string
+	S3Region           string
+	S3AccessKey        string
+	S3SecretKey        string
+	S3DefaultBucket    string
 }
 
 var AppConfig *Config
@@ -36,11 +39,14 @@ func Load() *Config {
 	sessionSecret := os.Getenv("SESSION_SECRET")
 	frontendURL := os.Getenv("FRONTEND_URL")
 	grpcServerAddress := os.Getenv("GRPC_SERVER_ADDRESS")
-	openinaryBaseURL := os.Getenv("OPENINARY_BASE_URL")
-	openinaryAPIKey := os.Getenv("OPENINARY_API_KEY")
 	spiceDbCredentials := os.Getenv("GRPC_SPICEDB_CREDENTIALS")
 	spiceDbAddress := os.Getenv("GRPC_SPICEDB_ADDRESS")
 	ImgproxyAddress := os.Getenv("IMGPROXY_ADDRESS")
+	S3Endpoint := os.Getenv("S3_ENDPOINT")
+	S3Region := os.Getenv("S3_ENDPOINT")
+	S3AccessKey := os.Getenv("GARAGE_DEFAULT_ACCESS_KEY")
+	S3SecretKey := os.Getenv("GARAGE_DEFAULT_SECRET_KEY")
+	S3DefaultBucket := os.Getenv("GARAGE_DEFAULT_BUCKET")
 
 	// Validate required configuration
 
@@ -76,6 +82,22 @@ func Load() *Config {
 		log.Fatal("IMGPROXY_ADDRESS environment variable is required")
 	}
 
+	if S3Endpoint == "" {
+		log.Fatal("S3_ENDPOINT environment variable is required")
+	}
+
+	if S3AccessKey == "" {
+		log.Fatal("S3_ACCESS_KEY environment variable is required")
+	}
+
+	if S3SecretKey == "" {
+		log.Fatal("S3_SECRET_KEY environment variable is required")
+	}
+
+	if S3DefaultBucket == "" {
+		log.Fatal("S3_DEFAULT_BUCKET environment variable is required")
+	}
+
 	discordOAuthConfig := &oauth2.Config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
@@ -92,11 +114,13 @@ func Load() *Config {
 		SessionSecret:      sessionSecret,
 		FrontendURL:        frontendURL,
 		GRPCServerAddress:  grpcServerAddress,
-		OpeninaryBaseURL:   openinaryBaseURL,
-		OpeninaryAPIKey:    openinaryAPIKey,
 		SpiceDbCredentials: spiceDbCredentials,
 		SpiceDbAddress:     spiceDbAddress,
 		ImgproxyAddress:    ImgproxyAddress,
+		S3Endpoint:         S3Endpoint,
+		S3Region:           S3Region,
+		S3AccessKey:        S3AccessKey,
+		S3SecretKey:        S3SecretKey,
 	}
 	PrintConfig(AppConfig)
 	return AppConfig
@@ -108,12 +132,22 @@ func PrintConfig(cfg *Config) {
 	log.Println("  ClientID:      ", cfg.DiscordOAuthConfig.ClientID) // Consider masking in production
 	log.Println("  RedirectURL:   ", cfg.DiscordOAuthConfig.RedirectURL)
 	log.Println("  Scopes:        ", cfg.DiscordOAuthConfig.Scopes)
-	// Avoid printing sensitive values: clientSecret and sessionSecret.
+	log.Println("Session Secret:  ", maskSensitiveValue(cfg.SessionSecret))
 	log.Println("Frontend URL:     ", cfg.FrontendURL)
 	log.Println("WerSu gRPC Server Addr:", cfg.GRPCServerAddress)
 	log.Println("SpiceDB gRPC Server Addr:", cfg.SpiceDbAddress)
 	log.Println("Imgproxy Address:", cfg.ImgproxyAddress)
-	if cfg.OpeninaryBaseURL != "" {
-		log.Println("Openinary Base URL:", cfg.OpeninaryBaseURL)
+	log.Println("S3 Endpoint:     ", cfg.S3Endpoint)
+	log.Println("S3 Region:       ", cfg.S3Region)
+	log.Println("S3 Access Key:   ", maskSensitiveValue(cfg.S3AccessKey))
+	log.Println("S3 Secret Key:   ", maskSensitiveValue(cfg.S3SecretKey))
+	log.Println("S3 Default Bucket:", cfg.S3DefaultBucket)
+	// Avoid printing S3 Secret Key.
+}
+
+func maskSensitiveValue(value string) string {
+	if len(value) <= 4 {
+		return "****"
 	}
+	return value[:2] + "****" + value[len(value)-2:]
 }
