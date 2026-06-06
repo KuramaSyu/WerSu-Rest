@@ -32,7 +32,7 @@ message GetSearchNotesRequest {
 
 // Response: represents a minimal Note for search results
 message MinimalNote {
-    string id = 1; // Note ID (UUIDv4 string)
+    string id = 1; // Note ID (UUIDv7 string)
     string title = 2;
     string author_id = 3;
     google.protobuf.Timestamp updated_at = 4;
@@ -128,6 +128,7 @@ enum PermissionObjectType {
     PERMISSION_OBJECT_TYPE_NOTE = 1;
     PERMISSION_OBJECT_TYPE_DIRECTORY = 2;
     PERMISSION_OBJECT_TYPE_USER = 3;
+    PERMISSION_OBJECT_TYPE_ATTACHMENT = 4;
 }
 
 message PermissionSubject {

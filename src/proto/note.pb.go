@@ -29,6 +29,7 @@ const (
 	PermissionObjectType_PERMISSION_OBJECT_TYPE_NOTE        PermissionObjectType = 1
 	PermissionObjectType_PERMISSION_OBJECT_TYPE_DIRECTORY   PermissionObjectType = 2
 	PermissionObjectType_PERMISSION_OBJECT_TYPE_USER        PermissionObjectType = 3
+	PermissionObjectType_PERMISSION_OBJECT_TYPE_ATTACHMENT  PermissionObjectType = 4
 )
 
 // Enum value maps for PermissionObjectType.
@@ -38,12 +39,14 @@ var (
 		1: "PERMISSION_OBJECT_TYPE_NOTE",
 		2: "PERMISSION_OBJECT_TYPE_DIRECTORY",
 		3: "PERMISSION_OBJECT_TYPE_USER",
+		4: "PERMISSION_OBJECT_TYPE_ATTACHMENT",
 	}
 	PermissionObjectType_value = map[string]int32{
 		"PERMISSION_OBJECT_TYPE_UNSPECIFIED": 0,
 		"PERMISSION_OBJECT_TYPE_NOTE":        1,
 		"PERMISSION_OBJECT_TYPE_DIRECTORY":   2,
 		"PERMISSION_OBJECT_TYPE_USER":        3,
+		"PERMISSION_OBJECT_TYPE_ATTACHMENT":  4,
 	}
 )
 
@@ -264,7 +267,7 @@ func (x *GetSearchNotesRequest) GetUserId() string {
 // Response: represents a minimal Note for search results
 type MinimalNote struct {
 	state           protoimpl.MessageState    `protogen:"open.v1"`
-	Id              string                    `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // Note ID (UUIDv4 string)
+	Id              string                    `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // Note ID (UUIDv7 string)
 	Title           string                    `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
 	AuthorId        string                    `protobuf:"bytes,3,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
 	UpdatedAt       *timestamppb.Timestamp    `protobuf:"bytes,4,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
@@ -2233,12 +2236,13 @@ const file_src_proto_note_proto_rawDesc = "" +
 	"\x19RestoreNoteVersionRequest\x12\x17\n" +
 	"\anote_id\x18\x01 \x01(\tR\x06noteId\x12#\n" +
 	"\rversion_index\x18\x02 \x01(\x03R\fversionIndex\x12\x17\n" +
-	"\auser_id\x18\x03 \x01(\tR\x06userId*\xa6\x01\n" +
+	"\auser_id\x18\x03 \x01(\tR\x06userId*\xcd\x01\n" +
 	"\x14PermissionObjectType\x12&\n" +
 	"\"PERMISSION_OBJECT_TYPE_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bPERMISSION_OBJECT_TYPE_NOTE\x10\x01\x12$\n" +
 	" PERMISSION_OBJECT_TYPE_DIRECTORY\x10\x02\x12\x1f\n" +
-	"\x1bPERMISSION_OBJECT_TYPE_USER\x10\x032\x98\x02\n" +
+	"\x1bPERMISSION_OBJECT_TYPE_USER\x10\x03\x12%\n" +
+	"!PERMISSION_OBJECT_TYPE_ATTACHMENT\x10\x042\x98\x02\n" +
 	"\vNoteService\x12-\n" +
 	"\aGetNote\x12\x15.proto.GetNoteRequest\x1a\v.proto.Note\x12/\n" +
 	"\bPostNote\x12\x16.proto.PostNoteRequest\x1a\v.proto.Note\x121\n" +
