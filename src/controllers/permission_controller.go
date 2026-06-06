@@ -108,6 +108,8 @@ func parsePermissionObjectType(objectType string) (proto.PermissionObjectType, e
 		return proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_DIRECTORY, nil
 	case "USER", "PERMISSION_OBJECT_TYPE_USER":
 		return proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_USER, nil
+	case "ATTACHMENT", "PERMISSION_OBJECT_TYPE_ATTACHMENT":
+		return proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_ATTACHMENT, nil
 	case "UNSPECIFIED", "PERMISSION_OBJECT_TYPE_UNSPECIFIED":
 		return proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_UNSPECIFIED, nil
 	default:
