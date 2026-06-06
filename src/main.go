@@ -16,6 +16,7 @@ import (
 	"github.com/KuramaSyu/WerSu-Rest/src/models"
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
 	"github.com/KuramaSyu/WerSu-Rest/src/routes"
+	"github.com/KuramaSyu/WerSu-Rest/src/utils"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
@@ -68,6 +69,12 @@ func main() {
 		log.Fatalf("Failed to connect to SpiceDb: %v", err)
 	}
 
+	// Setup S3 client
+	s3Client, err := utils.NewS3Client(appConfig.S3Endpoint, appConfig.S3Region, appConfig.S3AccessKey, appConfig.S3SecretKey)
+	if err != nil {
+		log.Fatalf("Failed to create S3 client: %v", err)
+	}
+
 	// Initialize gRPC clients
 	userGrpcClient := proto.NewUserServiceClient(grpcConn)
 	noteGrpcClient := proto.NewNoteServiceClient(grpcConn)
@@ -83,8 +90,7 @@ func main() {
 	noteVersionController := controllers.NewNoteVersionController(&noteVersionGrpcClient)
 	directoryController := controllers.NewDirectoryController(&directoryGrpcClient)
 	permissionController := controllers.NewPermissionController(&permissionGrpcClient)
-	openinaryController := controllers.NewOpeninaryController(appConfig.OpeninaryBaseURL, appConfig.OpeninaryAPIKey)
-	attachmentController := controllers.NewAttachmentController(&attachmentGrpcClient, auth, &appConfig.ImgproxyAddress)
+	attachmentController := controllers.NewAttachmentController(&attachmentGrpcClient, auth, &appConfig.ImgproxyAddress, s3Client, appConfig.S3DefaultBucket)
 	attachmentLinkController := controllers.NewAttachmentLinkController(&attachmentGrpcClient)
 
 	// Setup routes
@@ -96,7 +102,6 @@ func main() {
 		noteVersionController,
 		directoryController,
 		permissionController,
-		openinaryController,
 		attachmentController,
 		attachmentLinkController,
 	)
@@ -109,17 +114,6 @@ func main() {
 
 // Creates gRPC connection client to SpiceDB using credentials from config
 func GetAuthzedCLient(conf *config.Config) (*authzed.Client, error) {
-	//systemCerts, err := grpcutil.WithSystemCerts(grpcutil.VerifyCA)
-	// if err != nil {
-	// 	log.Fatalf("unable to load system CA certificates: %s", err)
-	// }
-
-	// client, err := authzed.NewClient(
-	// 	conf.SpiceDbAddress,
-	// 	grpc.WithTransportCredentials(insecure.NewCredentials()),
-	// 	grpcutil.WithBearerToken(conf.SpiceDbCredentials),
-	// )
-
 	client, err := authzed.NewClient(
 		conf.SpiceDbAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
