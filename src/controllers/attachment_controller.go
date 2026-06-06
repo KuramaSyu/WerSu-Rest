@@ -173,9 +173,10 @@ func (ac *AttachmentController) GetAttachment(c *gin.Context) {
 		return
 	}
 
-	attachment, err := (*ac.AttachmentService).GetAttachment(
+	// get metadata first - this also does permision check
+	metadata, err := (*ac.AttachmentService).GetAttachmentMetadata(
 		c,
-		&proto.GetAttachmentRequest{
+		&proto.GetAttachmentMetadataRequest{
 			Key:    key,
 			UserId: user.ID,
 		},
@@ -185,7 +186,24 @@ func (ac *AttachmentController) GetAttachment(c *gin.Context) {
 		return
 	}
 
-	metadata := attachment.GetMetadata()
+	// get object directly from S3 out of performance reasons (S3 is faster then gRPC)
+	ctx := context.Background()
+	object, err := ac.S3Client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: &ac.S3DefaultBucket,
+		Key:    &key,
+	})
+	if err != nil {
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("Failed to get file from S3: %s", err.Error()))
+		return
+	}
+
+	// read content of file
+	defer object.Body.Close()
+	content, err := io.ReadAll(object.Body)
+	if err != nil {
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("Failed to read file content: %s", err.Error()))
+		return
+	}
 
 	c.Header(
 		"Content-Disposition",
@@ -195,7 +213,7 @@ func (ac *AttachmentController) GetAttachment(c *gin.Context) {
 	c.Data(
 		http.StatusOK,
 		metadata.GetContentType(),
-		attachment.GetContent(),
+		content,
 	)
 }
 
@@ -232,8 +250,7 @@ func (ac *AttachmentController) GetImage(c *gin.Context) {
 		log.Printf("Error while fetching permission on attachment %s: %s", params.Key, err.Error())
 		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("Error while fetching permission: %s", err.Error()))
 		return
-	}
-	if !hasPermission {
+	} else if !hasPermission {
 		log.Printf("User %s does not have permission to view attachment %s", user.ID, params.Key)
 		SetGinError(c, http.StatusForbidden, fmt.Errorf("user does not have permission to view this attachment"))
 		return
