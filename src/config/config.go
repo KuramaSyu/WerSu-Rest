@@ -43,7 +43,7 @@ func Load() *Config {
 	spiceDbAddress := os.Getenv("GRPC_SPICEDB_ADDRESS")
 	ImgproxyAddress := os.Getenv("IMGPROXY_ADDRESS")
 	S3Endpoint := os.Getenv("S3_ENDPOINT")
-	S3Region := os.Getenv("S3_ENDPOINT")
+	S3Region := os.Getenv("S3_REGION")
 	S3AccessKey := os.Getenv("GARAGE_DEFAULT_ACCESS_KEY")
 	S3SecretKey := os.Getenv("GARAGE_DEFAULT_SECRET_KEY")
 	S3DefaultBucket := os.Getenv("GARAGE_DEFAULT_BUCKET")
@@ -86,6 +86,10 @@ func Load() *Config {
 		log.Fatal("S3_ENDPOINT environment variable is required")
 	}
 
+	if S3Region == "" {
+		log.Fatal("S3_REGION environment variable is required")
+	}
+
 	if S3AccessKey == "" {
 		log.Fatal("S3_ACCESS_KEY environment variable is required")
 	}
@@ -121,6 +125,7 @@ func Load() *Config {
 		S3Region:           S3Region,
 		S3AccessKey:        S3AccessKey,
 		S3SecretKey:        S3SecretKey,
+		S3DefaultBucket:    S3DefaultBucket,
 	}
 	PrintConfig(AppConfig)
 	return AppConfig
