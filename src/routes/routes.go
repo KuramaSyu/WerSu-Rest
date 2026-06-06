@@ -17,7 +17,6 @@ func SetupRouter(
 	noteVersionController *controllers.NoteVersionController,
 	directoryController *controllers.DirectoryController,
 	permissionController *controllers.PermissionController,
-	openinaryController *controllers.OpeninaryController,
 	attachmentController *controllers.AttachmentController,
 	attachmentLinkController *controllers.AttachmentLinkController,
 ) {
@@ -93,13 +92,6 @@ func SetupRouter(
 				directory.DELETE("", directoryController.DeleteDirectory)
 				directory.GET("/activity", noteVersionController.GetDirectoryActivity)
 			}
-		}
-
-		// Openinary proxy routes
-		openinary := api.Group("/openinary")
-		{
-			openinary.Any("", openinaryController.Handle)
-			openinary.Any("/*path", openinaryController.Handle)
 		}
 
 		// route for swagger API docs
