@@ -74,6 +74,11 @@ type GetAttachmentMetadataRequest struct {
 	Key string `form:"key" binding:"required"`
 }
 
+// parameters to retrieve metadata of an attachment
+type DeleteAttachmentMetadataRequest struct {
+	Key string `form:"key" binding:"required"`
+}
+
 func attachmentMetadataReplyFromProto(
 	metadata *proto.AttachmentMetadata,
 ) AttachmentMetadataReply {
@@ -355,12 +360,30 @@ func (ac *AttachmentController) DeleteAttachment(c *gin.Context) {
 		return
 	}
 
-	key := c.Param("key")
+	var params DeleteAttachmentMetadataRequest
+	if err := c.ShouldBindQuery(&params); err != nil {
+		SetGinError(c, http.StatusBadRequest, err)
+		return
+	}
+	params.Key, err = url.QueryUnescape(params.Key)
+	if err != nil {
+		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid attachment key: %w", err))
+		return
+	} else if params.Key == "" {
+		SetGinError(c, http.StatusBadRequest, fmt.Errorf("parameter key can't be empty"))
+		return
+	}
+
+	log.Printf("request with key %s", params.Key)
+	if err != nil {
+		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid attachment key: %w", err))
+		return
+	}
 
 	response, err := (*ac.AttachmentService).DeleteAttachment(
 		c,
 		&proto.DeleteAttachmentRequest{
-			Key:    key,
+			Key:    params.Key,
 			UserId: user.ID,
 		},
 	)
