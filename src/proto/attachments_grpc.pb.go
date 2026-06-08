@@ -38,7 +38,7 @@ type AttachmentServiceClient interface {
 	GetAttachmentMetadata(ctx context.Context, in *GetAttachmentMetadataRequest, opts ...grpc.CallOption) (*AttachmentMetadata, error)
 	DeleteAttachment(ctx context.Context, in *DeleteAttachmentRequest, opts ...grpc.CallOption) (*DeleteAttachmentResponse, error)
 	// enforces that key (filepath) is given and updates all other provided fields for that key
-	UpdateAttachmentMetadata(ctx context.Context, in *AttachmentMetadata, opts ...grpc.CallOption) (*AttachmentMetadata, error)
+	UpdateAttachmentMetadata(ctx context.Context, in *UpdateAttachmentMetadataRequest, opts ...grpc.CallOption) (*AttachmentMetadata, error)
 	// either works -> no return or fails completely with an error, so no need for a response message
 	PostAttachmentLink(ctx context.Context, in *PostAttachmentLinkRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteAttachmentLink(ctx context.Context, in *DeleteAttachmentLinkRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -92,7 +92,7 @@ func (c *attachmentServiceClient) DeleteAttachment(ctx context.Context, in *Dele
 	return out, nil
 }
 
-func (c *attachmentServiceClient) UpdateAttachmentMetadata(ctx context.Context, in *AttachmentMetadata, opts ...grpc.CallOption) (*AttachmentMetadata, error) {
+func (c *attachmentServiceClient) UpdateAttachmentMetadata(ctx context.Context, in *UpdateAttachmentMetadataRequest, opts ...grpc.CallOption) (*AttachmentMetadata, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AttachmentMetadata)
 	err := c.cc.Invoke(ctx, AttachmentService_UpdateAttachmentMetadata_FullMethodName, in, out, cOpts...)
@@ -131,7 +131,7 @@ type AttachmentServiceServer interface {
 	GetAttachmentMetadata(context.Context, *GetAttachmentMetadataRequest) (*AttachmentMetadata, error)
 	DeleteAttachment(context.Context, *DeleteAttachmentRequest) (*DeleteAttachmentResponse, error)
 	// enforces that key (filepath) is given and updates all other provided fields for that key
-	UpdateAttachmentMetadata(context.Context, *AttachmentMetadata) (*AttachmentMetadata, error)
+	UpdateAttachmentMetadata(context.Context, *UpdateAttachmentMetadataRequest) (*AttachmentMetadata, error)
 	// either works -> no return or fails completely with an error, so no need for a response message
 	PostAttachmentLink(context.Context, *PostAttachmentLinkRequest) (*emptypb.Empty, error)
 	DeleteAttachmentLink(context.Context, *DeleteAttachmentLinkRequest) (*emptypb.Empty, error)
@@ -157,7 +157,7 @@ func (UnimplementedAttachmentServiceServer) GetAttachmentMetadata(context.Contex
 func (UnimplementedAttachmentServiceServer) DeleteAttachment(context.Context, *DeleteAttachmentRequest) (*DeleteAttachmentResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteAttachment not implemented")
 }
-func (UnimplementedAttachmentServiceServer) UpdateAttachmentMetadata(context.Context, *AttachmentMetadata) (*AttachmentMetadata, error) {
+func (UnimplementedAttachmentServiceServer) UpdateAttachmentMetadata(context.Context, *UpdateAttachmentMetadataRequest) (*AttachmentMetadata, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateAttachmentMetadata not implemented")
 }
 func (UnimplementedAttachmentServiceServer) PostAttachmentLink(context.Context, *PostAttachmentLinkRequest) (*emptypb.Empty, error) {
@@ -260,7 +260,7 @@ func _AttachmentService_DeleteAttachment_Handler(srv interface{}, ctx context.Co
 }
 
 func _AttachmentService_UpdateAttachmentMetadata_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AttachmentMetadata)
+	in := new(UpdateAttachmentMetadataRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -272,7 +272,7 @@ func _AttachmentService_UpdateAttachmentMetadata_Handler(srv interface{}, ctx co
 		FullMethod: AttachmentService_UpdateAttachmentMetadata_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AttachmentServiceServer).UpdateAttachmentMetadata(ctx, req.(*AttachmentMetadata))
+		return srv.(AttachmentServiceServer).UpdateAttachmentMetadata(ctx, req.(*UpdateAttachmentMetadataRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
