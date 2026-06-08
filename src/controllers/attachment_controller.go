@@ -170,6 +170,13 @@ func (ac *AttachmentController) PostAttachment(c *gin.Context) {
 	)
 }
 
+// @Summary Update attachment metadata
+// @Tags attachments
+// @Accept json
+// @Produce json
+// @Param metadata body PatchAttachmentMetadataRequest true "Attachment metadata"
+// @Success 200 {object} AttachmentMetadataReply
+// @Router /attachments/metadata [patch]
 func (ac *AttachmentController) PatchAttachmentMetadata(c *gin.Context) {
 	user, code, err := UserFromSession(c)
 	if err != nil {
@@ -469,11 +476,6 @@ func (ac *AttachmentController) PutToS3(file io.Reader) (string, error) {
 }
 
 // build imgproxy url with given parameters
-// @param attachment the attachment to build url for
-// @param width the width to resize to, or nil for auto width (hence height is required)
-// @param height the height to resize to, or nil for auto height (hence width is required)
-// @param format the output format (jpeg, png, webp), or nil for original format
-// @returns the imgproxy url
 func buildImgproxyURL(
 	address *string,
 	attachment *string,

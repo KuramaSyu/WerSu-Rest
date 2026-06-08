@@ -68,6 +68,52 @@ const docTemplate = `{
             }
         },
         "/attachments": {
+            "get": {
+                "produces": [
+                    "image/jpeg",
+                    "image/png",
+                    "image/webp"
+                ],
+                "tags": [
+                    "attachments"
+                ],
+                "summary": "Get attachment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Attachment key",
+                        "name": "key",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Resize width",
+                        "name": "width",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Resize height",
+                        "name": "height",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Output format (jpeg,png,webp)",
+                        "name": "format",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    }
+                }
+            },
             "post": {
                 "consumes": [
                     "multiplart/form-data"
@@ -86,6 +132,39 @@ const docTemplate = `{
                         "name": "file",
                         "in": "formData",
                         "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.AttachmentMetadataReply"
+                        }
+                    }
+                }
+            }
+        },
+        "/attachments/metadata": {
+            "patch": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "attachments"
+                ],
+                "summary": "Update attachment metadata",
+                "parameters": [
+                    {
+                        "description": "Attachment metadata",
+                        "name": "metadata",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PatchAttachmentMetadataRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -1474,6 +1553,23 @@ const docTemplate = `{
                 },
                 "version_index": {
                     "type": "integer"
+                }
+            }
+        },
+        "controllers.PatchAttachmentMetadataRequest": {
+            "type": "object",
+            "required": [
+                "key"
+            ],
+            "properties": {
+                "content_type": {
+                    "type": "string"
+                },
+                "filename": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
                 }
             }
         },

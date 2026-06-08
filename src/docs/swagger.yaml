@@ -170,6 +170,17 @@ definitions:
       version_index:
         type: integer
     type: object
+  controllers.PatchAttachmentMetadataRequest:
+    properties:
+      content_type:
+        type: string
+      filename:
+        type: string
+      key:
+        type: string
+    required:
+    - key
+    type: object
   controllers.PatchDirectoryBody:
     properties:
       description:
@@ -370,6 +381,37 @@ paths:
       tags:
       - attachment-links
   /attachments:
+    get:
+      parameters:
+      - description: Attachment key
+        in: query
+        name: key
+        required: true
+        type: string
+      - description: Resize width
+        in: query
+        name: width
+        type: integer
+      - description: Resize height
+        in: query
+        name: height
+        type: integer
+      - description: Output format (jpeg,png,webp)
+        in: query
+        name: format
+        type: string
+      produces:
+      - image/jpeg
+      - image/png
+      - image/webp
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+      summary: Get attachment
+      tags:
+      - attachments
     post:
       consumes:
       - multiplart/form-data
@@ -440,6 +482,27 @@ paths:
           schema:
             $ref: '#/definitions/controllers.AttachmentMetadataReply'
       summary: Get attachment metadata
+      tags:
+      - attachments
+  /attachments/metadata:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Attachment metadata
+        in: body
+        name: metadata
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.PatchAttachmentMetadataRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.AttachmentMetadataReply'
+      summary: Update attachment metadata
       tags:
       - attachments
   /directories:
