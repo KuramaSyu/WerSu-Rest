@@ -54,6 +54,12 @@ type AttachmentMetadataReply struct {
 	Sha256      string    `json:"sha256"`
 }
 
+type PatchAttachmentMetadataRequest struct {
+	Key         string  `json:"key" binding:"required"`
+	Filename    *string `json:"filename"`
+	ContentType *string `json:"content_type"`
+}
+
 type PostAttachmentBody struct {
 	Filename    string `json:"filename" binding:"required"`
 	Filepath    string `json:"filepath" binding:"required"`
@@ -161,6 +167,52 @@ func (ac *AttachmentController) PostAttachment(c *gin.Context) {
 	c.JSON(
 		http.StatusOK,
 		attachmentMetadataReplyFromProto(attachment.GetMetadata()),
+	)
+}
+
+func (ac *AttachmentController) PatchAttachmentMetadata(c *gin.Context) {
+	user, code, err := UserFromSession(c)
+	if err != nil {
+		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		return
+	}
+
+	var params PatchAttachmentMetadataRequest
+	if err := c.ShouldBindJSON(&params); err != nil {
+		SetGinError(c, http.StatusBadRequest, err)
+		return
+	}
+	params.Key, err = url.QueryUnescape(params.Key)
+	if err != nil {
+		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid attachment key: %w", err))
+		return
+	} else if params.Key == "" {
+		SetGinError(c, http.StatusBadRequest, fmt.Errorf("parameter key can't be empty"))
+		return
+	}
+
+	request := &proto.UpdateAttachmentMetadataRequest{}
+	request.Key = params.Key
+	request.UserId = user.ID
+
+	if params.Filename != nil {
+		request.Filename = *params.Filename
+	}
+	if params.ContentType != nil {
+		request.ContentType = *params.ContentType
+	}
+
+	attachment, err := (*ac.AttachmentService).UpdateAttachmentMetadata(
+		c, request,
+	)
+	if err != nil {
+		SetGinError(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	c.JSON(
+		http.StatusOK,
+		attachmentMetadataReplyFromProto(attachment),
 	)
 }
 
