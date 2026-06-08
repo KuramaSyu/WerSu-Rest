@@ -615,12 +615,13 @@ const file_src_proto_attachments_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\"4\n" +
 	"\x18DeleteAttachmentResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess2\xe9\x03\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess2\xbb\x04\n" +
 	"\x11AttachmentService\x12A\n" +
 	"\x0ePostAttachment\x12\x1c.proto.PostAttachmentRequest\x1a\x11.proto.Attachment\x12?\n" +
 	"\rGetAttachment\x12\x1b.proto.GetAttachmentRequest\x1a\x11.proto.Attachment\x12W\n" +
 	"\x15GetAttachmentMetadata\x12#.proto.GetAttachmentMetadataRequest\x1a\x19.proto.AttachmentMetadata\x12S\n" +
-	"\x10DeleteAttachment\x12\x1e.proto.DeleteAttachmentRequest\x1a\x1f.proto.DeleteAttachmentResponse\x12N\n" +
+	"\x10DeleteAttachment\x12\x1e.proto.DeleteAttachmentRequest\x1a\x1f.proto.DeleteAttachmentResponse\x12P\n" +
+	"\x18UpdateAttachmentMetadata\x12\x19.proto.AttachmentMetadata\x1a\x19.proto.AttachmentMetadata\x12N\n" +
 	"\x12PostAttachmentLink\x12 .proto.PostAttachmentLinkRequest\x1a\x16.google.protobuf.Empty\x12R\n" +
 	"\x14DeleteAttachmentLink\x12\".proto.DeleteAttachmentLinkRequest\x1a\x16.google.protobuf.EmptyB1Z/github.com/KuramaSyu/WerSu-Rest/src/proto;protob\x06proto3"
 
@@ -658,16 +659,18 @@ var file_src_proto_attachments_proto_depIdxs = []int32{
 	5,  // 4: proto.AttachmentService.GetAttachment:input_type -> proto.GetAttachmentRequest
 	6,  // 5: proto.AttachmentService.GetAttachmentMetadata:input_type -> proto.GetAttachmentMetadataRequest
 	7,  // 6: proto.AttachmentService.DeleteAttachment:input_type -> proto.DeleteAttachmentRequest
-	3,  // 7: proto.AttachmentService.PostAttachmentLink:input_type -> proto.PostAttachmentLinkRequest
-	4,  // 8: proto.AttachmentService.DeleteAttachmentLink:input_type -> proto.DeleteAttachmentLinkRequest
-	1,  // 9: proto.AttachmentService.PostAttachment:output_type -> proto.Attachment
-	1,  // 10: proto.AttachmentService.GetAttachment:output_type -> proto.Attachment
-	0,  // 11: proto.AttachmentService.GetAttachmentMetadata:output_type -> proto.AttachmentMetadata
-	8,  // 12: proto.AttachmentService.DeleteAttachment:output_type -> proto.DeleteAttachmentResponse
-	10, // 13: proto.AttachmentService.PostAttachmentLink:output_type -> google.protobuf.Empty
-	10, // 14: proto.AttachmentService.DeleteAttachmentLink:output_type -> google.protobuf.Empty
-	9,  // [9:15] is the sub-list for method output_type
-	3,  // [3:9] is the sub-list for method input_type
+	0,  // 7: proto.AttachmentService.UpdateAttachmentMetadata:input_type -> proto.AttachmentMetadata
+	3,  // 8: proto.AttachmentService.PostAttachmentLink:input_type -> proto.PostAttachmentLinkRequest
+	4,  // 9: proto.AttachmentService.DeleteAttachmentLink:input_type -> proto.DeleteAttachmentLinkRequest
+	1,  // 10: proto.AttachmentService.PostAttachment:output_type -> proto.Attachment
+	1,  // 11: proto.AttachmentService.GetAttachment:output_type -> proto.Attachment
+	0,  // 12: proto.AttachmentService.GetAttachmentMetadata:output_type -> proto.AttachmentMetadata
+	8,  // 13: proto.AttachmentService.DeleteAttachment:output_type -> proto.DeleteAttachmentResponse
+	0,  // 14: proto.AttachmentService.UpdateAttachmentMetadata:output_type -> proto.AttachmentMetadata
+	10, // 15: proto.AttachmentService.PostAttachmentLink:output_type -> google.protobuf.Empty
+	10, // 16: proto.AttachmentService.DeleteAttachmentLink:output_type -> google.protobuf.Empty
+	10, // [10:17] is the sub-list for method output_type
+	3,  // [3:10] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
 	3,  // [3:3] is the sub-list for extension extendee
 	0,  // [0:3] is the sub-list for field type_name

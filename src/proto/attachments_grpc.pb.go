@@ -20,12 +20,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AttachmentService_PostAttachment_FullMethodName        = "/proto.AttachmentService/PostAttachment"
-	AttachmentService_GetAttachment_FullMethodName         = "/proto.AttachmentService/GetAttachment"
-	AttachmentService_GetAttachmentMetadata_FullMethodName = "/proto.AttachmentService/GetAttachmentMetadata"
-	AttachmentService_DeleteAttachment_FullMethodName      = "/proto.AttachmentService/DeleteAttachment"
-	AttachmentService_PostAttachmentLink_FullMethodName    = "/proto.AttachmentService/PostAttachmentLink"
-	AttachmentService_DeleteAttachmentLink_FullMethodName  = "/proto.AttachmentService/DeleteAttachmentLink"
+	AttachmentService_PostAttachment_FullMethodName           = "/proto.AttachmentService/PostAttachment"
+	AttachmentService_GetAttachment_FullMethodName            = "/proto.AttachmentService/GetAttachment"
+	AttachmentService_GetAttachmentMetadata_FullMethodName    = "/proto.AttachmentService/GetAttachmentMetadata"
+	AttachmentService_DeleteAttachment_FullMethodName         = "/proto.AttachmentService/DeleteAttachment"
+	AttachmentService_UpdateAttachmentMetadata_FullMethodName = "/proto.AttachmentService/UpdateAttachmentMetadata"
+	AttachmentService_PostAttachmentLink_FullMethodName       = "/proto.AttachmentService/PostAttachmentLink"
+	AttachmentService_DeleteAttachmentLink_FullMethodName     = "/proto.AttachmentService/DeleteAttachmentLink"
 )
 
 // AttachmentServiceClient is the client API for AttachmentService service.
@@ -36,6 +37,8 @@ type AttachmentServiceClient interface {
 	GetAttachment(ctx context.Context, in *GetAttachmentRequest, opts ...grpc.CallOption) (*Attachment, error)
 	GetAttachmentMetadata(ctx context.Context, in *GetAttachmentMetadataRequest, opts ...grpc.CallOption) (*AttachmentMetadata, error)
 	DeleteAttachment(ctx context.Context, in *DeleteAttachmentRequest, opts ...grpc.CallOption) (*DeleteAttachmentResponse, error)
+	// enforces that key (filepath) is given and updates all other provided fields for that key
+	UpdateAttachmentMetadata(ctx context.Context, in *AttachmentMetadata, opts ...grpc.CallOption) (*AttachmentMetadata, error)
 	// either works -> no return or fails completely with an error, so no need for a response message
 	PostAttachmentLink(ctx context.Context, in *PostAttachmentLinkRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteAttachmentLink(ctx context.Context, in *DeleteAttachmentLinkRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -89,6 +92,16 @@ func (c *attachmentServiceClient) DeleteAttachment(ctx context.Context, in *Dele
 	return out, nil
 }
 
+func (c *attachmentServiceClient) UpdateAttachmentMetadata(ctx context.Context, in *AttachmentMetadata, opts ...grpc.CallOption) (*AttachmentMetadata, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AttachmentMetadata)
+	err := c.cc.Invoke(ctx, AttachmentService_UpdateAttachmentMetadata_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *attachmentServiceClient) PostAttachmentLink(ctx context.Context, in *PostAttachmentLinkRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -117,6 +130,8 @@ type AttachmentServiceServer interface {
 	GetAttachment(context.Context, *GetAttachmentRequest) (*Attachment, error)
 	GetAttachmentMetadata(context.Context, *GetAttachmentMetadataRequest) (*AttachmentMetadata, error)
 	DeleteAttachment(context.Context, *DeleteAttachmentRequest) (*DeleteAttachmentResponse, error)
+	// enforces that key (filepath) is given and updates all other provided fields for that key
+	UpdateAttachmentMetadata(context.Context, *AttachmentMetadata) (*AttachmentMetadata, error)
 	// either works -> no return or fails completely with an error, so no need for a response message
 	PostAttachmentLink(context.Context, *PostAttachmentLinkRequest) (*emptypb.Empty, error)
 	DeleteAttachmentLink(context.Context, *DeleteAttachmentLinkRequest) (*emptypb.Empty, error)
@@ -141,6 +156,9 @@ func (UnimplementedAttachmentServiceServer) GetAttachmentMetadata(context.Contex
 }
 func (UnimplementedAttachmentServiceServer) DeleteAttachment(context.Context, *DeleteAttachmentRequest) (*DeleteAttachmentResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteAttachment not implemented")
+}
+func (UnimplementedAttachmentServiceServer) UpdateAttachmentMetadata(context.Context, *AttachmentMetadata) (*AttachmentMetadata, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateAttachmentMetadata not implemented")
 }
 func (UnimplementedAttachmentServiceServer) PostAttachmentLink(context.Context, *PostAttachmentLinkRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method PostAttachmentLink not implemented")
@@ -241,6 +259,24 @@ func _AttachmentService_DeleteAttachment_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AttachmentService_UpdateAttachmentMetadata_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AttachmentMetadata)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttachmentServiceServer).UpdateAttachmentMetadata(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttachmentService_UpdateAttachmentMetadata_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttachmentServiceServer).UpdateAttachmentMetadata(ctx, req.(*AttachmentMetadata))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AttachmentService_PostAttachmentLink_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PostAttachmentLinkRequest)
 	if err := dec(in); err != nil {
@@ -299,6 +335,10 @@ var AttachmentService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteAttachment",
 			Handler:    _AttachmentService_DeleteAttachment_Handler,
+		},
+		{
+			MethodName: "UpdateAttachmentMetadata",
+			Handler:    _AttachmentService_UpdateAttachmentMetadata_Handler,
 		},
 		{
 			MethodName: "PostAttachmentLink",
