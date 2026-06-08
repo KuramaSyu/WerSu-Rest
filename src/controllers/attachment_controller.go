@@ -55,9 +55,9 @@ type AttachmentMetadataReply struct {
 }
 
 type PatchAttachmentMetadataRequest struct {
-	Key         string  `json:"key" binding:"required"`
-	Filename    *string `json:"filename"`
-	ContentType *string `json:"content_type"`
+	Key         string  `form:"key" binding:"required"`
+	Filename    *string `form:"filename"`
+	ContentType *string `form:"content_type"`
 }
 
 type PostAttachmentBody struct {
@@ -71,7 +71,7 @@ type PostAttachmentBody struct {
 type GetAttachmentRequest struct {
 	Key    string  `form:"key" binding:"required"`
 	Width  *int    `form:"width"` // *int is used, that nil is an option for not provided
-	Height *int    `from:"height"`
+	Height *int    `form:"height"`
 	Format *string `form:"format"`
 }
 
@@ -184,12 +184,15 @@ func (ac *AttachmentController) PatchAttachmentMetadata(c *gin.Context) {
 		return
 	}
 
+	request := &proto.UpdateAttachmentMetadataRequest{}
+	request.UserId = user.ID
+
 	var params PatchAttachmentMetadataRequest
-	if err := c.ShouldBindJSON(&params); err != nil {
+	if err := c.ShouldBindQuery(&params); err != nil {
 		SetGinError(c, http.StatusBadRequest, err)
 		return
 	}
-	params.Key, err = url.QueryUnescape(params.Key)
+	key, err := url.QueryUnescape(params.Key)
 	if err != nil {
 		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid attachment key: %w", err))
 		return
@@ -197,14 +200,20 @@ func (ac *AttachmentController) PatchAttachmentMetadata(c *gin.Context) {
 		SetGinError(c, http.StatusBadRequest, fmt.Errorf("parameter key can't be empty"))
 		return
 	}
-
-	request := &proto.UpdateAttachmentMetadataRequest{}
-	request.Key = params.Key
-	request.UserId = user.ID
+	request.Key = key
 
 	if params.Filename != nil {
-		request.Filename = *params.Filename
+		filename, err := url.QueryUnescape(*params.Filename)
+		if err != nil {
+			SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid attachment filename: %w", err))
+			return
+		} else if params.Key == "" {
+			SetGinError(c, http.StatusBadRequest, fmt.Errorf("parameter filename can't be empty"))
+			return
+		}
+		request.Filename = filename
 	}
+
 	if params.ContentType != nil {
 		request.ContentType = *params.ContentType
 	}

@@ -69,7 +69,9 @@ func SetupRouter(
 			attachments.GET("/", attachmentController.GetAttachment)
 			attachments.GET("/image", attachmentController.GetImage)
 			attachments.GET("/metadata/", attachmentController.GetAttachmentMetadata)
+			attachments.PATCH("/metadata/", attachmentController.PatchAttachmentMetadata)
 			attachments.DELETE("/", attachmentController.DeleteAttachment)
+
 		}
 
 		attachmentLinks := api.Group("/attachment-links")
