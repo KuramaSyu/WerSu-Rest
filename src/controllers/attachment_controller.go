@@ -130,6 +130,12 @@ func (ac *AttachmentController) PostAttachment(c *gin.Context) {
 		return
 	}
 
+	contentType := file.Header.Get("Content-Type")
+	if contentType == "" {
+		SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing Content-Type in file header"))
+		return
+	}
+
 	fileReader, err := file.Open()
 	if err != nil {
 		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("Failed to open uploaded file: %s", err.Error()))
@@ -142,13 +148,6 @@ func (ac *AttachmentController) PostAttachment(c *gin.Context) {
 		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("Failed to PUT file: %s", err.Error()))
 		return
 	}
-
-	fileContent, err := io.ReadAll(fileReader)
-	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("Failed to read file content: %s", err.Error()))
-		return
-	}
-	contentType := http.DetectContentType(fileContent)
 
 	attachment, err := (*ac.AttachmentService).PostAttachment(
 		c,
