@@ -245,7 +245,7 @@ func (ac *AttachmentController) GetAttachment(c *gin.Context) {
 		return
 	}
 
-	key := c.Param("key")
+	key := c.Query("key")
 	if key == "" {
 		SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing attachment key"))
 		return
