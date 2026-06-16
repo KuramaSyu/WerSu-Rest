@@ -259,6 +259,47 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/token": {
+            "get": {
+                "description": "Generates a new JWT access token for the user authenticated via a session cookie.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Get a new access token",
+                "responses": {
+                    "200": {
+                        "description": "Successfully generated and returned access token",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.GetAccessTokenReply"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - User is not authenticated via session",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Failed to generate JWT or other server-side issue",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/directories": {
             "get": {
                 "description": "Fetch directories via gRPC service",
@@ -1451,6 +1492,14 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/controllers.PermissionRelationshipReply"
                     }
+                }
+            }
+        },
+        "controllers.GetAccessTokenReply": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
                 }
             }
         },

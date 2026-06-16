@@ -22,6 +22,7 @@ type Config struct {
 	S3AccessKey        string
 	S3SecretKey        string
 	S3DefaultBucket    string
+	JwtSecret          string
 }
 
 var AppConfig *Config
@@ -47,6 +48,7 @@ func Load() *Config {
 	S3AccessKey := os.Getenv("GARAGE_DEFAULT_ACCESS_KEY")
 	S3SecretKey := os.Getenv("GARAGE_DEFAULT_SECRET_KEY")
 	S3DefaultBucket := os.Getenv("GARAGE_DEFAULT_BUCKET")
+	JwtSecret := os.Getenv("JWT_SECRET")
 
 	// Validate required configuration
 
@@ -102,6 +104,10 @@ func Load() *Config {
 		log.Fatal("S3_DEFAULT_BUCKET environment variable is required")
 	}
 
+	if JwtSecret == "" {
+		log.Fatal("JWT_SECRET environment variable is required")
+	}
+
 	discordOAuthConfig := &oauth2.Config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
@@ -126,6 +132,7 @@ func Load() *Config {
 		S3AccessKey:        S3AccessKey,
 		S3SecretKey:        S3SecretKey,
 		S3DefaultBucket:    S3DefaultBucket,
+		JwtSecret:          JwtSecret,
 	}
 	PrintConfig(AppConfig)
 	return AppConfig
@@ -138,7 +145,8 @@ func PrintConfig(cfg *Config) {
 	log.Println("  RedirectURL:   ", cfg.DiscordOAuthConfig.RedirectURL)
 	log.Println("  Scopes:        ", cfg.DiscordOAuthConfig.Scopes)
 	log.Println("Session Secret:  ", maskSensitiveValue(cfg.SessionSecret))
-	log.Println("Frontend URL:     ", cfg.FrontendURL)
+	log.Println("JWT Secret:      ", maskSensitiveValue(cfg.JwtSecret)) // Assuming JWT secret is same as session secret
+	log.Println("Frontend URL:    ", cfg.FrontendURL)
 	log.Println("WerSu gRPC Server Addr:", cfg.GRPCServerAddress)
 	log.Println("SpiceDB gRPC Server Addr:", cfg.SpiceDbAddress)
 	log.Println("Imgproxy Address:", cfg.ImgproxyAddress)

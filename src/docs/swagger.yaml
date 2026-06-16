@@ -103,6 +103,11 @@ definitions:
           $ref: '#/definitions/controllers.PermissionRelationshipReply'
         type: array
     type: object
+  controllers.GetAccessTokenReply:
+    properties:
+      token:
+        type: string
+    type: object
   controllers.MinimalNote:
     properties:
       author_id:
@@ -505,6 +510,35 @@ paths:
       summary: Update attachment metadata
       tags:
       - attachments
+  /auth/token:
+    get:
+      consumes:
+      - application/json
+      description: Generates a new JWT access token for the user authenticated via
+        a session cookie.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully generated and returned access token
+          schema:
+            $ref: '#/definitions/controllers.GetAccessTokenReply'
+        "401":
+          description: Unauthorized - User is not authenticated via session
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error - Failed to generate JWT or other server-side
+            issue
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a new access token
+      tags:
+      - Authentication
   /directories:
     get:
       consumes:

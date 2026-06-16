@@ -84,7 +84,7 @@ func main() {
 	attachmentGrpcClient := proto.NewAttachmentServiceClient(grpcConn)
 
 	// Initialize RSET controllers
-	authController := controllers.NewAuthController(appConfig.DiscordOAuthConfig, &userGrpcClient)
+	authController := controllers.NewAuthController(appConfig.DiscordOAuthConfig, &userGrpcClient, appConfig.JwtSecret)
 	noteController := controllers.NewNoteController(&noteGrpcClient)
 	noteSearchController := controllers.NewSearchNoteController(&noteGrpcClient)
 	noteVersionController := controllers.NewNoteVersionController(&noteVersionGrpcClient)

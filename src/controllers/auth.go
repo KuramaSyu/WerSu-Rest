@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/KuramaSyu/WerSu-Rest/src/config"
 	"github.com/KuramaSyu/WerSu-Rest/src/models"
@@ -14,22 +15,36 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
+type AccessClaims struct {
+	Subject string `json:"sub"`
+
+	jwt.RegisteredClaims
+}
+
+// The Response of the GET /auth/access-token reply
+type GetAccessTokenReply struct {
+	Token string `json:"token"`
+}
+
 // AuthController handles authentication logic
 type AuthController struct {
 	OAuthConfig *oauth2.Config
 	userService *proto.UserServiceClient
+	JWTSecret   string
 }
 
 // NewAuthController creates a new auth controller
-func NewAuthController(oauthConfig *oauth2.Config, userService *proto.UserServiceClient) *AuthController {
+func NewAuthController(oauthConfig *oauth2.Config, userService *proto.UserServiceClient, jwtSecret string) *AuthController {
 	return &AuthController{
 		OAuthConfig: oauthConfig,
 		userService: userService,
+		JWTSecret:   jwtSecret,
 	}
 }
 
@@ -178,4 +193,57 @@ func (ac *AuthController) Logout(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
+}
+
+// generates a new JWT access token for an authenticated user
+// GetAccessToken godoc
+// @Summary      Get a new access token
+// @Description  Generates a new JWT access token for the user authenticated via a session cookie.
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  GetAccessTokenReply  "Successfully generated and returned access token"
+// @Failure      401  {object}  map[string]string               "Unauthorized - User is not authenticated via session"
+// @Failure      500  {object}  map[string]string               "Internal Server Error - Failed to generate JWT or other server-side issue"
+// @Router       /auth/token [get]
+func (ac *AuthController) GetAccessToken(c *gin.Context) {
+	user, status, err := UserFromSession(c)
+	if user == nil {
+		SetGinError(c, status, err)
+		return
+	}
+	token, err := GenerateJWT(user.ID, ac.JWTSecret)
+	if err != nil {
+		log.Printf("Failed to generate JWT: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate access token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, GetAccessTokenReply{
+		Token: token,
+	})
+}
+
+// GenerateJWT creates a new JSON Web Token (JWT) for a given user ID.
+// It includes the following claims:
+//   - "sub" (Subject): The user ID.
+//   - "exp" (Expiration Time): 15 minutes from the time of creation.
+//   - "iss" (Issuer): "wersu-rest-proxy".
+//   - "iat" (Issued At): The time the token was issued.
+//
+// Returns: token and error
+func GenerateJWT(userID string, secret string) (string, error) {
+	claims := AccessClaims{
+		Subject: userID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    "wersu-rest-proxy",
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+	token := jwt.NewWithClaims(
+		jwt.SigningMethodHS256,
+		claims,
+	)
+	return token.SignedString([]byte(secret))
 }
