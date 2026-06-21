@@ -19,6 +19,7 @@ func SetupRouter(
 	permissionController *controllers.PermissionController,
 	attachmentController *controllers.AttachmentController,
 	attachmentLinkController *controllers.AttachmentLinkController,
+	sharingController *controllers.SharingController,
 ) {
 
 	// API routes
@@ -74,6 +75,7 @@ func SetupRouter(
 
 		}
 
+		// attachment link routes
 		attachmentLinks := api.Group("/attachment-links")
 		{
 			attachmentLinks.POST("", attachmentLinkController.PostAttachmentLink)
@@ -94,6 +96,15 @@ func SetupRouter(
 				directory.DELETE("", directoryController.DeleteDirectory)
 				directory.GET("/activity", noteVersionController.GetDirectoryActivity)
 			}
+		}
+
+		// share link routes
+		shares := api.Group("/shares")
+		{
+			shares.POST("", directoryController.CreateDirectory)
+			shares.GET("")
+			shares.DELETE("")
+			shares.PATCH("")
 		}
 
 		// route for swagger API docs
