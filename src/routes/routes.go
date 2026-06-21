@@ -101,10 +101,10 @@ func SetupRouter(
 		// share link routes
 		shares := api.Group("/shares")
 		{
-			shares.POST("", directoryController.CreateDirectory)
-			shares.GET("")
-			shares.DELETE("")
-			shares.PATCH("")
+			shares.POST("", sharingController.CreateShare)
+			shares.GET("", sharingController.GetShares)
+			shares.DELETE("", sharingController.DeleteShares)
+			shares.PATCH("", sharingController.UpdateShare)
 		}
 
 		// route for swagger API docs
