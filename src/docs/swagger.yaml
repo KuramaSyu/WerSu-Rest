@@ -66,6 +66,27 @@ definitions:
     - object_type
     - relationship
     type: object
+  controllers.CreateShareBody:
+    properties:
+      access_as:
+        example: read
+        type: string
+      description:
+        example: Shared with the engineering team
+        type: string
+      note_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4ca
+        type: string
+      online_since:
+        example: "2026-06-21T12:00:00Z"
+        type: string
+      online_until:
+        example: "2026-06-22T12:00:00Z"
+        type: string
+    required:
+    - access_as
+    - note_id
+    type: object
   controllers.DeletePermissionBody:
     properties:
       object_id:
@@ -83,6 +104,17 @@ definitions:
     - object_id
     - object_type
     - relationship
+    type: object
+  controllers.DeleteSharesBody:
+    properties:
+      share_ids:
+        example:
+        - 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        items:
+          type: string
+        type: array
+    required:
+    - share_ids
     type: object
   controllers.DirectoryReply:
     properties:
@@ -141,6 +173,25 @@ definitions:
       title:
         type: string
       updated_at:
+        type: string
+    type: object
+  controllers.NoteShareReply:
+    properties:
+      access_as:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      note_id:
+        type: string
+      online_since:
+        type: string
+      online_until:
         type: string
     type: object
   controllers.NoteVersionContentReply:
@@ -341,6 +392,31 @@ definitions:
     - object_id
     - object_type
     - relationships
+    type: object
+  controllers.UpdateShareBody:
+    properties:
+      access_as:
+        example: read
+        type: string
+      description:
+        example: Updated share description
+        type: string
+      id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        type: string
+      note_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4ca
+        type: string
+      online_since:
+        example: "2026-06-21T12:00:00Z"
+        type: string
+      online_until:
+        example: "2026-06-22T12:00:00Z"
+        type: string
+    required:
+    - access_as
+    - id
+    - note_id
     type: object
   proto.DeleteAttachmentResponse:
     properties:
@@ -1232,6 +1308,230 @@ paths:
       summary: Replace all permissions for an object
       tags:
       - permissions
+  /shares:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes shares via gRPC service
+      parameters:
+      - description: Delete shares request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.DeleteSharesBody'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete shares
+      tags:
+      - shares
+    get:
+      consumes:
+      - application/json
+      description: Fetch shares via gRPC service
+      parameters:
+      - description: Note ID
+        in: query
+        name: note_id
+        type: string
+      - description: Creator user ID
+        in: query
+        name: created_by
+        type: string
+      - description: RFC3339 timestamp
+        in: query
+        name: online_since
+        type: string
+      - description: RFC3339 timestamp
+        in: query
+        name: online_until
+        type: string
+      - description: Access role
+        in: query
+        name: access_as
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/controllers.NoteShareReply'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List shares
+      tags:
+      - shares
+    patch:
+      consumes:
+      - application/json
+      description: Updates an existing share via gRPC service
+      parameters:
+      - description: Update share request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateShareBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.NoteShareReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update share
+      tags:
+      - shares
+    post:
+      consumes:
+      - application/json
+      description: Creates a share via gRPC service
+      parameters:
+      - description: Create share request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreateShareBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.NoteShareReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create share
+      tags:
+      - shares
+  /shares/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Fetch a single share by ID via gRPC service
+      parameters:
+      - description: Share ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.NoteShareReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get share by ID
+      tags:
+      - shares
+  /shares/by-id:
+    get:
+      consumes:
+      - application/json
+      description: Fetch shares by exact IDs via gRPC service
+      parameters:
+      - collectionFormat: csv
+        description: Share IDs
+        in: query
+        items:
+          type: string
+        name: share_ids
+        required: true
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/controllers.NoteShareReply'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get shares by IDs
+      tags:
+      - shares
 securityDefinitions:
   CookieAuth:
     in: cookie
