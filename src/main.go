@@ -82,6 +82,7 @@ func main() {
 	directoryGrpcClient := proto.NewDirectoryServiceClient(grpcConn)
 	permissionGrpcClient := proto.NewPermissionServiceClient(grpcConn)
 	attachmentGrpcClient := proto.NewAttachmentServiceClient(grpcConn)
+	shareingGrpcClient := proto.NewSharingServiceClient(grpcConn)
 
 	// Initialize RSET controllers
 	authController := controllers.NewAuthController(appConfig.DiscordOAuthConfig, &userGrpcClient, appConfig.JwtSecret)
@@ -92,6 +93,7 @@ func main() {
 	permissionController := controllers.NewPermissionController(&permissionGrpcClient)
 	attachmentController := controllers.NewAttachmentController(&attachmentGrpcClient, auth, &appConfig.ImgproxyAddress, s3Client, appConfig.S3DefaultBucket)
 	attachmentLinkController := controllers.NewAttachmentLinkController(&attachmentGrpcClient)
+	sharingController := controllers.NewSharingController(&shareingGrpcClient)
 
 	// Setup routes
 	routes.SetupRouter(
@@ -104,6 +106,7 @@ func main() {
 		permissionController,
 		attachmentController,
 		attachmentLinkController,
+		sharingController,
 	)
 
 	// Start the server
