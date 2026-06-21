@@ -1783,14 +1783,9 @@ const docTemplate = `{
         "controllers.CreateShareBody": {
             "type": "object",
             "required": [
-                "access_as",
                 "note_id"
             ],
             "properties": {
-                "access_as": {
-                    "type": "string",
-                    "example": "read"
-                },
                 "description": {
                     "type": "string",
                     "example": "Shared with the engineering team"
@@ -1944,9 +1939,6 @@ const docTemplate = `{
         "controllers.NoteShareReply": {
             "type": "object",
             "properties": {
-                "access_as": {
-                    "type": "string"
-                },
                 "created_at": {
                     "type": "string"
                 },
@@ -2262,15 +2254,10 @@ const docTemplate = `{
         "controllers.UpdateShareBody": {
             "type": "object",
             "required": [
-                "access_as",
                 "id",
                 "note_id"
             ],
             "properties": {
-                "access_as": {
-                    "type": "string",
-                    "example": "read"
-                },
                 "description": {
                     "type": "string",
                     "example": "Updated share description"

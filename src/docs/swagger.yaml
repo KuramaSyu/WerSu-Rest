@@ -68,9 +68,6 @@ definitions:
     type: object
   controllers.CreateShareBody:
     properties:
-      access_as:
-        example: read
-        type: string
       description:
         example: Shared with the engineering team
         type: string
@@ -84,7 +81,6 @@ definitions:
         example: "2026-06-22T12:00:00Z"
         type: string
     required:
-    - access_as
     - note_id
     type: object
   controllers.DeletePermissionBody:
@@ -177,8 +173,6 @@ definitions:
     type: object
   controllers.NoteShareReply:
     properties:
-      access_as:
-        type: string
       created_at:
         type: string
       created_by:
@@ -395,9 +389,6 @@ definitions:
     type: object
   controllers.UpdateShareBody:
     properties:
-      access_as:
-        example: read
-        type: string
       description:
         example: Updated share description
         type: string
@@ -414,7 +405,6 @@ definitions:
         example: "2026-06-22T12:00:00Z"
         type: string
     required:
-    - access_as
     - id
     - note_id
     type: object

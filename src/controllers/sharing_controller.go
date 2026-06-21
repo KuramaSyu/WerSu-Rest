@@ -39,7 +39,6 @@ type NoteShareReply struct {
 	CreatedBy   string     `json:"created_by"`
 	OnlineSince *time.Time `json:"online_since,omitempty"`
 	OnlineUntil *time.Time `json:"online_until,omitempty"`
-	AccessAs    string     `json:"access_as"`
 }
 
 // GetSharesQuery contains the optional query parameters used to filter shares.
@@ -51,7 +50,6 @@ type GetSharesQuery struct {
 	CreatedBy   *string `form:"created_by"`
 	OnlineSince *string `form:"online_since"`
 	OnlineUntil *string `form:"online_until"`
-	AccessAs    *string `form:"access_as"`
 }
 
 // CreateShareBody represents the JSON body for creating a share.
@@ -64,7 +62,6 @@ type CreateShareBody struct {
 	NoteId      string     `json:"note_id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4ca"`
 	OnlineSince *time.Time `json:"online_since,omitempty" example:"2026-06-21T12:00:00Z"`
 	OnlineUntil *time.Time `json:"online_until,omitempty" example:"2026-06-22T12:00:00Z"`
-	AccessAs    string     `json:"access_as" binding:"required" example:"read"`
 }
 
 // UpdateShareBody represents the JSON body for updating a share.
@@ -77,7 +74,6 @@ type UpdateShareBody struct {
 	NoteId      string     `json:"note_id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4ca"`
 	OnlineSince *time.Time `json:"online_since,omitempty" example:"2026-06-21T12:00:00Z"`
 	OnlineUntil *time.Time `json:"online_until,omitempty" example:"2026-06-22T12:00:00Z"`
-	AccessAs    string     `json:"access_as" binding:"required" example:"read"`
 }
 
 // DeleteSharesBody is the JSON body for deleting multiple shares in one call.
@@ -126,7 +122,6 @@ func noteShareReplyFromProto(share *proto.NoteShare) NoteShareReply {
 		CreatedBy:   share.GetCreatedBy(),
 		OnlineSince: onlineSince,
 		OnlineUntil: onlineUntil,
-		AccessAs:    share.GetAccessAs(),
 	}
 }
 
@@ -184,7 +179,6 @@ func shareFilterFromQuery(query GetSharesQuery) (*proto.ShareFilter, error) {
 	filter := &proto.ShareFilter{
 		NoteId:    query.NoteId,
 		CreatedBy: query.CreatedBy,
-		AccessAs:  query.AccessAs,
 	}
 
 	if ts, err := parseOptionalRFC3339(query.OnlineSince); err != nil {
@@ -217,7 +211,6 @@ func createShareProtoFromBody(body CreateShareBody, userID string) *proto.NoteSh
 		CreatedBy:   userID,
 		OnlineSince: timeToNullableProto(body.OnlineSince),
 		OnlineUntil: timeToNullableProto(body.OnlineUntil),
-		AccessAs:    body.AccessAs,
 	}
 }
 
@@ -232,7 +225,6 @@ func updateShareProtoFromBody(body UpdateShareBody, userID string) *proto.NoteSh
 		CreatedBy:   userID,
 		OnlineSince: timeToNullableProto(body.OnlineSince),
 		OnlineUntil: timeToNullableProto(body.OnlineUntil),
-		AccessAs:    body.AccessAs,
 	}
 }
 

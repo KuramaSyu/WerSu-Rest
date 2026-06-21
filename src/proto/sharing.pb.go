@@ -205,7 +205,6 @@ type NoteShare struct {
 	CreatedBy     string                 `protobuf:"bytes,5,opt,name=created_by,json=createdBy,proto3" json:"created_by,omitempty"`
 	OnlineSince   *NullableTimestamp     `protobuf:"bytes,6,opt,name=online_since,json=onlineSince,proto3" json:"online_since,omitempty"`
 	OnlineUntil   *NullableTimestamp     `protobuf:"bytes,7,opt,name=online_until,json=onlineUntil,proto3" json:"online_until,omitempty"`
-	AccessAs      string                 `protobuf:"bytes,8,opt,name=access_as,json=accessAs,proto3" json:"access_as,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -289,13 +288,6 @@ func (x *NoteShare) GetOnlineUntil() *NullableTimestamp {
 	return nil
 }
 
-func (x *NoteShare) GetAccessAs() string {
-	if x != nil {
-		return x.AccessAs
-	}
-	return ""
-}
-
 // Filter for searching shares.
 //
 // Date values are evaluated inclusively:
@@ -308,7 +300,6 @@ type ShareFilter struct {
 	CreatedBy     *string                `protobuf:"bytes,2,opt,name=created_by,json=createdBy,proto3,oneof" json:"created_by,omitempty"`
 	OnlineSince   *NullableTimestamp     `protobuf:"bytes,3,opt,name=online_since,json=onlineSince,proto3" json:"online_since,omitempty"`
 	OnlineUntil   *NullableTimestamp     `protobuf:"bytes,4,opt,name=online_until,json=onlineUntil,proto3" json:"online_until,omitempty"`
-	AccessAs      *string                `protobuf:"bytes,5,opt,name=access_as,json=accessAs,proto3,oneof" json:"access_as,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -369,13 +360,6 @@ func (x *ShareFilter) GetOnlineUntil() *NullableTimestamp {
 		return x.OnlineUntil
 	}
 	return nil
-}
-
-func (x *ShareFilter) GetAccessAs() string {
-	if x != nil && x.AccessAs != nil {
-		return *x.AccessAs
-	}
-	return ""
 }
 
 // Create one share. The requester user_id is used for permission checks.
@@ -661,7 +645,7 @@ const file_src_proto_sharing_proto_rawDesc = "" +
 	"\x05value\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\x05value\x12\x1f\n" +
 	"\n" +
 	"null_value\x18\x02 \x01(\bH\x00R\tnullValueB\x06\n" +
-	"\x04kind\"\xde\x02\n" +
+	"\x04kind\"\xc1\x02\n" +
 	"\tNoteShare\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x127\n" +
 	"\vdescription\x18\x02 \x01(\v2\x15.proto.NullableStringR\vdescription\x12\x17\n" +
@@ -671,20 +655,16 @@ const file_src_proto_sharing_proto_rawDesc = "" +
 	"\n" +
 	"created_by\x18\x05 \x01(\tR\tcreatedBy\x12;\n" +
 	"\fonline_since\x18\x06 \x01(\v2\x18.proto.NullableTimestampR\vonlineSince\x12;\n" +
-	"\fonline_until\x18\a \x01(\v2\x18.proto.NullableTimestampR\vonlineUntil\x12\x1b\n" +
-	"\taccess_as\x18\b \x01(\tR\baccessAs\"\x94\x02\n" +
+	"\fonline_until\x18\a \x01(\v2\x18.proto.NullableTimestampR\vonlineUntil\"\xe4\x01\n" +
 	"\vShareFilter\x12\x1c\n" +
 	"\anote_id\x18\x01 \x01(\tH\x00R\x06noteId\x88\x01\x01\x12\"\n" +
 	"\n" +
 	"created_by\x18\x02 \x01(\tH\x01R\tcreatedBy\x88\x01\x01\x12;\n" +
 	"\fonline_since\x18\x03 \x01(\v2\x18.proto.NullableTimestampR\vonlineSince\x12;\n" +
-	"\fonline_until\x18\x04 \x01(\v2\x18.proto.NullableTimestampR\vonlineUntil\x12 \n" +
-	"\taccess_as\x18\x05 \x01(\tH\x02R\baccessAs\x88\x01\x01B\n" +
+	"\fonline_until\x18\x04 \x01(\v2\x18.proto.NullableTimestampR\vonlineUntilB\n" +
 	"\n" +
 	"\b_note_idB\r\n" +
-	"\v_created_byB\f\n" +
-	"\n" +
-	"_access_as\"U\n" +
+	"\v_created_by\"U\n" +
 	"\x12CreateShareRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12&\n" +
 	"\x05share\x18\x02 \x01(\v2\x10.proto.NoteShareR\x05share\"U\n" +
