@@ -136,6 +136,17 @@ definitions:
       token:
         type: string
     type: object
+  controllers.GetPublicShareResponse:
+    properties:
+      access_as:
+        type: string
+      note_id:
+        type: string
+      online_since:
+        type: string
+      online_until:
+        type: string
+    type: object
   controllers.MinimalNote:
     properties:
       author_id:
@@ -1333,27 +1344,11 @@ paths:
     get:
       consumes:
       - application/json
-      description: Fetch shares via gRPC service
+      description: Public access to a share by ID via gRPC service
       parameters:
-      - description: Note ID
+      - description: Share ID
         in: query
-        name: note_id
-        type: string
-      - description: Creator user ID
-        in: query
-        name: created_by
-        type: string
-      - description: RFC3339 timestamp
-        in: query
-        name: online_since
-        type: string
-      - description: RFC3339 timestamp
-        in: query
-        name: online_until
-        type: string
-      - description: Access role
-        in: query
-        name: access_as
+        name: share_id
         type: string
       produces:
       - application/json
@@ -1361,9 +1356,7 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/controllers.NoteShareReply'
-            type: array
+            $ref: '#/definitions/controllers.GetPublicShareResponse'
         "400":
           description: Bad Request
           schema:
@@ -1376,7 +1369,7 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: List shares
+      summary: Access share by ID
       tags:
       - shares
     patch:

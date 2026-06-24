@@ -1344,7 +1344,7 @@ const docTemplate = `{
         },
         "/shares": {
             "get": {
-                "description": "Fetch shares via gRPC service",
+                "description": "Public access to a share by ID via gRPC service",
                 "consumes": [
                     "application/json"
                 ],
@@ -1354,36 +1354,12 @@ const docTemplate = `{
                 "tags": [
                     "shares"
                 ],
-                "summary": "List shares",
+                "summary": "Access share by ID",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Note ID",
-                        "name": "note_id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Creator user ID",
-                        "name": "created_by",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "RFC3339 timestamp",
-                        "name": "online_since",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "RFC3339 timestamp",
-                        "name": "online_until",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Access role",
-                        "name": "access_as",
+                        "description": "Share ID",
+                        "name": "share_id",
                         "in": "query"
                     }
                 ],
@@ -1391,10 +1367,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/controllers.NoteShareReply"
-                            }
+                            "$ref": "#/definitions/controllers.GetPublicShareResponse"
                         }
                     },
                     "400": {
@@ -1879,6 +1852,23 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "controllers.GetPublicShareResponse": {
+            "type": "object",
+            "properties": {
+                "access_as": {
+                    "type": "string"
+                },
+                "note_id": {
+                    "type": "string"
+                },
+                "online_since": {
+                    "type": "string"
+                },
+                "online_until": {
                     "type": "string"
                 }
             }
