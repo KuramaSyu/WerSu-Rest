@@ -50,6 +50,20 @@ type GetSharesQuery struct {
 	CreatedBy   *string `form:"created_by"`
 	OnlineSince *string `form:"online_since"`
 	OnlineUntil *string `form:"online_until"`
+	Until       *string `form:"online_until"`
+}
+
+// GetPublicShareQuery contains the share id of the share the user wants to access
+type GetPublicShareQuery struct {
+	ShareId string `form:"share_id" binding:"required"`
+}
+
+// the response of the GET /shares/public/ endpoint
+type GetPublicShareResponse struct {
+	AccessAs    string     `json:"access_as"`
+	OnlineSince *time.Time `json:"online_since,omitempty"`
+	OnlineUntil *time.Time `json:"online_until,omitempty"`
+	NoteId      string     `json:"note_id"`
 }
 
 // CreateShareBody represents the JSON body for creating a share.
@@ -516,4 +530,42 @@ func (sc *SharingController) DeleteShares(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+// GetShares godoc
+// @Summary Access share by ID
+// @Description Public access to a share by ID via gRPC service
+// @Tags shares
+// @Accept json
+// @Produce json
+// @Param share_id query string false "Share ID"
+// @Success 200 {object} GetPublicShareResponse
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /shares [get]
+func (sc *SharingController) AccessShare(c *gin.Context) {
+	// no user auth here, since this is public!
+
+	var query GetPublicShareQuery
+	if err := c.ShouldBindQuery(&query); err != nil {
+		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
+		return
+	}
+
+	stream, err := (*sc.SharingService).AccessShare(c, &proto.AccessShareRequest{
+		ShareId: query.ShareId,
+	})
+	if err != nil {
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch shares via gRPC service: %w", err))
+		return
+	}
+
+	share := &GetPublicShareResponse{
+		AccessAs:    stream.Share.AccessAs,
+		OnlineSince: unwrapNullableDatetime(stream.Share.OnlineSince),
+		OnlineUntil: unwrapNullableDatetime(stream.Share.OnlineUntil),
+		NoteId:      stream.Share.NoteId,
+	}
+
+	c.JSON(http.StatusOK, share)
 }

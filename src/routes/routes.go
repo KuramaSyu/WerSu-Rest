@@ -103,6 +103,7 @@ func SetupRouter(
 		{
 			shares.POST("", sharingController.CreateShare)
 			shares.GET("", sharingController.GetShares)
+			shares.GET("/public/", sharingController.AccessShare)
 			shares.DELETE("", sharingController.DeleteShares)
 			shares.PATCH("", sharingController.UpdateShare)
 		}
