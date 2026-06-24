@@ -102,7 +102,7 @@ func ConvertProtoMinimalNoteToRest(protoNote *proto.MinimalNote) MinimalNote {
 // @Router /notes/search [get]
 func (uc *SearchNotesController) GetNotes(c *gin.Context) {
 	// get user from session
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return

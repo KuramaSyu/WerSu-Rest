@@ -118,7 +118,7 @@ func attachmentMetadataReplyFromProto(
 // @Success 200 {object} AttachmentMetadataReply
 // @Router /attachments [post]
 func (ac *AttachmentController) PostAttachment(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -177,7 +177,7 @@ func (ac *AttachmentController) PostAttachment(c *gin.Context) {
 // @Success 200 {object} AttachmentMetadataReply
 // @Router /attachments/metadata [patch]
 func (ac *AttachmentController) PatchAttachmentMetadata(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -238,7 +238,7 @@ func (ac *AttachmentController) PatchAttachmentMetadata(c *gin.Context) {
 // @Success 200 {file} binary
 // @Router /attachments/{key} [get]
 func (ac *AttachmentController) GetAttachment(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -304,7 +304,7 @@ func (ac *AttachmentController) GetAttachment(c *gin.Context) {
 // @Success 200 {file} binary
 // @Router /attachments [get]
 func (ac *AttachmentController) GetImage(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -376,7 +376,7 @@ func (ac *AttachmentController) GetImage(c *gin.Context) {
 // @Success 200 {object} AttachmentMetadataReply
 // @Router /attachments/{key}/metadata [get]
 func (ac *AttachmentController) GetAttachmentMetadata(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -421,7 +421,7 @@ func (ac *AttachmentController) GetAttachmentMetadata(c *gin.Context) {
 // @Success 200 {object} proto.DeleteAttachmentResponse
 // @Router /attachments/{key} [delete]
 func (ac *AttachmentController) DeleteAttachment(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return

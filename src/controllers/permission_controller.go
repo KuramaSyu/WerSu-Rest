@@ -219,7 +219,7 @@ func permissionsReplyFromProto(response *proto.PermissionsResponse) PermissionsR
 // @Failure 500 {object} map[string]string
 // @Router /permissions [get]
 func (pc *PermissionController) GetPermissions(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -262,7 +262,7 @@ func (pc *PermissionController) GetPermissions(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /permissions [post]
 func (pc *PermissionController) CreatePermission(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -312,7 +312,7 @@ func (pc *PermissionController) CreatePermission(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /permissions [delete]
 func (pc *PermissionController) DeletePermission(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -362,7 +362,7 @@ func (pc *PermissionController) DeletePermission(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /permissions [put]
 func (pc *PermissionController) ReplacePermissions(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return

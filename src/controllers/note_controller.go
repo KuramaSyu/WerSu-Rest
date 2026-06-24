@@ -128,7 +128,7 @@ func NewNoteController(noteService *proto.NoteServiceClient) *NoteController {
 // @Router /notes/{id} [get]
 func (uc *NoteController) GetNote(c *gin.Context) {
 	// get user from session
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -164,7 +164,7 @@ func (uc *NoteController) GetNote(c *gin.Context) {
 // @Router /notes [post]
 func (uc *NoteController) PostNote(c *gin.Context) {
 	// get user from session
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -206,7 +206,7 @@ func (uc *NoteController) PostNote(c *gin.Context) {
 // @Router /notes [patch]
 func (uc *NoteController) PatchNote(c *gin.Context) {
 	// get user from session
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -249,7 +249,7 @@ func (uc *NoteController) PatchNote(c *gin.Context) {
 // @Router /notes/{id} [delete]
 func (uc *NoteController) DeleteNote(c *gin.Context) {
 	// get user from session
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return

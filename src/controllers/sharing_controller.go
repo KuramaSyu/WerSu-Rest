@@ -251,7 +251,7 @@ func updateShareProtoFromBody(body UpdateShareBody, userID string) *proto.NoteSh
 // @Failure 500 {object} map[string]string
 // @Router /shares/{id} [get]
 func (sc *SharingController) GetShareById(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -297,7 +297,7 @@ func (sc *SharingController) GetShareById(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /shares/by-id [get]
 func (sc *SharingController) GetSharesById(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -351,7 +351,7 @@ func (sc *SharingController) GetSharesById(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /shares [get]
 func (sc *SharingController) GetShares(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -407,7 +407,7 @@ func (sc *SharingController) GetShares(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /shares [post]
 func (sc *SharingController) CreateShare(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -451,7 +451,7 @@ func (sc *SharingController) CreateShare(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /shares [patch]
 func (sc *SharingController) UpdateShare(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -489,7 +489,7 @@ func (sc *SharingController) UpdateShare(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /shares [delete]
 func (sc *SharingController) DeleteShares(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return

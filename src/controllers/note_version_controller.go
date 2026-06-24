@@ -100,7 +100,7 @@ func noteVersionContentReplyFromProto(content *proto.NoteVersionContent) NoteVer
 // @Failure 400 {object} map[string]string
 // @Router /notes/{note_id}/versions [get]
 func (uc *NoteVersionController) ListNoteVersions(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -155,7 +155,7 @@ func (uc *NoteVersionController) ListNoteVersions(c *gin.Context) {
 // @Failure 400 {object} map[string]string
 // @Router /notes/{note_id}/versions/{version_index} [get]
 func (uc *NoteVersionController) GetNoteVersionContent(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -201,7 +201,7 @@ func (uc *NoteVersionController) GetNoteVersionContent(c *gin.Context) {
 // @Failure 400 {object} map[string]string
 // @Router /notes/{note_id}/versions/{version_index}/restore [post]
 func (uc *NoteVersionController) RestoreNoteVersion(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -253,7 +253,7 @@ func (uc *NoteVersionController) RestoreNoteVersion(c *gin.Context) {
 // @Router /directories/activity [get]
 // @Router /directories/{id}/activity [get]
 func (uc *NoteVersionController) GetDirectoryActivity(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return

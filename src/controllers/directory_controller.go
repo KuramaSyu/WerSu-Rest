@@ -86,7 +86,7 @@ func directoryReplyFromProto(directory *proto.Directory) DirectoryReply {
 // @Failure 500 {object} map[string]string
 // @Router /directories/{id} [get]
 func (dc *DirectoryController) GetDirectory(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -121,7 +121,7 @@ func (dc *DirectoryController) GetDirectory(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /directories [get]
 func (dc *DirectoryController) GetDirectories(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -173,7 +173,7 @@ func (dc *DirectoryController) GetDirectories(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /directories [post]
 func (dc *DirectoryController) CreateDirectory(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -213,7 +213,7 @@ func (dc *DirectoryController) CreateDirectory(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /directories [patch]
 func (dc *DirectoryController) PatchDirectory(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
@@ -254,7 +254,7 @@ func (dc *DirectoryController) PatchDirectory(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /directories/{id} [delete]
 func (dc *DirectoryController) DeleteDirectory(c *gin.Context) {
-	user, code, err := UserFromSession(c)
+	user, code, err := UserFromContext(c)
 	if err != nil {
 		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
