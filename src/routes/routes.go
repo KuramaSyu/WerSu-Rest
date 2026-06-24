@@ -115,6 +115,8 @@ func SetupRouter(
 	auth := api.Group("/auth")
 	{
 		auth.GET("/access-token", authController.GetAccessToken)
+		auth.POST("/public-access-token", authController.GetPublicAccessToken)
+
 		auth.GET("/discord", authController.Login)
 		auth.GET("/discord/callback", authController.Callback)
 		auth.GET("/user", authController.GetUser)
