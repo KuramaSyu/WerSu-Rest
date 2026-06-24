@@ -81,6 +81,28 @@ type DeleteSharesBody struct {
 	ShareIds []string `json:"share_ids" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 }
 
+// unwraps a nullable timestamp which returns the time if given, otherwise nil
+func unwrapNullableDatetime(nullable *proto.NullableTimestamp) *time.Time {
+	if nullable == nil {
+		return nil
+	}
+	if value, ok := nullable.Kind.(*proto.NullableTimestamp_Value); ok {
+		t := value.Value.AsTime()
+		return &t
+	}
+	return nil
+}
+
+// creates a nullable timestamp proto value from a time pointer
+func nullableTimestampFromTime(t *time.Time) *proto.NullableTimestamp {
+	if t == nil {
+		return nil
+	}
+	return &proto.NullableTimestamp{
+		Kind: &proto.NullableTimestamp_Value{Value: timestamppb.New(*t)},
+	}
+}
+
 // noteShareReplyFromProto converts a gRPC NoteShare into the REST response type.
 //
 // The conversion exists so that the API surface stays JSON-friendly and does not
@@ -93,21 +115,9 @@ func noteShareReplyFromProto(share *proto.NoteShare) NoteShareReply {
 		}
 	}
 
-	var onlineSince *time.Time
-	if share.GetOnlineSince() != nil {
-		if value, ok := share.GetOnlineSince().Kind.(*proto.NullableTimestamp_Value); ok {
-			t := value.Value.AsTime()
-			onlineSince = &t
-		}
-	}
+	onlineSince := unwrapNullableDatetime(share.GetOnlineSince())
 
-	var onlineUntil *time.Time
-	if share.GetOnlineUntil() != nil {
-		if value, ok := share.GetOnlineUntil().Kind.(*proto.NullableTimestamp_Value); ok {
-			t := value.Value.AsTime()
-			onlineUntil = &t
-		}
-	}
+	onlineUntil := unwrapNullableDatetime(share.GetOnlineUntil())
 
 	createdAt := time.Time{}
 	if share.GetCreatedAt() != nil {
@@ -413,7 +423,13 @@ func (sc *SharingController) CreateShare(c *gin.Context) {
 
 	created, err := (*sc.SharingService).CreateShare(c, &proto.CreateShareRequest{
 		UserId: user.ID,
-		Share:  share,
+		Description: &proto.NullableString{
+			Kind: &proto.NullableString_Value{Value: *body.Description},
+		},
+		NoteId:      body.NoteId,
+		OnlineSince: nullableTimestampFromTime(body.OnlineSince),
+		OnlineUntil: nullableTimestampFromTime(body.OnlineUntil),
+		Permission:  share.Permission,
 	})
 	if err != nil {
 		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to create share via gRPC service: %w", err))
