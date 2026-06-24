@@ -4,7 +4,8 @@ import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
 package proto;
-option go_package = "github.com/KuramaSyu/WerSu-Rest/src/proto;proto";
+option go_package = "github.com/KuramaSyu/Wersu-Rest/src/proto;proto";
+
 
 // String value wrapper for fields where the API needs to distinguish:
 // - field omitted: leave unchanged / do not filter
@@ -28,6 +29,13 @@ message NullableTimestamp {
     }
 }
 
+// the permission a share can have
+enum SharePermission {
+    SHARE_PERMISSION_UNSPECIFIED = 0;
+    SHARE_PERMISSION_READ = 1;
+    SHARE_PERMISSION_WRITE = 2;
+}
+
 // A persisted share entry for a note.
 message NoteShare {
     string id = 1;
@@ -37,6 +45,8 @@ message NoteShare {
     string created_by = 5;
     NullableTimestamp online_since = 6;
     NullableTimestamp online_until = 7;
+    SharePermission permission = 8;
+    string access_as = 9;
 }
 
 // Filter for searching shares.
@@ -55,8 +65,34 @@ message ShareFilter {
 // Create one share. The requester user_id is used for permission checks.
 message CreateShareRequest {
     string user_id = 1;
-    NoteShare share = 2;
+    NullableString description = 2;
+    string note_id = 3;
+    NullableTimestamp online_since = 4;
+    NullableTimestamp online_until = 5;
+    SharePermission permission = 6;
 }
+
+// Access a share by its ID. This ID is part of the share URL /public/n/<share_id>
+message AccessShareRequest {
+    string share_id = 1;
+}
+
+// Response for an access share request, containing the note associated with the share
+message AccessShareResponse {
+    NoteShare share = 1;
+}
+
+// request with share id to get the temporary user id that can be used to access the share. 
+message GetShareUserRequest {
+    string share_id = 1;
+}
+
+// Response for a get share user request, containing the temporary user id 
+message GetShareUserResponse {
+    string access_as = 1;
+    NullableTimestamp online_until = 2;
+}
+
 
 // Update one share. Only fields present on share should be updated.
 // The requester user_id is used for permission checks.
@@ -92,4 +128,7 @@ service SharingService {
     rpc GetSharesById(GetSharesByIdRequest) returns (stream NoteShare);
     rpc GetShares(GetSharesRequest) returns (stream NoteShare);
     rpc DeleteShares(DeleteSharesRequest) returns (google.protobuf.Empty);
+
+    rpc AccessShare(AccessShareRequest) returns (AccessShareResponse);
+    rpc GetShareUser(GetShareUserRequest) returns (GetShareUserResponse);
 }

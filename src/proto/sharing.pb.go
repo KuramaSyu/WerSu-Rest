@@ -23,6 +23,56 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// the permission a share can have
+type SharePermission int32
+
+const (
+	SharePermission_SHARE_PERMISSION_UNSPECIFIED SharePermission = 0
+	SharePermission_SHARE_PERMISSION_READ        SharePermission = 1
+	SharePermission_SHARE_PERMISSION_WRITE       SharePermission = 2
+)
+
+// Enum value maps for SharePermission.
+var (
+	SharePermission_name = map[int32]string{
+		0: "SHARE_PERMISSION_UNSPECIFIED",
+		1: "SHARE_PERMISSION_READ",
+		2: "SHARE_PERMISSION_WRITE",
+	}
+	SharePermission_value = map[string]int32{
+		"SHARE_PERMISSION_UNSPECIFIED": 0,
+		"SHARE_PERMISSION_READ":        1,
+		"SHARE_PERMISSION_WRITE":       2,
+	}
+)
+
+func (x SharePermission) Enum() *SharePermission {
+	p := new(SharePermission)
+	*p = x
+	return p
+}
+
+func (x SharePermission) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SharePermission) Descriptor() protoreflect.EnumDescriptor {
+	return file_src_proto_sharing_proto_enumTypes[0].Descriptor()
+}
+
+func (SharePermission) Type() protoreflect.EnumType {
+	return &file_src_proto_sharing_proto_enumTypes[0]
+}
+
+func (x SharePermission) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SharePermission.Descriptor instead.
+func (SharePermission) EnumDescriptor() ([]byte, []int) {
+	return file_src_proto_sharing_proto_rawDescGZIP(), []int{0}
+}
+
 // String value wrapper for fields where the API needs to distinguish:
 // - field omitted: leave unchanged / do not filter
 // - null_value=true: explicitly set or search for NULL
@@ -205,6 +255,8 @@ type NoteShare struct {
 	CreatedBy     string                 `protobuf:"bytes,5,opt,name=created_by,json=createdBy,proto3" json:"created_by,omitempty"`
 	OnlineSince   *NullableTimestamp     `protobuf:"bytes,6,opt,name=online_since,json=onlineSince,proto3" json:"online_since,omitempty"`
 	OnlineUntil   *NullableTimestamp     `protobuf:"bytes,7,opt,name=online_until,json=onlineUntil,proto3" json:"online_until,omitempty"`
+	Permission    SharePermission        `protobuf:"varint,8,opt,name=permission,proto3,enum=proto.SharePermission" json:"permission,omitempty"`
+	AccessAs      string                 `protobuf:"bytes,9,opt,name=access_as,json=accessAs,proto3" json:"access_as,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -288,6 +340,20 @@ func (x *NoteShare) GetOnlineUntil() *NullableTimestamp {
 	return nil
 }
 
+func (x *NoteShare) GetPermission() SharePermission {
+	if x != nil {
+		return x.Permission
+	}
+	return SharePermission_SHARE_PERMISSION_UNSPECIFIED
+}
+
+func (x *NoteShare) GetAccessAs() string {
+	if x != nil {
+		return x.AccessAs
+	}
+	return ""
+}
+
 // Filter for searching shares.
 //
 // Date values are evaluated inclusively:
@@ -366,7 +432,11 @@ func (x *ShareFilter) GetOnlineUntil() *NullableTimestamp {
 type CreateShareRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Share         *NoteShare             `protobuf:"bytes,2,opt,name=share,proto3" json:"share,omitempty"`
+	Description   *NullableString        `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	NoteId        string                 `protobuf:"bytes,3,opt,name=note_id,json=noteId,proto3" json:"note_id,omitempty"`
+	OnlineSince   *NullableTimestamp     `protobuf:"bytes,4,opt,name=online_since,json=onlineSince,proto3" json:"online_since,omitempty"`
+	OnlineUntil   *NullableTimestamp     `protobuf:"bytes,5,opt,name=online_until,json=onlineUntil,proto3" json:"online_until,omitempty"`
+	Permission    SharePermission        `protobuf:"varint,6,opt,name=permission,proto3,enum=proto.SharePermission" json:"permission,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -408,9 +478,225 @@ func (x *CreateShareRequest) GetUserId() string {
 	return ""
 }
 
-func (x *CreateShareRequest) GetShare() *NoteShare {
+func (x *CreateShareRequest) GetDescription() *NullableString {
+	if x != nil {
+		return x.Description
+	}
+	return nil
+}
+
+func (x *CreateShareRequest) GetNoteId() string {
+	if x != nil {
+		return x.NoteId
+	}
+	return ""
+}
+
+func (x *CreateShareRequest) GetOnlineSince() *NullableTimestamp {
+	if x != nil {
+		return x.OnlineSince
+	}
+	return nil
+}
+
+func (x *CreateShareRequest) GetOnlineUntil() *NullableTimestamp {
+	if x != nil {
+		return x.OnlineUntil
+	}
+	return nil
+}
+
+func (x *CreateShareRequest) GetPermission() SharePermission {
+	if x != nil {
+		return x.Permission
+	}
+	return SharePermission_SHARE_PERMISSION_UNSPECIFIED
+}
+
+// Access a share by its ID. This ID is part of the share URL /public/n/<share_id>
+type AccessShareRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ShareId       string                 `protobuf:"bytes,1,opt,name=share_id,json=shareId,proto3" json:"share_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AccessShareRequest) Reset() {
+	*x = AccessShareRequest{}
+	mi := &file_src_proto_sharing_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AccessShareRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AccessShareRequest) ProtoMessage() {}
+
+func (x *AccessShareRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_src_proto_sharing_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AccessShareRequest.ProtoReflect.Descriptor instead.
+func (*AccessShareRequest) Descriptor() ([]byte, []int) {
+	return file_src_proto_sharing_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *AccessShareRequest) GetShareId() string {
+	if x != nil {
+		return x.ShareId
+	}
+	return ""
+}
+
+// Response for an access share request, containing the note associated with the share
+type AccessShareResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Share         *NoteShare             `protobuf:"bytes,1,opt,name=share,proto3" json:"share,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AccessShareResponse) Reset() {
+	*x = AccessShareResponse{}
+	mi := &file_src_proto_sharing_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AccessShareResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AccessShareResponse) ProtoMessage() {}
+
+func (x *AccessShareResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_src_proto_sharing_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AccessShareResponse.ProtoReflect.Descriptor instead.
+func (*AccessShareResponse) Descriptor() ([]byte, []int) {
+	return file_src_proto_sharing_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *AccessShareResponse) GetShare() *NoteShare {
 	if x != nil {
 		return x.Share
+	}
+	return nil
+}
+
+// request with share id to get the temporary user id that can be used to access the share.
+type GetShareUserRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ShareId       string                 `protobuf:"bytes,1,opt,name=share_id,json=shareId,proto3" json:"share_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetShareUserRequest) Reset() {
+	*x = GetShareUserRequest{}
+	mi := &file_src_proto_sharing_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetShareUserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetShareUserRequest) ProtoMessage() {}
+
+func (x *GetShareUserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_src_proto_sharing_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetShareUserRequest.ProtoReflect.Descriptor instead.
+func (*GetShareUserRequest) Descriptor() ([]byte, []int) {
+	return file_src_proto_sharing_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GetShareUserRequest) GetShareId() string {
+	if x != nil {
+		return x.ShareId
+	}
+	return ""
+}
+
+// Response for a get share user request, containing the temporary user id
+type GetShareUserResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccessAs      string                 `protobuf:"bytes,1,opt,name=access_as,json=accessAs,proto3" json:"access_as,omitempty"`
+	OnlineUntil   *NullableTimestamp     `protobuf:"bytes,2,opt,name=online_until,json=onlineUntil,proto3" json:"online_until,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetShareUserResponse) Reset() {
+	*x = GetShareUserResponse{}
+	mi := &file_src_proto_sharing_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetShareUserResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetShareUserResponse) ProtoMessage() {}
+
+func (x *GetShareUserResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_src_proto_sharing_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetShareUserResponse.ProtoReflect.Descriptor instead.
+func (*GetShareUserResponse) Descriptor() ([]byte, []int) {
+	return file_src_proto_sharing_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GetShareUserResponse) GetAccessAs() string {
+	if x != nil {
+		return x.AccessAs
+	}
+	return ""
+}
+
+func (x *GetShareUserResponse) GetOnlineUntil() *NullableTimestamp {
+	if x != nil {
+		return x.OnlineUntil
 	}
 	return nil
 }
@@ -427,7 +713,7 @@ type UpdateShareRequest struct {
 
 func (x *UpdateShareRequest) Reset() {
 	*x = UpdateShareRequest{}
-	mi := &file_src_proto_sharing_proto_msgTypes[5]
+	mi := &file_src_proto_sharing_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -439,7 +725,7 @@ func (x *UpdateShareRequest) String() string {
 func (*UpdateShareRequest) ProtoMessage() {}
 
 func (x *UpdateShareRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_sharing_proto_msgTypes[5]
+	mi := &file_src_proto_sharing_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -452,7 +738,7 @@ func (x *UpdateShareRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateShareRequest.ProtoReflect.Descriptor instead.
 func (*UpdateShareRequest) Descriptor() ([]byte, []int) {
-	return file_src_proto_sharing_proto_rawDescGZIP(), []int{5}
+	return file_src_proto_sharing_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *UpdateShareRequest) GetUserId() string {
@@ -481,7 +767,7 @@ type GetSharesByIdRequest struct {
 
 func (x *GetSharesByIdRequest) Reset() {
 	*x = GetSharesByIdRequest{}
-	mi := &file_src_proto_sharing_proto_msgTypes[6]
+	mi := &file_src_proto_sharing_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -493,7 +779,7 @@ func (x *GetSharesByIdRequest) String() string {
 func (*GetSharesByIdRequest) ProtoMessage() {}
 
 func (x *GetSharesByIdRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_sharing_proto_msgTypes[6]
+	mi := &file_src_proto_sharing_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -506,7 +792,7 @@ func (x *GetSharesByIdRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSharesByIdRequest.ProtoReflect.Descriptor instead.
 func (*GetSharesByIdRequest) Descriptor() ([]byte, []int) {
-	return file_src_proto_sharing_proto_rawDescGZIP(), []int{6}
+	return file_src_proto_sharing_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GetSharesByIdRequest) GetUserId() string {
@@ -535,7 +821,7 @@ type GetSharesRequest struct {
 
 func (x *GetSharesRequest) Reset() {
 	*x = GetSharesRequest{}
-	mi := &file_src_proto_sharing_proto_msgTypes[7]
+	mi := &file_src_proto_sharing_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -547,7 +833,7 @@ func (x *GetSharesRequest) String() string {
 func (*GetSharesRequest) ProtoMessage() {}
 
 func (x *GetSharesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_sharing_proto_msgTypes[7]
+	mi := &file_src_proto_sharing_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -560,7 +846,7 @@ func (x *GetSharesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSharesRequest.ProtoReflect.Descriptor instead.
 func (*GetSharesRequest) Descriptor() ([]byte, []int) {
-	return file_src_proto_sharing_proto_rawDescGZIP(), []int{7}
+	return file_src_proto_sharing_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetSharesRequest) GetUserId() string {
@@ -589,7 +875,7 @@ type DeleteSharesRequest struct {
 
 func (x *DeleteSharesRequest) Reset() {
 	*x = DeleteSharesRequest{}
-	mi := &file_src_proto_sharing_proto_msgTypes[8]
+	mi := &file_src_proto_sharing_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -601,7 +887,7 @@ func (x *DeleteSharesRequest) String() string {
 func (*DeleteSharesRequest) ProtoMessage() {}
 
 func (x *DeleteSharesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_sharing_proto_msgTypes[8]
+	mi := &file_src_proto_sharing_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -614,7 +900,7 @@ func (x *DeleteSharesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSharesRequest.ProtoReflect.Descriptor instead.
 func (*DeleteSharesRequest) Descriptor() ([]byte, []int) {
-	return file_src_proto_sharing_proto_rawDescGZIP(), []int{8}
+	return file_src_proto_sharing_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *DeleteSharesRequest) GetUserId() string {
@@ -645,7 +931,7 @@ const file_src_proto_sharing_proto_rawDesc = "" +
 	"\x05value\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampH\x00R\x05value\x12\x1f\n" +
 	"\n" +
 	"null_value\x18\x02 \x01(\bH\x00R\tnullValueB\x06\n" +
-	"\x04kind\"\xc1\x02\n" +
+	"\x04kind\"\x96\x03\n" +
 	"\tNoteShare\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x127\n" +
 	"\vdescription\x18\x02 \x01(\v2\x15.proto.NullableStringR\vdescription\x12\x17\n" +
@@ -655,7 +941,11 @@ const file_src_proto_sharing_proto_rawDesc = "" +
 	"\n" +
 	"created_by\x18\x05 \x01(\tR\tcreatedBy\x12;\n" +
 	"\fonline_since\x18\x06 \x01(\v2\x18.proto.NullableTimestampR\vonlineSince\x12;\n" +
-	"\fonline_until\x18\a \x01(\v2\x18.proto.NullableTimestampR\vonlineUntil\"\xe4\x01\n" +
+	"\fonline_until\x18\a \x01(\v2\x18.proto.NullableTimestampR\vonlineUntil\x126\n" +
+	"\n" +
+	"permission\x18\b \x01(\x0e2\x16.proto.SharePermissionR\n" +
+	"permission\x12\x1b\n" +
+	"\taccess_as\x18\t \x01(\tR\baccessAs\"\xe4\x01\n" +
 	"\vShareFilter\x12\x1c\n" +
 	"\anote_id\x18\x01 \x01(\tH\x00R\x06noteId\x88\x01\x01\x12\"\n" +
 	"\n" +
@@ -664,10 +954,25 @@ const file_src_proto_sharing_proto_rawDesc = "" +
 	"\fonline_until\x18\x04 \x01(\v2\x18.proto.NullableTimestampR\vonlineUntilB\n" +
 	"\n" +
 	"\b_note_idB\r\n" +
-	"\v_created_by\"U\n" +
+	"\v_created_by\"\xb1\x02\n" +
 	"\x12CreateShareRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\x12&\n" +
-	"\x05share\x18\x02 \x01(\v2\x10.proto.NoteShareR\x05share\"U\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x127\n" +
+	"\vdescription\x18\x02 \x01(\v2\x15.proto.NullableStringR\vdescription\x12\x17\n" +
+	"\anote_id\x18\x03 \x01(\tR\x06noteId\x12;\n" +
+	"\fonline_since\x18\x04 \x01(\v2\x18.proto.NullableTimestampR\vonlineSince\x12;\n" +
+	"\fonline_until\x18\x05 \x01(\v2\x18.proto.NullableTimestampR\vonlineUntil\x126\n" +
+	"\n" +
+	"permission\x18\x06 \x01(\x0e2\x16.proto.SharePermissionR\n" +
+	"permission\"/\n" +
+	"\x12AccessShareRequest\x12\x19\n" +
+	"\bshare_id\x18\x01 \x01(\tR\ashareId\"=\n" +
+	"\x13AccessShareResponse\x12&\n" +
+	"\x05share\x18\x01 \x01(\v2\x10.proto.NoteShareR\x05share\"0\n" +
+	"\x13GetShareUserRequest\x12\x19\n" +
+	"\bshare_id\x18\x01 \x01(\tR\ashareId\"p\n" +
+	"\x14GetShareUserResponse\x12\x1b\n" +
+	"\taccess_as\x18\x01 \x01(\tR\baccessAs\x12;\n" +
+	"\fonline_until\x18\x02 \x01(\v2\x18.proto.NullableTimestampR\vonlineUntil\"U\n" +
 	"\x12UpdateShareRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12&\n" +
 	"\x05share\x18\x02 \x01(\v2\x10.proto.NoteShareR\x05share\"L\n" +
@@ -679,13 +984,19 @@ const file_src_proto_sharing_proto_rawDesc = "" +
 	"\x06filter\x18\x02 \x01(\v2\x12.proto.ShareFilterR\x06filter\"K\n" +
 	"\x13DeleteSharesRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1b\n" +
-	"\tshare_ids\x18\x02 \x03(\tR\bshareIds2\xc8\x02\n" +
+	"\tshare_ids\x18\x02 \x03(\tR\bshareIds*j\n" +
+	"\x0fSharePermission\x12 \n" +
+	"\x1cSHARE_PERMISSION_UNSPECIFIED\x10\x00\x12\x19\n" +
+	"\x15SHARE_PERMISSION_READ\x10\x01\x12\x1a\n" +
+	"\x16SHARE_PERMISSION_WRITE\x10\x022\xd7\x03\n" +
 	"\x0eSharingService\x12:\n" +
 	"\vCreateShare\x12\x19.proto.CreateShareRequest\x1a\x10.proto.NoteShare\x12:\n" +
 	"\vUpdateShare\x12\x19.proto.UpdateShareRequest\x1a\x10.proto.NoteShare\x12@\n" +
 	"\rGetSharesById\x12\x1b.proto.GetSharesByIdRequest\x1a\x10.proto.NoteShare0\x01\x128\n" +
 	"\tGetShares\x12\x17.proto.GetSharesRequest\x1a\x10.proto.NoteShare0\x01\x12B\n" +
-	"\fDeleteShares\x12\x1a.proto.DeleteSharesRequest\x1a\x16.google.protobuf.EmptyB1Z/github.com/KuramaSyu/WerSu-Rest/src/proto;protob\x06proto3"
+	"\fDeleteShares\x12\x1a.proto.DeleteSharesRequest\x1a\x16.google.protobuf.Empty\x12D\n" +
+	"\vAccessShare\x12\x19.proto.AccessShareRequest\x1a\x1a.proto.AccessShareResponse\x12G\n" +
+	"\fGetShareUser\x12\x1a.proto.GetShareUserRequest\x1a\x1b.proto.GetShareUserResponseB1Z/github.com/KuramaSyu/Wersu-Rest/src/proto;protob\x06proto3"
 
 var (
 	file_src_proto_sharing_proto_rawDescOnce sync.Once
@@ -699,46 +1010,62 @@ func file_src_proto_sharing_proto_rawDescGZIP() []byte {
 	return file_src_proto_sharing_proto_rawDescData
 }
 
-var file_src_proto_sharing_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_src_proto_sharing_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_src_proto_sharing_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_src_proto_sharing_proto_goTypes = []any{
-	(*NullableString)(nil),        // 0: proto.NullableString
-	(*NullableTimestamp)(nil),     // 1: proto.NullableTimestamp
-	(*NoteShare)(nil),             // 2: proto.NoteShare
-	(*ShareFilter)(nil),           // 3: proto.ShareFilter
-	(*CreateShareRequest)(nil),    // 4: proto.CreateShareRequest
-	(*UpdateShareRequest)(nil),    // 5: proto.UpdateShareRequest
-	(*GetSharesByIdRequest)(nil),  // 6: proto.GetSharesByIdRequest
-	(*GetSharesRequest)(nil),      // 7: proto.GetSharesRequest
-	(*DeleteSharesRequest)(nil),   // 8: proto.DeleteSharesRequest
-	(*timestamppb.Timestamp)(nil), // 9: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),         // 10: google.protobuf.Empty
+	(SharePermission)(0),          // 0: proto.SharePermission
+	(*NullableString)(nil),        // 1: proto.NullableString
+	(*NullableTimestamp)(nil),     // 2: proto.NullableTimestamp
+	(*NoteShare)(nil),             // 3: proto.NoteShare
+	(*ShareFilter)(nil),           // 4: proto.ShareFilter
+	(*CreateShareRequest)(nil),    // 5: proto.CreateShareRequest
+	(*AccessShareRequest)(nil),    // 6: proto.AccessShareRequest
+	(*AccessShareResponse)(nil),   // 7: proto.AccessShareResponse
+	(*GetShareUserRequest)(nil),   // 8: proto.GetShareUserRequest
+	(*GetShareUserResponse)(nil),  // 9: proto.GetShareUserResponse
+	(*UpdateShareRequest)(nil),    // 10: proto.UpdateShareRequest
+	(*GetSharesByIdRequest)(nil),  // 11: proto.GetSharesByIdRequest
+	(*GetSharesRequest)(nil),      // 12: proto.GetSharesRequest
+	(*DeleteSharesRequest)(nil),   // 13: proto.DeleteSharesRequest
+	(*timestamppb.Timestamp)(nil), // 14: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),         // 15: google.protobuf.Empty
 }
 var file_src_proto_sharing_proto_depIdxs = []int32{
-	9,  // 0: proto.NullableTimestamp.value:type_name -> google.protobuf.Timestamp
-	0,  // 1: proto.NoteShare.description:type_name -> proto.NullableString
-	9,  // 2: proto.NoteShare.created_at:type_name -> google.protobuf.Timestamp
-	1,  // 3: proto.NoteShare.online_since:type_name -> proto.NullableTimestamp
-	1,  // 4: proto.NoteShare.online_until:type_name -> proto.NullableTimestamp
-	1,  // 5: proto.ShareFilter.online_since:type_name -> proto.NullableTimestamp
-	1,  // 6: proto.ShareFilter.online_until:type_name -> proto.NullableTimestamp
-	2,  // 7: proto.CreateShareRequest.share:type_name -> proto.NoteShare
-	2,  // 8: proto.UpdateShareRequest.share:type_name -> proto.NoteShare
-	3,  // 9: proto.GetSharesRequest.filter:type_name -> proto.ShareFilter
-	4,  // 10: proto.SharingService.CreateShare:input_type -> proto.CreateShareRequest
-	5,  // 11: proto.SharingService.UpdateShare:input_type -> proto.UpdateShareRequest
-	6,  // 12: proto.SharingService.GetSharesById:input_type -> proto.GetSharesByIdRequest
-	7,  // 13: proto.SharingService.GetShares:input_type -> proto.GetSharesRequest
-	8,  // 14: proto.SharingService.DeleteShares:input_type -> proto.DeleteSharesRequest
-	2,  // 15: proto.SharingService.CreateShare:output_type -> proto.NoteShare
-	2,  // 16: proto.SharingService.UpdateShare:output_type -> proto.NoteShare
-	2,  // 17: proto.SharingService.GetSharesById:output_type -> proto.NoteShare
-	2,  // 18: proto.SharingService.GetShares:output_type -> proto.NoteShare
-	10, // 19: proto.SharingService.DeleteShares:output_type -> google.protobuf.Empty
-	15, // [15:20] is the sub-list for method output_type
-	10, // [10:15] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	14, // 0: proto.NullableTimestamp.value:type_name -> google.protobuf.Timestamp
+	1,  // 1: proto.NoteShare.description:type_name -> proto.NullableString
+	14, // 2: proto.NoteShare.created_at:type_name -> google.protobuf.Timestamp
+	2,  // 3: proto.NoteShare.online_since:type_name -> proto.NullableTimestamp
+	2,  // 4: proto.NoteShare.online_until:type_name -> proto.NullableTimestamp
+	0,  // 5: proto.NoteShare.permission:type_name -> proto.SharePermission
+	2,  // 6: proto.ShareFilter.online_since:type_name -> proto.NullableTimestamp
+	2,  // 7: proto.ShareFilter.online_until:type_name -> proto.NullableTimestamp
+	1,  // 8: proto.CreateShareRequest.description:type_name -> proto.NullableString
+	2,  // 9: proto.CreateShareRequest.online_since:type_name -> proto.NullableTimestamp
+	2,  // 10: proto.CreateShareRequest.online_until:type_name -> proto.NullableTimestamp
+	0,  // 11: proto.CreateShareRequest.permission:type_name -> proto.SharePermission
+	3,  // 12: proto.AccessShareResponse.share:type_name -> proto.NoteShare
+	2,  // 13: proto.GetShareUserResponse.online_until:type_name -> proto.NullableTimestamp
+	3,  // 14: proto.UpdateShareRequest.share:type_name -> proto.NoteShare
+	4,  // 15: proto.GetSharesRequest.filter:type_name -> proto.ShareFilter
+	5,  // 16: proto.SharingService.CreateShare:input_type -> proto.CreateShareRequest
+	10, // 17: proto.SharingService.UpdateShare:input_type -> proto.UpdateShareRequest
+	11, // 18: proto.SharingService.GetSharesById:input_type -> proto.GetSharesByIdRequest
+	12, // 19: proto.SharingService.GetShares:input_type -> proto.GetSharesRequest
+	13, // 20: proto.SharingService.DeleteShares:input_type -> proto.DeleteSharesRequest
+	6,  // 21: proto.SharingService.AccessShare:input_type -> proto.AccessShareRequest
+	8,  // 22: proto.SharingService.GetShareUser:input_type -> proto.GetShareUserRequest
+	3,  // 23: proto.SharingService.CreateShare:output_type -> proto.NoteShare
+	3,  // 24: proto.SharingService.UpdateShare:output_type -> proto.NoteShare
+	3,  // 25: proto.SharingService.GetSharesById:output_type -> proto.NoteShare
+	3,  // 26: proto.SharingService.GetShares:output_type -> proto.NoteShare
+	15, // 27: proto.SharingService.DeleteShares:output_type -> google.protobuf.Empty
+	7,  // 28: proto.SharingService.AccessShare:output_type -> proto.AccessShareResponse
+	9,  // 29: proto.SharingService.GetShareUser:output_type -> proto.GetShareUserResponse
+	23, // [23:30] is the sub-list for method output_type
+	16, // [16:23] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_src_proto_sharing_proto_init() }
@@ -760,13 +1087,14 @@ func file_src_proto_sharing_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_src_proto_sharing_proto_rawDesc), len(file_src_proto_sharing_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   9,
+			NumEnums:      1,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_src_proto_sharing_proto_goTypes,
 		DependencyIndexes: file_src_proto_sharing_proto_depIdxs,
+		EnumInfos:         file_src_proto_sharing_proto_enumTypes,
 		MessageInfos:      file_src_proto_sharing_proto_msgTypes,
 	}.Build()
 	File_src_proto_sharing_proto = out.File

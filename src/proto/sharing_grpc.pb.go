@@ -25,6 +25,8 @@ const (
 	SharingService_GetSharesById_FullMethodName = "/proto.SharingService/GetSharesById"
 	SharingService_GetShares_FullMethodName     = "/proto.SharingService/GetShares"
 	SharingService_DeleteShares_FullMethodName  = "/proto.SharingService/DeleteShares"
+	SharingService_AccessShare_FullMethodName   = "/proto.SharingService/AccessShare"
+	SharingService_GetShareUser_FullMethodName  = "/proto.SharingService/GetShareUser"
 )
 
 // SharingServiceClient is the client API for SharingService service.
@@ -36,6 +38,8 @@ type SharingServiceClient interface {
 	GetSharesById(ctx context.Context, in *GetSharesByIdRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[NoteShare], error)
 	GetShares(ctx context.Context, in *GetSharesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[NoteShare], error)
 	DeleteShares(ctx context.Context, in *DeleteSharesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	AccessShare(ctx context.Context, in *AccessShareRequest, opts ...grpc.CallOption) (*AccessShareResponse, error)
+	GetShareUser(ctx context.Context, in *GetShareUserRequest, opts ...grpc.CallOption) (*GetShareUserResponse, error)
 }
 
 type sharingServiceClient struct {
@@ -114,6 +118,26 @@ func (c *sharingServiceClient) DeleteShares(ctx context.Context, in *DeleteShare
 	return out, nil
 }
 
+func (c *sharingServiceClient) AccessShare(ctx context.Context, in *AccessShareRequest, opts ...grpc.CallOption) (*AccessShareResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AccessShareResponse)
+	err := c.cc.Invoke(ctx, SharingService_AccessShare_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *sharingServiceClient) GetShareUser(ctx context.Context, in *GetShareUserRequest, opts ...grpc.CallOption) (*GetShareUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetShareUserResponse)
+	err := c.cc.Invoke(ctx, SharingService_GetShareUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SharingServiceServer is the server API for SharingService service.
 // All implementations must embed UnimplementedSharingServiceServer
 // for forward compatibility.
@@ -123,6 +147,8 @@ type SharingServiceServer interface {
 	GetSharesById(*GetSharesByIdRequest, grpc.ServerStreamingServer[NoteShare]) error
 	GetShares(*GetSharesRequest, grpc.ServerStreamingServer[NoteShare]) error
 	DeleteShares(context.Context, *DeleteSharesRequest) (*emptypb.Empty, error)
+	AccessShare(context.Context, *AccessShareRequest) (*AccessShareResponse, error)
+	GetShareUser(context.Context, *GetShareUserRequest) (*GetShareUserResponse, error)
 	mustEmbedUnimplementedSharingServiceServer()
 }
 
@@ -147,6 +173,12 @@ func (UnimplementedSharingServiceServer) GetShares(*GetSharesRequest, grpc.Serve
 }
 func (UnimplementedSharingServiceServer) DeleteShares(context.Context, *DeleteSharesRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteShares not implemented")
+}
+func (UnimplementedSharingServiceServer) AccessShare(context.Context, *AccessShareRequest) (*AccessShareResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AccessShare not implemented")
+}
+func (UnimplementedSharingServiceServer) GetShareUser(context.Context, *GetShareUserRequest) (*GetShareUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetShareUser not implemented")
 }
 func (UnimplementedSharingServiceServer) mustEmbedUnimplementedSharingServiceServer() {}
 func (UnimplementedSharingServiceServer) testEmbeddedByValue()                        {}
@@ -245,6 +277,42 @@ func _SharingService_DeleteShares_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SharingService_AccessShare_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AccessShareRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SharingServiceServer).AccessShare(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SharingService_AccessShare_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SharingServiceServer).AccessShare(ctx, req.(*AccessShareRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SharingService_GetShareUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetShareUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SharingServiceServer).GetShareUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SharingService_GetShareUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SharingServiceServer).GetShareUser(ctx, req.(*GetShareUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SharingService_ServiceDesc is the grpc.ServiceDesc for SharingService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -263,6 +331,14 @@ var SharingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteShares",
 			Handler:    _SharingService_DeleteShares_Handler,
+		},
+		{
+			MethodName: "AccessShare",
+			Handler:    _SharingService_AccessShare_Handler,
+		},
+		{
+			MethodName: "GetShareUser",
+			Handler:    _SharingService_GetShareUser_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
