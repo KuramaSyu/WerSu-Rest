@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/KuramaSyu/WerSu-Rest/src/config"
 	"github.com/KuramaSyu/WerSu-Rest/src/models"
@@ -15,36 +14,36 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-type AccessClaims struct {
-	Subject string `json:"sub"`
-
-	jwt.RegisteredClaims
-}
 
 // The Response of the GET /auth/access-token reply
 type GetAccessTokenReply struct {
 	Token string `json:"token"`
 }
 
+type PostAccessTokenRequest struct {
+	// verify with the ID of a share
+	ShareId string `json:"share_id"`
+}
+
 // AuthController handles authentication logic
 type AuthController struct {
-	OAuthConfig *oauth2.Config
-	userService *proto.UserServiceClient
-	JWTSecret   string
+	OAuthConfig  *oauth2.Config
+	userService  *proto.UserServiceClient
+	shareService *proto.SharingServiceClient
+	JWTSecret    string
 }
 
 // NewAuthController creates a new auth controller
-func NewAuthController(oauthConfig *oauth2.Config, userService *proto.UserServiceClient, jwtSecret string) *AuthController {
+func NewAuthController(oauthConfig *oauth2.Config, userService *proto.UserServiceClient, shareService *proto.SharingServiceClient, jwtSecret string) *AuthController {
 	return &AuthController{
-		OAuthConfig: oauthConfig,
-		userService: userService,
-		JWTSecret:   jwtSecret,
+		OAuthConfig:  oauthConfig,
+		userService:  userService,
+		shareService: shareService,
+		JWTSecret:    jwtSecret,
 	}
 }
 
@@ -168,7 +167,7 @@ func (ac *AuthController) Callback(c *gin.Context) {
 
 // GetUser returns the current authenticated user
 func (ac *AuthController) GetUser(c *gin.Context) {
-	user, _, err := UserFromSession(c)
+	user, _, err := UserFromContext(c)
 	if user == nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not logged in"})
 		return
@@ -207,12 +206,12 @@ func (ac *AuthController) Logout(c *gin.Context) {
 // @Failure      500  {object}  map[string]string               "Internal Server Error - Failed to generate JWT or other server-side issue"
 // @Router       /auth/token [get]
 func (ac *AuthController) GetAccessToken(c *gin.Context) {
-	user, status, err := UserFromSession(c)
+	user, status, err := UserFromContext(c)
 	if user == nil {
 		SetGinError(c, status, err)
 		return
 	}
-	token, err := GenerateJWT(user.ID, ac.JWTSecret)
+	token, err := GenerateJWT(user.ID, ac.JWTSecret, nil)
 	if err != nil {
 		log.Printf("Failed to generate JWT: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate access token"})
@@ -224,26 +223,42 @@ func (ac *AuthController) GetAccessToken(c *gin.Context) {
 	})
 }
 
-// GenerateJWT creates a new JSON Web Token (JWT) for a given user ID.
-// It includes the following claims:
-//   - "sub" (Subject): The user ID.
-//   - "exp" (Expiration Time): 15 minutes from the time of creation.
-//   - "iss" (Issuer): "wersu-rest-proxy".
-//   - "iat" (Issued At): The time the token was issued.
-//
-// Returns: token and error
-func GenerateJWT(userID string, secret string) (string, error) {
-	claims := AccessClaims{
-		Subject: userID,
-		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    "wersu-rest-proxy",
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
+// generates a new JWT access token for an authenticated user
+// GetAccessToken godoc
+// @Summary      Get a new access token
+// @Description  Generates a new JWT access token for the user authenticated via a session cookie.
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  GetAccessTokenReply  "Successfully generated and returned access token"
+// @Failure      401  {object}  map[string]string               "Unauthorized - User is not authenticated via session"
+// @Failure      500  {object}  map[string]string               "Internal Server Error - Failed to generate JWT or other server-side issue"
+// @Router       /auth/public-access-token [post]
+func (ac *AuthController) GetPublicAccessToken(c *gin.Context) {
+	// there is no user auth here
+
+	var body PostAccessTokenRequest
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
 	}
-	token := jwt.NewWithClaims(
-		jwt.SigningMethodHS256,
-		claims,
-	)
-	return token.SignedString([]byte(secret))
+
+	// Request the temp user behind the share
+	resp, err := (*ac.shareService).GetShareUser(c, &proto.GetShareUserRequest{ShareId: body.ShareId})
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid share ID"})
+		return
+	}
+	userId := resp.AccessAs
+
+	token, err := GenerateJWT(userId, ac.JWTSecret, unwrapNullableDatetime(resp.OnlineUntil))
+	if err != nil {
+		log.Printf("Failed to generate JWT: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate access token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, GetAccessTokenReply{
+		Token: token,
+	})
 }
