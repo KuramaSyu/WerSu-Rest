@@ -59,11 +59,17 @@ type GetPublicShareQuery struct {
 }
 
 // the response of the GET /shares/public/ endpoint
+//
+// Permission mirrors the protobuf SharePermission enum. The raw proto name is
+// returned so clients see the exact value the gRPC layer reports (e.g.
+// "SHARE_PERMISSION_READ"). The valid values are documented via the `enums`
+// tag so swaggo exposes them in the generated Swagger spec.
 type GetPublicShareResponse struct {
 	AccessAs    string     `json:"access_as"`
 	OnlineSince *time.Time `json:"online_since,omitempty"`
 	OnlineUntil *time.Time `json:"online_until,omitempty"`
 	NoteId      string     `json:"note_id"`
+	Permission  string     `json:"permission" enums:"SHARE_PERMISSION_UNSPECIFIED,SHARE_PERMISSION_READ,SHARE_PERMISSION_WRITE" example:"SHARE_PERMISSION_READ"`
 }
 
 // CreateShareBody represents the JSON body for creating a share.
@@ -565,6 +571,7 @@ func (sc *SharingController) AccessShare(c *gin.Context) {
 		OnlineSince: unwrapNullableDatetime(stream.Share.OnlineSince),
 		OnlineUntil: unwrapNullableDatetime(stream.Share.OnlineUntil),
 		NoteId:      stream.Share.NoteId,
+		Permission:  stream.Share.Permission.String(),
 	}
 
 	c.JSON(http.StatusOK, share)

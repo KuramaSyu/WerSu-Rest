@@ -250,6 +250,47 @@
                 }
             }
         },
+        "/auth/public-access-token": {
+            "post": {
+                "description": "Generates a new JWT access token for the user authenticated via a session cookie.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Get a new access token",
+                "responses": {
+                    "200": {
+                        "description": "Successfully generated and returned access token",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.GetAccessTokenReply"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - User is not authenticated via session",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Failed to generate JWT or other server-side issue",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/auth/token": {
             "get": {
                 "description": "Generates a new JWT access token for the user authenticated via a session cookie.",
@@ -1861,6 +1902,15 @@
                 },
                 "online_until": {
                     "type": "string"
+                },
+                "permission": {
+                    "type": "string",
+                    "enum": [
+                        "SHARE_PERMISSION_UNSPECIFIED",
+                        "SHARE_PERMISSION_READ",
+                        "SHARE_PERMISSION_WRITE"
+                    ],
+                    "example": "SHARE_PERMISSION_READ"
                 }
             }
         },
