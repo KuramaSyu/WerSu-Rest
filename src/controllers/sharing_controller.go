@@ -39,6 +39,7 @@ type NoteShareReply struct {
 	CreatedBy   string     `json:"created_by"`
 	OnlineSince *time.Time `json:"online_since,omitempty"`
 	OnlineUntil *time.Time `json:"online_until,omitempty"`
+	Permission  string     `json:"permission" enums:"SHARE_PERMISSION_UNSPECIFIED,SHARE_PERMISSION_READ,SHARE_PERMISSION_WRITE" example:"SHARE_PERMISSION_READ"`
 }
 
 // GetSharesQuery contains the optional query parameters used to filter shares.
@@ -72,16 +73,17 @@ type GetPublicShareResponse struct {
 	Permission  string     `json:"permission" enums:"SHARE_PERMISSION_UNSPECIFIED,SHARE_PERMISSION_READ,SHARE_PERMISSION_WRITE" example:"SHARE_PERMISSION_READ"`
 }
 
-// CreateShareBody represents the JSON body for creating a share.
+// CreateShareRequestBody represents the JSON body for creating a share.
 //
 // Optional fields use pointers so omitted values remain nil. That keeps the
 // REST API straightforward while still allowing the controller to decide which
 // protobuf wrapper fields should be populated.
-type CreateShareBody struct {
+type CreateShareRequestBody struct {
 	Description *string    `json:"description,omitempty" example:"Shared with the engineering team"`
 	NoteId      string     `json:"note_id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4ca"`
 	OnlineSince *time.Time `json:"online_since,omitempty" example:"2026-06-21T12:00:00Z"`
 	OnlineUntil *time.Time `json:"online_until,omitempty" example:"2026-06-22T12:00:00Z"`
+	Permission  string     `json:"permission" binding:"required" enums:"SHARE_PERMISSION_UNSPECIFIED,SHARE_PERMISSION_READ,SHARE_PERMISSION_WRITE" example:"SHARE_PERMISSION_READ"`
 }
 
 // UpdateShareBody represents the JSON body for updating a share.
@@ -94,6 +96,7 @@ type UpdateShareBody struct {
 	NoteId      string     `json:"note_id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4ca"`
 	OnlineSince *time.Time `json:"online_since,omitempty" example:"2026-06-21T12:00:00Z"`
 	OnlineUntil *time.Time `json:"online_until,omitempty" example:"2026-06-22T12:00:00Z"`
+	Permission  string     `json:"permission" binding:"required" enums:"SHARE_PERMISSION_UNSPECIFIED,SHARE_PERMISSION_READ,SHARE_PERMISSION_WRITE" example:"SHARE_PERMISSION_READ"`
 }
 
 // DeleteSharesBody is the JSON body for deleting multiple shares in one call.
@@ -111,6 +114,19 @@ func unwrapNullableDatetime(nullable *proto.NullableTimestamp) *time.Time {
 		return &t
 	}
 	return nil
+}
+
+// creates a nullable string proto value from a string pointer
+func nullableStringFromString(value *string) *proto.NullableString {
+	if value == nil {
+		// this should be treated as UNDEFINED
+		return &proto.NullableString{
+			Kind: &proto.NullableString_NullValue{NullValue: true},
+		}
+	}
+	return &proto.NullableString{
+		Kind: &proto.NullableString_Value{Value: *value},
+	}
 }
 
 // creates a nullable timestamp proto value from a time pointer
@@ -152,6 +168,7 @@ func noteShareReplyFromProto(share *proto.NoteShare) NoteShareReply {
 		CreatedBy:   share.GetCreatedBy(),
 		OnlineSince: onlineSince,
 		OnlineUntil: onlineUntil,
+		Permission:  share.Permission.String(),
 	}
 }
 
@@ -181,6 +198,27 @@ func timeToNullableProto(value *time.Time) *proto.NullableTimestamp {
 	return &proto.NullableTimestamp{
 		Kind: &proto.NullableTimestamp_Value{Value: timestamppb.New(*value)},
 	}
+}
+
+// permissionFromString converts a REST permission string into the protobuf
+// SharePermission enum used by the gRPC service.
+//
+// The REST field accepts the proto-style enum name (e.g. "SHARE_PERMISSION_READ").
+// The conversion returns an error for unknown or empty values so the handler can
+// surface a 400 to the client instead of silently forwarding an invalid
+// permission to the gRPC service.
+func permissionFromString(permission string) (proto.SharePermission, error) {
+	if permission == "" {
+		return proto.SharePermission_SHARE_PERMISSION_UNSPECIFIED,
+			fmt.Errorf("permission is required")
+	}
+
+	value, ok := proto.SharePermission_value[permission]
+	if !ok {
+		return proto.SharePermission_SHARE_PERMISSION_UNSPECIFIED,
+			fmt.Errorf("invalid permission %q, expected one of SHARE_PERMISSION_UNSPECIFIED, SHARE_PERMISSION_READ, SHARE_PERMISSION_WRITE", permission)
+	}
+	return proto.SharePermission(value), nil
 }
 
 // parseOptionalRFC3339 parses an optional RFC3339 timestamp string.
@@ -230,23 +268,13 @@ func shareFilterFromQuery(query GetSharesQuery) (*proto.ShareFilter, error) {
 	return filter, nil
 }
 
-// createShareProtoFromBody converts a REST create request into the protobuf
-// request payload expected by the gRPC service.
-func createShareProtoFromBody(body CreateShareBody, userID string) *proto.NoteShare {
-	return &proto.NoteShare{
-		Id:          "",
-		Description: stringToNullableProto(body.Description),
-		NoteId:      body.NoteId,
-		CreatedAt:   nil,
-		CreatedBy:   userID,
-		OnlineSince: timeToNullableProto(body.OnlineSince),
-		OnlineUntil: timeToNullableProto(body.OnlineUntil),
-	}
-}
-
 // updateShareProtoFromBody converts a REST update request into the protobuf
 // payload expected by the gRPC service.
-func updateShareProtoFromBody(body UpdateShareBody, userID string) *proto.NoteShare {
+//
+// The permission argument must already be the proto SharePermission enum value
+// produced by permissionFromString; the conversion is kept out of this helper so
+// the caller can validate it against the REST payload and return a 400 on error.
+func updateShareProtoFromBody(body UpdateShareBody, permission proto.SharePermission, userID string) *proto.NoteShare {
 	return &proto.NoteShare{
 		Id:          body.Id,
 		Description: stringToNullableProto(body.Description),
@@ -255,6 +283,7 @@ func updateShareProtoFromBody(body UpdateShareBody, userID string) *proto.NoteSh
 		CreatedBy:   userID,
 		OnlineSince: timeToNullableProto(body.OnlineSince),
 		OnlineUntil: timeToNullableProto(body.OnlineUntil),
+		Permission:  permission,
 	}
 }
 
@@ -433,26 +462,28 @@ func (sc *SharingController) CreateShare(c *gin.Context) {
 		return
 	}
 
-	var body CreateShareBody
+	var body CreateShareRequestBody
 	if err := c.ShouldBindJSON(&body); err != nil {
 		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
 		return
 	}
 
-	share := createShareProtoFromBody(body, user.ID)
+	permission, err := permissionFromString(body.Permission)
+	if err != nil {
+		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid permission: %w", err))
+		return
+	}
 
 	created, err := (*sc.SharingService).CreateShare(c, &proto.CreateShareRequest{
-		UserId: user.ID,
-		Description: &proto.NullableString{
-			Kind: &proto.NullableString_Value{Value: *body.Description},
-		},
+		UserId:      user.ID,
+		Description: nullableStringFromString(body.Description),
 		NoteId:      body.NoteId,
 		OnlineSince: nullableTimestampFromTime(body.OnlineSince),
 		OnlineUntil: nullableTimestampFromTime(body.OnlineUntil),
-		Permission:  share.Permission,
+		Permission:  permission,
 	})
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to create share via gRPC service: %w", err))
+		SetWersuGrpcError(c, err)
 		return
 	}
 
@@ -483,14 +514,20 @@ func (sc *SharingController) UpdateShare(c *gin.Context) {
 		return
 	}
 
-	share := updateShareProtoFromBody(body, user.ID)
+	permission, err := permissionFromString(body.Permission)
+	if err != nil {
+		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid permission: %w", err))
+		return
+	}
+
+	share := updateShareProtoFromBody(body, permission, user.ID)
 
 	updated, err := (*sc.SharingService).UpdateShare(c, &proto.UpdateShareRequest{
 		UserId: user.ID,
 		Share:  share,
 	})
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to update share via gRPC service: %w", err))
+		SetWersuGrpcError(c, err)
 		return
 	}
 
