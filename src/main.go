@@ -41,11 +41,11 @@ func main() {
 	// Create router
 	r := gin.Default()
 
-	// Configure CORS
+	// Allow CORS with Origin, allow providing of Authorization header to allow JWTs
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{appConfig.FrontendURL},
 		AllowMethods:     []string{"GET", "POST", "DELETE", "PUT", "PATCH"},
-		AllowHeaders:     []string{"Origin", "Content-Type"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept"},
 		AllowCredentials: true,
 	}))
 
