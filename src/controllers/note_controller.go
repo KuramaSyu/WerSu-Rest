@@ -113,10 +113,15 @@ func NoteReplyFromProto(note *proto.Note) NoteReply {
 	}
 }
 
-// NoteReplyFromResponse converts a protobuf NoteResponse (note + id_token_map)
-// into a NoteReply. The id_token_map is propagated as Tokens and is omitted
-// from the JSON when nil.
-func NoteReplyFromResponse(resp *proto.NoteResponse) NoteReply {
+// NoteResponseToProto converts a protobuf NoteResponse into a NoteReply.
+//
+// Parameters:
+//   - resp: A pointer to a proto.NoteResponse (note + id_token_map)
+//
+// Returns:
+//   - NoteReply populated with the note fields plus the per-attachment
+//     tokens from `id_token_map`. Tokens is omitted from the JSON when nil.
+func NoteResponseToProto(resp *proto.NoteResponse) NoteReply {
 	reply := NoteReplyFromProto(resp.GetNote())
 	reply.Tokens = resp.GetIdTokenMap()
 	return reply
@@ -159,7 +164,7 @@ func (uc *NoteController) GetNote(c *gin.Context) {
 		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch note via gRPC service: %w", err))
 		return
 	}
-	c.JSON(http.StatusOK, NoteReplyFromResponse(resp))
+	c.JSON(http.StatusOK, NoteResponseToProto(resp))
 }
 
 // PostNote godoc
