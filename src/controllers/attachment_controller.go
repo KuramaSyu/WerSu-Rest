@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/KuramaSyu/WerSu-Rest/src/config"
+	"github.com/KuramaSyu/WerSu-Rest/src/models"
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
 	"github.com/authzed/authzed-go/v1"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -18,6 +20,15 @@ import (
 
 	. "github.com/KuramaSyu/WerSu-Rest/src/utils"
 )
+
+// looksLikeJWT returns true if the given string has the shape of an HS256
+// JWT: three non-empty dot-separated base64url segments. It is intentionally
+// cheap (no signature verification) so it can be used as a routing hint
+// before calling UnpackAttachmentJWT.
+func looksLikeJWT(s string) bool {
+	parts := strings.Split(s, ".")
+	return len(parts) == 3 && parts[0] != "" && parts[1] != "" && parts[2] != ""
+}
 
 type AttachmentController struct {
 	AttachmentService *proto.AttachmentServiceClient
@@ -297,7 +308,7 @@ func (ac *AttachmentController) GetAttachment(c *gin.Context) {
 // @Summary Get attachment
 // @Tags attachments
 // @Produce image/jpeg,image/png,image/webp
-// @Param key query string true "Attachment key"
+// @Param key query string true "Attachment key (or JWT minted for an attachment key)"
 // @Param width query int false "Resize width"
 // @Param height query int false "Resize height"
 // @Param format query string false "Output format (jpeg,png,webp)"
@@ -321,16 +332,28 @@ func (ac *AttachmentController) GetImage(c *gin.Context) {
 		return
 	}
 
-	// check if user has permission to view this attachment
-	hasPermission, err := HasPermission(ac.authClient, "attachment", params.Key, "view", "user", user.ID)
-	if err != nil {
-		log.Printf("Error while fetching permission on attachment %s: %s", params.Key, err.Error())
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("Error while fetching permission: %s", err.Error()))
-		return
-	} else if !hasPermission {
-		log.Printf("User %s does not have permission to view attachment %s", user.ID, params.Key)
-		SetGinError(c, http.StatusForbidden, fmt.Errorf("user does not have permission to view this attachment"))
-		return
+	// a public user who asked
+	if looksLikeJWT(params.Key) {
+		claims, code, err := UnpackAttachmentJWT(params.Key, config.AppConfig.JwtSecret)
+		if err != nil {
+			SetGinError(c, code, fmt.Errorf("attachment JWT: %w", err))
+			return
+		}
+		user = &models.User{ID: claims.Subject}
+		params.Key = claims.Att
+	} else {
+		// JWTs in this case also grent permission, hence only here a check
+		// check if user has permission to view this attachment
+		hasPermission, err := HasPermission(ac.authClient, "attachment", params.Key, "view", "user", user.ID)
+		if err != nil {
+			log.Printf("Error while fetching permission on attachment %s: %s", params.Key, err.Error())
+			SetGinError(c, http.StatusInternalServerError, fmt.Errorf("Error while fetching permission: %s", err.Error()))
+			return
+		} else if !hasPermission {
+			log.Printf("User %s does not have permission to view attachment %s", user.ID, params.Key)
+			SetGinError(c, http.StatusForbidden, fmt.Errorf("user does not have permission to view this attachment"))
+			return
+		}
 	}
 
 	url := buildImgproxyURL(ac.ImgproxyAddress, &params.Key, params.Width, params.Height, params.Format)
