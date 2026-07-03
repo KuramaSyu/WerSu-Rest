@@ -8,6 +8,8 @@ import (
 
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
 	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -24,6 +26,17 @@ type SharingController struct {
 // NewSharingController creates a controller for share-related routes.
 func NewSharingController(sharingService *proto.SharingServiceClient) *SharingController {
 	return &SharingController{SharingService: sharingService}
+}
+
+// setShareGRPCError writes a REST error response for a failed gRPC call,
+// translating codes.NotFound to HTTP 404 and everything else to 500. The
+// wrapped error preserves the underlying gRPC message.
+func setShareGRPCError(c *gin.Context, err error, op string) {
+	if grpcErr, ok := status.FromError(err); ok && grpcErr.Code() == codes.NotFound {
+		SetGinError(c, http.StatusNotFound, fmt.Errorf("%s: %w", op, err))
+		return
+	}
+	SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to %s via gRPC service: %w", op, err))
 }
 
 // NoteShareReply is the REST representation of a share returned to clients.
@@ -363,7 +376,7 @@ func (sc *SharingController) GetSharesById(c *gin.Context) {
 		ShareIds: shareIDs,
 	})
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch shares via gRPC service: %w", err))
+		setShareGRPCError(c, err, "fetch shares")
 		return
 	}
 
@@ -423,7 +436,7 @@ func (sc *SharingController) GetShares(c *gin.Context) {
 		Filter: filter,
 	})
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch shares via gRPC service: %w", err))
+		setShareGRPCError(c, err, "fetch shares")
 		return
 	}
 
@@ -599,7 +612,7 @@ func (sc *SharingController) AccessShare(c *gin.Context) {
 		ShareId: query.ShareId,
 	})
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch shares via gRPC service: %w", err))
+		setShareGRPCError(c, err, "fetch share")
 		return
 	}
 
