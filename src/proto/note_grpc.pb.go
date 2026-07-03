@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.0
 // - protoc             v6.33.1
-// source: src/proto/note.proto
+// source: note.proto
 
 package proto
 
@@ -32,7 +32,10 @@ const (
 //
 // Note Service
 type NoteServiceClient interface {
-	GetNote(ctx context.Context, in *GetNoteRequest, opts ...grpc.CallOption) (*Note, error)
+	// GetNote returns a Note from DB. If the user is a public/temp user,
+	// then an additional id_token_map will be returned, containing a
+	// JWT for each attachment in the file.
+	GetNote(ctx context.Context, in *GetNoteRequest, opts ...grpc.CallOption) (*NoteResponse, error)
 	PostNote(ctx context.Context, in *PostNoteRequest, opts ...grpc.CallOption) (*Note, error)
 	PatchNote(ctx context.Context, in *AlterNoteRequest, opts ...grpc.CallOption) (*Note, error)
 	DeleteNote(ctx context.Context, in *DeleteNoteRequest, opts ...grpc.CallOption) (*Note, error)
@@ -47,9 +50,9 @@ func NewNoteServiceClient(cc grpc.ClientConnInterface) NoteServiceClient {
 	return &noteServiceClient{cc}
 }
 
-func (c *noteServiceClient) GetNote(ctx context.Context, in *GetNoteRequest, opts ...grpc.CallOption) (*Note, error) {
+func (c *noteServiceClient) GetNote(ctx context.Context, in *GetNoteRequest, opts ...grpc.CallOption) (*NoteResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Note)
+	out := new(NoteResponse)
 	err := c.cc.Invoke(ctx, NoteService_GetNote_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -112,7 +115,10 @@ type NoteService_SearchNotesClient = grpc.ServerStreamingClient[MinimalNote]
 //
 // Note Service
 type NoteServiceServer interface {
-	GetNote(context.Context, *GetNoteRequest) (*Note, error)
+	// GetNote returns a Note from DB. If the user is a public/temp user,
+	// then an additional id_token_map will be returned, containing a
+	// JWT for each attachment in the file.
+	GetNote(context.Context, *GetNoteRequest) (*NoteResponse, error)
 	PostNote(context.Context, *PostNoteRequest) (*Note, error)
 	PatchNote(context.Context, *AlterNoteRequest) (*Note, error)
 	DeleteNote(context.Context, *DeleteNoteRequest) (*Note, error)
@@ -127,7 +133,7 @@ type NoteServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedNoteServiceServer struct{}
 
-func (UnimplementedNoteServiceServer) GetNote(context.Context, *GetNoteRequest) (*Note, error) {
+func (UnimplementedNoteServiceServer) GetNote(context.Context, *GetNoteRequest) (*NoteResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetNote not implemented")
 }
 func (UnimplementedNoteServiceServer) PostNote(context.Context, *PostNoteRequest) (*Note, error) {
@@ -277,7 +283,7 @@ var NoteService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "src/proto/note.proto",
+	Metadata: "note.proto",
 }
 
 const (
@@ -535,7 +541,7 @@ var DirectoryService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "src/proto/note.proto",
+	Metadata: "note.proto",
 }
 
 const (
@@ -751,7 +757,7 @@ var PermissionService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "src/proto/note.proto",
+	Metadata: "note.proto",
 }
 
 const (
@@ -974,5 +980,5 @@ var NoteVersionService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "src/proto/note.proto",
+	Metadata: "note.proto",
 }
