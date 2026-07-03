@@ -26,6 +26,7 @@ type NoteReply struct {
 	UpdatedAt   time.Time                     `json:"updated_at"`
 	AuthorId    string                        `json:"author_id"`
 	Permissions []PermissionRelationshipReply `json:"permissions"`
+	Tokens      map[string]string             `json:"tokens,omitempty"`
 }
 
 // PermissionSubjectReply represents the subject side of a permission tuple in REST responses.
@@ -112,6 +113,15 @@ func NoteReplyFromProto(note *proto.Note) NoteReply {
 	}
 }
 
+// NoteReplyFromResponse converts a protobuf NoteResponse (note + id_token_map)
+// into a NoteReply. The id_token_map is propagated as Tokens and is omitted
+// from the JSON when nil.
+func NoteReplyFromResponse(resp *proto.NoteResponse) NoteReply {
+	reply := NoteReplyFromProto(resp.GetNote())
+	reply.Tokens = resp.GetIdTokenMap()
+	return reply
+}
+
 func NewNoteController(noteService *proto.NoteServiceClient) *NoteController {
 	return &NoteController{NoteService: noteService}
 }
@@ -142,14 +152,14 @@ func (uc *NoteController) GetNote(c *gin.Context) {
 	}
 
 	// gRPC service
-	note, err := (*uc.NoteService).GetNote(
+	resp, err := (*uc.NoteService).GetNote(
 		c, &proto.GetNoteRequest{Id: id, UserId: user.ID},
 	)
 	if err != nil {
 		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch note via gRPC service: %w", err))
 		return
 	}
-	c.JSON(http.StatusOK, NoteReplyFromProto(note))
+	c.JSON(http.StatusOK, NoteReplyFromResponse(resp))
 }
 
 // PostNote godoc
