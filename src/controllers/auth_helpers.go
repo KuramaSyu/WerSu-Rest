@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -18,9 +19,10 @@ type AccessClaims struct {
 }
 
 // UserFromContext retrieves the authenticated user from the request context.
-// It attempts to extract user information using two methods in order:
+// It attempts to extract user information using three methods in order:
 // 1. Parses a Bearer JWT token from the Authorization header if present
-// 2. Falls back to retrieving user data from the session
+// 2. Falls back to a JWT supplied via the `jwt` query parameter
+// 3. Falls back to retrieving user data from the session
 //
 // Returns:
 //   - *models.User: pointer to the authenticated user, or nil if authentication fails
@@ -32,21 +34,28 @@ type AccessClaims struct {
 //   - JWT-related errors from UserFromAuthJWT if Bearer token parsing fails
 //   - "wrong user format" with StatusInternalServerError if session data cannot be cast to models.User
 func UserFromContext(c *gin.Context) (*models.User, int, error) {
-	// 1. check for a Bearer token in the Authorization header
-	authHeader := c.GetHeader("Authorization")
-	if authHeader != "" {
-		// If the Authorization header is present, attempt to parse the JWT token
-		// get secret from global config - not a good pattern, but I don't want to
-		// pass the secret through every controller or method
-		secret := config.AppConfig.JwtSecret
-		user, status, err := UserFromAuthJWT(c, secret)
+	// 1. Bearer token in the Authorization header
+	if c.GetHeader("Authorization") != "" {
+		user, status, err := UserFromAuthJWT(c, config.AppConfig.JwtSecret)
 		if err != nil {
 			return nil, status, err
 		}
 		return user, status, nil
 	}
 
-	// 2. fallback to session-based authentication
+	// 2. JWT in the `jwt` query parameter
+	if queryToken := c.Query("jwt"); queryToken != "" {
+		claims, code, err := UnpackJWT(queryToken, config.AppConfig.JwtSecret)
+		if err != nil {
+			return nil, code, err
+		}
+		if claims.ExpiresAt != nil && claims.ExpiresAt.Time.Before(time.Now()) {
+			return nil, http.StatusUnauthorized, fmt.Errorf("token has expired")
+		}
+		return &models.User{ID: claims.Subject}, http.StatusOK, nil
+	}
+
+	// 3. session-based authentication
 	session := sessions.Default(c)
 	userData := session.Get("user")
 	if userData == nil {
@@ -110,7 +119,8 @@ func UnpackJWT(token string, secret string) (*jwt.RegisteredClaims, int, error) 
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
-			return secret, nil
+			// []byte is required
+			return []byte(secret), nil
 		},
 	)
 
@@ -164,4 +174,53 @@ func GenerateJWT(userID string, secret string, max_lifetime *time.Time) (string,
 		claims,
 	)
 	return token.SignedString([]byte(secret))
+}
+
+// shape of JWTs for attachments provided by the gRPC backend.
+// att is the attachment id
+type AttachmentAccessClaims struct {
+	jwt.RegisteredClaims
+	Att string `json:"att,omitempty"`
+}
+
+const AttachmentJWTIssuer = "WerSu gRPC"
+
+var ErrAttachmentMismatch = errors.New("attachment id in JWT does not match requested key")
+
+// UnpackAttachmentJWT parses and validates an attachment access JWT.
+func UnpackAttachmentJWT(tokenString, secret string) (*AttachmentAccessClaims, int, error) {
+	claims := &AttachmentAccessClaims{}
+	parsed, err := jwt.ParseWithClaims(
+		tokenString,
+		claims,
+		func(token *jwt.Token) (any, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+			return []byte(secret), nil
+		},
+	)
+	if err != nil {
+		return nil, http.StatusUnauthorized, err
+	}
+	if !parsed.Valid {
+		return nil, http.StatusUnauthorized, fmt.Errorf("invalid token")
+	}
+
+	if claims.Issuer != AttachmentJWTIssuer {
+		return nil, http.StatusUnauthorized, fmt.Errorf("unexpected issuer: %q", claims.Issuer)
+	}
+
+	if claims.Subject == "" {
+		return nil, http.StatusUnauthorized, fmt.Errorf("token missing sub claim")
+	}
+	if claims.Att == "" {
+		return nil, http.StatusUnauthorized, fmt.Errorf("token missing att claim")
+	}
+
+	if claims.ExpiresAt != nil && claims.ExpiresAt.Time.Before(time.Now()) {
+		return nil, http.StatusUnauthorized, fmt.Errorf("token has expired")
+	}
+
+	return claims, http.StatusOK, nil
 }
