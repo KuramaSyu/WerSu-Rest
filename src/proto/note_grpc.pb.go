@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.0
 // - protoc             v6.33.1
-// source: src/proto/note.proto
+// source: note.proto
 
 package proto
 
@@ -283,15 +283,16 @@ var NoteService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "src/proto/note.proto",
+	Metadata: "note.proto",
 }
 
 const (
-	DirectoryService_GetDirectory_FullMethodName    = "/proto.DirectoryService/GetDirectory"
-	DirectoryService_GetDirectories_FullMethodName  = "/proto.DirectoryService/GetDirectories"
-	DirectoryService_CreateDirectory_FullMethodName = "/proto.DirectoryService/CreateDirectory"
-	DirectoryService_PatchDirectory_FullMethodName  = "/proto.DirectoryService/PatchDirectory"
-	DirectoryService_DeleteDirectory_FullMethodName = "/proto.DirectoryService/DeleteDirectory"
+	DirectoryService_GetDirectory_FullMethodName        = "/proto.DirectoryService/GetDirectory"
+	DirectoryService_GetDirectories_FullMethodName      = "/proto.DirectoryService/GetDirectories"
+	DirectoryService_CreateDirectory_FullMethodName     = "/proto.DirectoryService/CreateDirectory"
+	DirectoryService_PatchDirectory_FullMethodName      = "/proto.DirectoryService/PatchDirectory"
+	DirectoryService_DeleteDirectory_FullMethodName     = "/proto.DirectoryService/DeleteDirectory"
+	DirectoryService_GetNotesOfDirectory_FullMethodName = "/proto.DirectoryService/GetNotesOfDirectory"
 )
 
 // DirectoryServiceClient is the client API for DirectoryService service.
@@ -303,6 +304,7 @@ type DirectoryServiceClient interface {
 	CreateDirectory(ctx context.Context, in *CreateDirectoryRequest, opts ...grpc.CallOption) (*Directory, error)
 	PatchDirectory(ctx context.Context, in *AlterDirectoryRequest, opts ...grpc.CallOption) (*Directory, error)
 	DeleteDirectory(ctx context.Context, in *DeleteDirectoryRequest, opts ...grpc.CallOption) (*Directory, error)
+	GetNotesOfDirectory(ctx context.Context, in *GetNotesOfDirectoryRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[MinimalNote], error)
 }
 
 type directoryServiceClient struct {
@@ -372,6 +374,25 @@ func (c *directoryServiceClient) DeleteDirectory(ctx context.Context, in *Delete
 	return out, nil
 }
 
+func (c *directoryServiceClient) GetNotesOfDirectory(ctx context.Context, in *GetNotesOfDirectoryRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[MinimalNote], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &DirectoryService_ServiceDesc.Streams[1], DirectoryService_GetNotesOfDirectory_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[GetNotesOfDirectoryRequest, MinimalNote]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type DirectoryService_GetNotesOfDirectoryClient = grpc.ServerStreamingClient[MinimalNote]
+
 // DirectoryServiceServer is the server API for DirectoryService service.
 // All implementations must embed UnimplementedDirectoryServiceServer
 // for forward compatibility.
@@ -381,6 +402,7 @@ type DirectoryServiceServer interface {
 	CreateDirectory(context.Context, *CreateDirectoryRequest) (*Directory, error)
 	PatchDirectory(context.Context, *AlterDirectoryRequest) (*Directory, error)
 	DeleteDirectory(context.Context, *DeleteDirectoryRequest) (*Directory, error)
+	GetNotesOfDirectory(*GetNotesOfDirectoryRequest, grpc.ServerStreamingServer[MinimalNote]) error
 	mustEmbedUnimplementedDirectoryServiceServer()
 }
 
@@ -405,6 +427,9 @@ func (UnimplementedDirectoryServiceServer) PatchDirectory(context.Context, *Alte
 }
 func (UnimplementedDirectoryServiceServer) DeleteDirectory(context.Context, *DeleteDirectoryRequest) (*Directory, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteDirectory not implemented")
+}
+func (UnimplementedDirectoryServiceServer) GetNotesOfDirectory(*GetNotesOfDirectoryRequest, grpc.ServerStreamingServer[MinimalNote]) error {
+	return status.Error(codes.Unimplemented, "method GetNotesOfDirectory not implemented")
 }
 func (UnimplementedDirectoryServiceServer) mustEmbedUnimplementedDirectoryServiceServer() {}
 func (UnimplementedDirectoryServiceServer) testEmbeddedByValue()                          {}
@@ -510,6 +535,17 @@ func _DirectoryService_DeleteDirectory_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DirectoryService_GetNotesOfDirectory_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(GetNotesOfDirectoryRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(DirectoryServiceServer).GetNotesOfDirectory(m, &grpc.GenericServerStream[GetNotesOfDirectoryRequest, MinimalNote]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type DirectoryService_GetNotesOfDirectoryServer = grpc.ServerStreamingServer[MinimalNote]
+
 // DirectoryService_ServiceDesc is the grpc.ServiceDesc for DirectoryService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -540,8 +576,13 @@ var DirectoryService_ServiceDesc = grpc.ServiceDesc{
 			Handler:       _DirectoryService_GetDirectories_Handler,
 			ServerStreams: true,
 		},
+		{
+			StreamName:    "GetNotesOfDirectory",
+			Handler:       _DirectoryService_GetNotesOfDirectory_Handler,
+			ServerStreams: true,
+		},
 	},
-	Metadata: "src/proto/note.proto",
+	Metadata: "note.proto",
 }
 
 const (
@@ -757,7 +798,7 @@ var PermissionService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "src/proto/note.proto",
+	Metadata: "note.proto",
 }
 
 const (
@@ -980,5 +1021,5 @@ var NoteVersionService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "src/proto/note.proto",
+	Metadata: "note.proto",
 }

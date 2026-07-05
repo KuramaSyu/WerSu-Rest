@@ -95,6 +95,7 @@ func SetupRouter(
 				directory.GET("", directoryController.GetDirectory)
 				directory.DELETE("", directoryController.DeleteDirectory)
 				directory.GET("/activity", noteVersionController.GetDirectoryActivity)
+				directory.GET("/notes", directoryController.GetNotesOfDirectory)
 			}
 		}
 

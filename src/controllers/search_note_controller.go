@@ -124,6 +124,10 @@ func (uc *SearchNotesController) GetNotes(c *gin.Context) {
 		UserId:     user.ID,
 	}
 	stream, err := (*uc.NoteService).SearchNotes(c, &grpcSearchNotesRequest)
+	if err != nil {
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to search notes via gRPC service: %w", err))
+		return
+	}
 	// collect all notes from stream
 	var notes []MinimalNote = []MinimalNote{}
 	for {

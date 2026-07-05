@@ -35,6 +35,15 @@ type GetDirectoriesQuery struct {
 	Offset   *int32  `form:"offset"`
 }
 
+type GetNotesOfDirectoryQuery struct {
+	Limit  *int32 `form:"limit"`
+	Offset *int32 `form:"offset"`
+}
+
+// defaultLimitForDirectoryNotes is the default `limit` applied to
+// `GET /directories/:id/notes` when the client omits the query parameter.
+const defaultLimitForDirectoryNotes int32 = 20
+
 type CreateDirectoryBody struct {
 	Name        string  `json:"name" binding:"required" example:"engineering"`
 	DisplayName *string `json:"display_name,omitempty" example:"Engineering"`
@@ -159,6 +168,72 @@ func (dc *DirectoryController) GetDirectories(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, directories)
+}
+
+// GetNotesOfDirectory godoc
+// @Summary List notes in a directory
+// @Description Fetch notes belonging to a directory via gRPC service
+// @Tags directories
+// @Accept json
+// @Produce json
+// @Param id path string true "Directory ID"
+// @Param limit query int false "Maximum results to return (default 20)"
+// @Param offset query int false "Pagination offset"
+// @Success 200 {object} []MinimalNote
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /directories/{id}/notes [get]
+func (dc *DirectoryController) GetNotesOfDirectory(c *gin.Context) {
+	user, code, err := UserFromContext(c)
+	if err != nil {
+		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		return
+	}
+
+	id := c.Params.ByName("id")
+	if id == "" {
+		SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing directory ID"))
+		return
+	}
+
+	var query GetNotesOfDirectoryQuery
+	if err := c.ShouldBindQuery(&query); err != nil {
+		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
+		return
+	}
+
+	limit := query.Limit
+	if limit == nil {
+		defaultLimit := defaultLimitForDirectoryNotes
+		limit = &defaultLimit
+	}
+
+	stream, err := (*dc.DirectoryService).GetNotesOfDirectory(c, &proto.GetNotesOfDirectoryRequest{
+		DirectoryId: id,
+		Limit:       limit,
+		Offset:      query.Offset,
+		UserId:      user.ID,
+	})
+	if err != nil {
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch directory notes via gRPC service: %w", err))
+		return
+	}
+
+	notes := make([]MinimalNote, 0)
+	for {
+		note, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to stream directory notes via gRPC service: %w", err))
+			return
+		}
+
+		notes = append(notes, ConvertProtoMinimalNoteToRest(note))
+	}
+
+	c.JSON(http.StatusOK, notes)
 }
 
 // CreateDirectory godoc

@@ -12,6 +12,8 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type AccessClaims struct {
@@ -142,9 +144,39 @@ func UnpackJWT(token string, secret string) (*jwt.RegisteredClaims, int, error) 
 //   - c: The Gin context
 //   - status: HTTP status code to return
 //   - err: The error to send in the response body
+//
+// Behavior:
+//   - When `status` is http.StatusInternalServerError and `err` (or any error
+//     it wraps) carries a gRPC status code of Unavailable, DeadlineExceeded,
+//     or ResourceExhausted, the response is automatically upgraded to
+//     http.StatusServiceUnavailable (503). This lets every gRPC-calling
+//     controller report a "backend down / overloaded" condition without each
+//     handler having to inspect the error itself.
+//   - For any other status (e.g. 400, 401, 403, 404) the response is written
+//     unchanged, so the gRPC upgrade only kicks in for genuine 500 paths.
 func SetGinError(c *gin.Context, status int, err error) {
+	if status == http.StatusInternalServerError && isGrpcBackendUnavailable(err) {
+		status = http.StatusServiceUnavailable
+	}
 	c.JSON(status, gin.H{"error": err.Error()})
 
+}
+
+// isGrpcBackendUnavailable reports whether err (or any wrapped error in its
+// chain) carries a gRPC status code that indicates the backend service is
+// unreachable: Unavailable, DeadlineExceeded, or ResourceExhausted.
+//
+// Returns false for nil, for plain (non-gRPC) errors, and for any other
+// gRPC status code.
+func isGrpcBackendUnavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	switch status.Code(err) {
+	case codes.Unavailable, codes.DeadlineExceeded, codes.ResourceExhausted:
+		return true
+	}
+	return false
 }
 
 // GenerateJWT creates a new JSON Web Token (JWT) for a given user ID.

@@ -141,7 +141,7 @@ func (ac *AuthController) Callback(c *gin.Context) {
 		if err != nil {
 			// failed to post user -> error
 			log.Printf("user: %v; Error: %v", d_user, err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to post user to gRPC service"})
+			SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to post user to gRPC service: %w", err))
 			return
 		}
 	}
@@ -177,7 +177,7 @@ func (ac *AuthController) GetUser(c *gin.Context) {
 	discord_id := int64(user.DiscordId)
 	user_backend, err := (*ac.userService).GetUser(c, &proto.GetUserRequest{DiscordId: &discord_id})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user from gRPC service"})
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch user via gRPC service: %w", err))
 		return
 	}
 	c.JSON(http.StatusOK, user_backend.ParseJS())
