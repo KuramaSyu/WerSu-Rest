@@ -463,7 +463,7 @@ func (sc *SharingController) GetShares(c *gin.Context) {
 // @Tags shares
 // @Accept json
 // @Produce json
-// @Param payload body CreateShareBody true "Create share request"
+// @Param payload body CreateShareRequestBody true "Create share request"
 // @Success 200 {object} NoteShareReply
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
