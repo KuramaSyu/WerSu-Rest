@@ -81,7 +81,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Attachment key",
+                        "description": "Attachment key (or JWT minted for an attachment key)",
                         "name": "key",
                         "in": "query",
                         "required": true
@@ -748,6 +748,205 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/directories/{id}/notes": {
+            "get": {
+                "description": "Fetch notes belonging to a directory via gRPC service",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "directories"
+                ],
+                "summary": "List notes in a directory",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Directory ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum results to return (default 20)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/controllers.MinimalNote"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/history": {
+            "get": {
+                "description": "Streams the activity log for everything the requesting user is\nallowed to view. Use ` + "`" + `mode=most_used` + "`" + ` to stream aggregated note\nscores instead; the ` + "`" + `algorithm` + "`" + ` query parameter then selects the\nscoring function (count or log_count).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "history"
+                ],
+                "summary": "Stream activity history (or most-used scores)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by note ID",
+                        "name": "note_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by directory ID",
+                        "name": "directory_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by actor user ID",
+                        "name": "actor_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by role ID",
+                        "name": "role_id",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "ACCESSED_AS_USER",
+                            "ACCESSED_AS_SYSTEM"
+                        ],
+                        "type": "string",
+                        "description": "Filter by access mode",
+                        "name": "accessed_as",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "Filter by one or more actions",
+                        "name": "actions",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit to events from the last N days",
+                        "name": "days",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum results to return",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Collapse repeats to one per (actor, day) before scoring",
+                        "name": "unique_per_day",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "history",
+                            "most_used"
+                        ],
+                        "type": "string",
+                        "description": "history (default) or most_used",
+                        "name": "mode",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "MOST_USED_ALGORITHM_COUNT",
+                            "MOST_USED_ALGORITHM_LOG_COUNT"
+                        ],
+                        "type": "string",
+                        "description": "Scoring algorithm for mode=most_used",
+                        "name": "algorithm",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/controllers.ActivityReply"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1450,7 +1649,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/controllers.CreateShareBody"
+                            "$ref": "#/definitions/controllers.CreateShareRequestBody"
                         }
                     }
                 ],
@@ -1697,6 +1896,43 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "controllers.ActivityReply": {
+            "type": "object",
+            "properties": {
+                "accessed_as": {
+                    "type": "string",
+                    "enum": [
+                        "ACCESSED_AS_UNSPECIFIED",
+                        "ACCESSED_AS_USER",
+                        "ACCESSED_AS_SYSTEM"
+                    ]
+                },
+                "action": {
+                    "type": "string"
+                },
+                "actor_id": {
+                    "type": "string"
+                },
+                "at": {
+                    "type": "string"
+                },
+                "directory_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "metadata_json": {
+                    "type": "string"
+                },
+                "note_id": {
+                    "type": "string"
+                },
+                "role_id": {
+                    "type": "string"
+                }
+            }
+        },
         "controllers.AttachmentLinkBody": {
             "type": "object",
             "required": [
@@ -1794,10 +2030,11 @@ const docTemplate = `{
                 }
             }
         },
-        "controllers.CreateShareBody": {
+        "controllers.CreateShareRequestBody": {
             "type": "object",
             "required": [
-                "note_id"
+                "note_id",
+                "permission"
             ],
             "properties": {
                 "description": {
@@ -1815,6 +2052,15 @@ const docTemplate = `{
                 "online_until": {
                     "type": "string",
                     "example": "2026-06-22T12:00:00Z"
+                },
+                "permission": {
+                    "type": "string",
+                    "enum": [
+                        "SHARE_PERMISSION_UNSPECIFIED",
+                        "SHARE_PERMISSION_READ",
+                        "SHARE_PERMISSION_WRITE"
+                    ],
+                    "example": "SHARE_PERMISSION_READ"
                 }
             }
         },
@@ -1971,6 +2217,12 @@ const docTemplate = `{
                 "title": {
                     "type": "string"
                 },
+                "tokens": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
                 "updated_at": {
                     "type": "string"
                 }
@@ -1999,6 +2251,15 @@ const docTemplate = `{
                 },
                 "online_until": {
                     "type": "string"
+                },
+                "permission": {
+                    "type": "string",
+                    "enum": [
+                        "SHARE_PERMISSION_UNSPECIFIED",
+                        "SHARE_PERMISSION_READ",
+                        "SHARE_PERMISSION_WRITE"
+                    ],
+                    "example": "SHARE_PERMISSION_READ"
                 }
             }
         },
@@ -2295,7 +2556,8 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "id",
-                "note_id"
+                "note_id",
+                "permission"
             ],
             "properties": {
                 "description": {
@@ -2317,6 +2579,15 @@ const docTemplate = `{
                 "online_until": {
                     "type": "string",
                     "example": "2026-06-22T12:00:00Z"
+                },
+                "permission": {
+                    "type": "string",
+                    "enum": [
+                        "SHARE_PERMISSION_UNSPECIFIED",
+                        "SHARE_PERMISSION_READ",
+                        "SHARE_PERMISSION_WRITE"
+                    ],
+                    "example": "SHARE_PERMISSION_READ"
                 }
             }
         },

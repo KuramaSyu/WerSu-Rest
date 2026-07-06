@@ -1,4 +1,29 @@
 definitions:
+  controllers.ActivityReply:
+    properties:
+      accessed_as:
+        enum:
+        - ACCESSED_AS_UNSPECIFIED
+        - ACCESSED_AS_USER
+        - ACCESSED_AS_SYSTEM
+        type: string
+      action:
+        type: string
+      actor_id:
+        type: string
+      at:
+        type: string
+      directory_id:
+        type: string
+      id:
+        type: string
+      metadata_json:
+        type: string
+      note_id:
+        type: string
+      role_id:
+        type: string
+    type: object
   controllers.AttachmentLinkBody:
     properties:
       attachment_key:
@@ -66,7 +91,7 @@ definitions:
     - object_type
     - relationship
     type: object
-  controllers.CreateShareBody:
+  controllers.CreateShareRequestBody:
     properties:
       description:
         example: Shared with the engineering team
@@ -80,8 +105,16 @@ definitions:
       online_until:
         example: "2026-06-22T12:00:00Z"
         type: string
+      permission:
+        enum:
+        - SHARE_PERMISSION_UNSPECIFIED
+        - SHARE_PERMISSION_READ
+        - SHARE_PERMISSION_WRITE
+        example: SHARE_PERMISSION_READ
+        type: string
     required:
     - note_id
+    - permission
     type: object
   controllers.DeletePermissionBody:
     properties:
@@ -186,6 +219,10 @@ definitions:
         type: array
       title:
         type: string
+      tokens:
+        additionalProperties:
+          type: string
+        type: object
       updated_at:
         type: string
     type: object
@@ -204,6 +241,13 @@ definitions:
       online_since:
         type: string
       online_until:
+        type: string
+      permission:
+        enum:
+        - SHARE_PERMISSION_UNSPECIFIED
+        - SHARE_PERMISSION_READ
+        - SHARE_PERMISSION_WRITE
+        example: SHARE_PERMISSION_READ
         type: string
     type: object
   controllers.NoteVersionContentReply:
@@ -422,9 +466,17 @@ definitions:
       online_until:
         example: "2026-06-22T12:00:00Z"
         type: string
+      permission:
+        enum:
+        - SHARE_PERMISSION_UNSPECIFIED
+        - SHARE_PERMISSION_READ
+        - SHARE_PERMISSION_WRITE
+        example: SHARE_PERMISSION_READ
+        type: string
     required:
     - id
     - note_id
+    - permission
     type: object
   proto.DeleteAttachmentResponse:
     properties:
@@ -472,7 +524,7 @@ paths:
   /attachments:
     get:
       parameters:
-      - description: Attachment key
+      - description: Attachment key (or JWT minted for an attachment key)
         in: query
         name: key
         required: true
@@ -882,6 +934,49 @@ paths:
       summary: Get directory activity
       tags:
       - directories
+  /directories/{id}/notes:
+    get:
+      consumes:
+      - application/json
+      description: Fetch notes belonging to a directory via gRPC service
+      parameters:
+      - description: Directory ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Maximum results to return (default 20)
+        in: query
+        name: limit
+        type: integer
+      - description: Pagination offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/controllers.MinimalNote'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List notes in a directory
+      tags:
+      - directories
   /directories/activity:
     get:
       consumes:
@@ -935,6 +1030,100 @@ paths:
       summary: Get directory activity
       tags:
       - directories
+  /history:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Streams the activity log for everything the requesting user is
+        allowed to view. Use `mode=most_used` to stream aggregated note
+        scores instead; the `algorithm` query parameter then selects the
+        scoring function (count or log_count).
+      parameters:
+      - description: Filter by note ID
+        in: query
+        name: note_id
+        type: string
+      - description: Filter by directory ID
+        in: query
+        name: directory_id
+        type: string
+      - description: Filter by actor user ID
+        in: query
+        name: actor_id
+        type: string
+      - description: Filter by role ID
+        in: query
+        name: role_id
+        type: string
+      - description: Filter by access mode
+        enum:
+        - ACCESSED_AS_USER
+        - ACCESSED_AS_SYSTEM
+        in: query
+        name: accessed_as
+        type: string
+      - collectionFormat: csv
+        description: Filter by one or more actions
+        in: query
+        items:
+          type: string
+        name: actions
+        type: array
+      - description: Limit to events from the last N days
+        in: query
+        name: days
+        type: integer
+      - description: Maximum results to return
+        in: query
+        name: limit
+        type: integer
+      - description: Pagination offset
+        in: query
+        name: offset
+        type: integer
+      - description: Collapse repeats to one per (actor, day) before scoring
+        in: query
+        name: unique_per_day
+        type: boolean
+      - description: history (default) or most_used
+        enum:
+        - history
+        - most_used
+        in: query
+        name: mode
+        type: string
+      - description: Scoring algorithm for mode=most_used
+        enum:
+        - MOST_USED_ALGORITHM_COUNT
+        - MOST_USED_ALGORITHM_LOG_COUNT
+        in: query
+        name: algorithm
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/controllers.ActivityReply'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Stream activity history (or most-used scores)
+      tags:
+      - history
   /notes:
     patch:
       consumes:
@@ -1451,7 +1640,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/controllers.CreateShareBody'
+          $ref: '#/definitions/controllers.CreateShareRequestBody'
       produces:
       - application/json
       responses:
