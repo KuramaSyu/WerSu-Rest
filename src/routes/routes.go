@@ -20,6 +20,7 @@ func SetupRouter(
 	attachmentController *controllers.AttachmentController,
 	attachmentLinkController *controllers.AttachmentLinkController,
 	sharingController *controllers.SharingController,
+	activityController *controllers.ActivityController,
 ) {
 
 	// API routes
@@ -108,6 +109,9 @@ func SetupRouter(
 			shares.DELETE("", sharingController.DeleteShares)
 			shares.PATCH("", sharingController.UpdateShare)
 		}
+
+		// activity history routes
+		api.GET("/history", activityController.GetActivityHistory)
 
 		// route for swagger API docs
 		api.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
