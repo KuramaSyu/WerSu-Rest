@@ -38,6 +38,8 @@ const (
 // ActivityReply is the REST representation of a single row from the activity
 // log. Timestamp fields are rendered as RFC3339 strings so JSON clients don't
 // need to deal with protobuf timestamp encoding.
+// if the activity entry references a note, the `metadata_json` field contains
+// `note_title` and `note_content`
 type ActivityReply struct {
 	Id           string    `json:"id"`
 	ActorId      string    `json:"actor_id"`
@@ -51,9 +53,13 @@ type ActivityReply struct {
 }
 
 // ActivityScoreReply is the REST representation of an aggregated note score.
+// `title` and `stripped_content` mirror the `ActivityScore` fields returned
+// by the gRPC service and are omitted when empty.
 type ActivityScoreReply struct {
-	NoteId string  `json:"note_id"`
-	Score  float64 `json:"score"`
+	NoteId          string  `json:"note_id"`
+	Score           float64 `json:"score"`
+	Title           string  `json:"title,omitempty"`
+	StrippedContent string  `json:"stripped_content,omitempty"`
 }
 
 // GetActivityHistoryQuery binds the query string for `GET /history`.
@@ -102,8 +108,10 @@ func activityReplyFromProto(activity *proto.Activity) ActivityReply {
 // response type.
 func activityScoreReplyFromProto(score *proto.ActivityScore) ActivityScoreReply {
 	return ActivityScoreReply{
-		NoteId: score.GetNoteId(),
-		Score:  score.GetScore(),
+		NoteId:          score.GetNoteId(),
+		Score:           score.GetScore(),
+		Title:           score.GetTitle(),
+		StrippedContent: score.GetStrippedContent(),
 	}
 }
 
@@ -166,6 +174,11 @@ func activityFilterFromQuery(query GetActivityHistoryQuery, actions []string) (*
 // @Description allowed to view. Use `mode=most_used` to stream aggregated note
 // @Description scores instead; the `algorithm` query parameter then selects the
 // @Description scoring function (count or log_count).
+// @Description
+// @Description For entries that reference a note (`note_id` is non-empty), the
+// @Description response embeds `note_title` and `note_content` into the JSON
+// @Description document carried in `metadata_json`, so a single request can be
+// @Description used to render history without further per-note lookups.
 // @Tags history
 // @Accept json
 // @Produce json

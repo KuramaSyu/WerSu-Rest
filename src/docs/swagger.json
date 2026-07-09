@@ -825,7 +825,7 @@
         },
         "/history": {
             "get": {
-                "description": "Streams the activity log for everything the requesting user is\nallowed to view. Use `mode=most_used` to stream aggregated note\nscores instead; the `algorithm` query parameter then selects the\nscoring function (count or log_count).",
+                "description": "Streams the activity log for everything the requesting user is\nallowed to view. Use `mode=most_used` to stream aggregated note\nscores instead; the `algorithm` query parameter then selects the\nscoring function (count or log_count).\n\nFor entries that reference a note (`note_id` is non-empty), the\nresponse embeds `note_title` and `note_content` into the JSON\ndocument carried in `metadata_json`, so a single request can be\nused to render history without further per-note lookups.",
                 "consumes": [
                     "application/json"
                 ],
@@ -947,6 +947,79 @@
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/migrations/import_bookstack_book": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Accepts a BookStack book zip via multipart/form-data and forwards it to the BookstackBookImport gRPC streaming RPC in 1 MiB chunks. Returns the created book directory and per-chapter import stats on success.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "migrations"
+                ],
+                "summary": "Import a BookStack book zip",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "BookStack book zip archive",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.BookstackBookImportReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1965,6 +2038,40 @@
                 },
                 "updated_at": {
                     "type": "string"
+                }
+            }
+        },
+        "controllers.BookstackBookImportReply": {
+            "type": "object",
+            "properties": {
+                "attachments_uploaded": {
+                    "type": "integer"
+                },
+                "book_directory_id": {
+                    "type": "string"
+                },
+                "chapters": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controllers.BookstackImportedChapterReply"
+                    }
+                },
+                "pages_imported": {
+                    "type": "integer"
+                }
+            }
+        },
+        "controllers.BookstackImportedChapterReply": {
+            "type": "object",
+            "properties": {
+                "chapter_name": {
+                    "type": "string"
+                },
+                "directory_id": {
+                    "type": "string"
+                },
+                "pages_imported": {
+                    "type": "integer"
                 }
             }
         },

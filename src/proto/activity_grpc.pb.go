@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.0
 // - protoc             v6.33.1
-// source: proto/activity.proto
+// source: src/proto/activity.proto
 
 package proto
 
@@ -27,9 +27,9 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ActivityStatisticsServiceClient interface {
-	// Stream the activity log for everything the actor can view.
+	// Streams the activity log for everything the actor can view.
 	GetActivityHistory(ctx context.Context, in *GetActivityHistoryRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Activity], error)
-	// Stream aggregate note scores for everything the actor can view.
+	// Streams aggregate note scores for everything the actor can view.
 	GetMostUsedActivity(ctx context.Context, in *GetMostUsedActivityRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ActivityScore], error)
 }
 
@@ -83,9 +83,9 @@ type ActivityStatisticsService_GetMostUsedActivityClient = grpc.ServerStreamingC
 // All implementations must embed UnimplementedActivityStatisticsServiceServer
 // for forward compatibility.
 type ActivityStatisticsServiceServer interface {
-	// Stream the activity log for everything the actor can view.
+	// Streams the activity log for everything the actor can view.
 	GetActivityHistory(*GetActivityHistoryRequest, grpc.ServerStreamingServer[Activity]) error
-	// Stream aggregate note scores for everything the actor can view.
+	// Streams aggregate note scores for everything the actor can view.
 	GetMostUsedActivity(*GetMostUsedActivityRequest, grpc.ServerStreamingServer[ActivityScore]) error
 	mustEmbedUnimplementedActivityStatisticsServiceServer()
 }
@@ -166,5 +166,5 @@ var ActivityStatisticsService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "proto/activity.proto",
+	Metadata: "src/proto/activity.proto",
 }

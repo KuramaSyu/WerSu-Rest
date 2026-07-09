@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.0
 // - protoc             v6.33.1
-// source: note.proto
+// source: src/proto/note.proto
 
 package proto
 
@@ -283,7 +283,7 @@ var NoteService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "note.proto",
+	Metadata: "src/proto/note.proto",
 }
 
 const (
@@ -582,7 +582,7 @@ var DirectoryService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "note.proto",
+	Metadata: "src/proto/note.proto",
 }
 
 const (
@@ -798,7 +798,7 @@ var PermissionService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "note.proto",
+	Metadata: "src/proto/note.proto",
 }
 
 const (
@@ -1021,5 +1021,5 @@ var NoteVersionService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "note.proto",
+	Metadata: "src/proto/note.proto",
 }

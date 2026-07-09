@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v6.33.1
-// source: proto/activity.proto
+// source: src/proto/activity.proto
 
 package proto
 
@@ -22,7 +22,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// How the actor was acting when the event happened.
+// Discriminator for who was acting when an event happened.
 type AccessedAs int32
 
 const (
@@ -56,11 +56,11 @@ func (x AccessedAs) String() string {
 }
 
 func (AccessedAs) Descriptor() protoreflect.EnumDescriptor {
-	return file_proto_activity_proto_enumTypes[0].Descriptor()
+	return file_src_proto_activity_proto_enumTypes[0].Descriptor()
 }
 
 func (AccessedAs) Type() protoreflect.EnumType {
-	return &file_proto_activity_proto_enumTypes[0]
+	return &file_src_proto_activity_proto_enumTypes[0]
 }
 
 func (x AccessedAs) Number() protoreflect.EnumNumber {
@@ -69,10 +69,10 @@ func (x AccessedAs) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AccessedAs.Descriptor instead.
 func (AccessedAs) EnumDescriptor() ([]byte, []int) {
-	return file_proto_activity_proto_rawDescGZIP(), []int{0}
+	return file_src_proto_activity_proto_rawDescGZIP(), []int{0}
 }
 
-// Which scoring algorithm produced the score in an ActivityScore.
+// Discriminator for the scoring strategy used in an ActivityScore.
 type MostUsedAlgorithm int32
 
 const (
@@ -106,11 +106,11 @@ func (x MostUsedAlgorithm) String() string {
 }
 
 func (MostUsedAlgorithm) Descriptor() protoreflect.EnumDescriptor {
-	return file_proto_activity_proto_enumTypes[1].Descriptor()
+	return file_src_proto_activity_proto_enumTypes[1].Descriptor()
 }
 
 func (MostUsedAlgorithm) Type() protoreflect.EnumType {
-	return &file_proto_activity_proto_enumTypes[1]
+	return &file_src_proto_activity_proto_enumTypes[1]
 }
 
 func (x MostUsedAlgorithm) Number() protoreflect.EnumNumber {
@@ -119,7 +119,7 @@ func (x MostUsedAlgorithm) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use MostUsedAlgorithm.Descriptor instead.
 func (MostUsedAlgorithm) EnumDescriptor() ([]byte, []int) {
-	return file_proto_activity_proto_rawDescGZIP(), []int{1}
+	return file_src_proto_activity_proto_rawDescGZIP(), []int{1}
 }
 
 // One row from the activity log.
@@ -140,7 +140,7 @@ type Activity struct {
 
 func (x *Activity) Reset() {
 	*x = Activity{}
-	mi := &file_proto_activity_proto_msgTypes[0]
+	mi := &file_src_proto_activity_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -152,7 +152,7 @@ func (x *Activity) String() string {
 func (*Activity) ProtoMessage() {}
 
 func (x *Activity) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_activity_proto_msgTypes[0]
+	mi := &file_src_proto_activity_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -165,7 +165,7 @@ func (x *Activity) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Activity.ProtoReflect.Descriptor instead.
 func (*Activity) Descriptor() ([]byte, []int) {
-	return file_proto_activity_proto_rawDescGZIP(), []int{0}
+	return file_src_proto_activity_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Activity) GetId() string {
@@ -231,18 +231,20 @@ func (x *Activity) GetMetadataJson() string {
 	return ""
 }
 
-// Aggregate score for a single note from a `most_used` query.
+// Aggregate score for one note plus its title and stripped content.
 type ActivityScore struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	NoteId        string                 `protobuf:"bytes,1,opt,name=note_id,json=noteId,proto3" json:"note_id,omitempty"`
-	Score         float64                `protobuf:"fixed64,2,opt,name=score,proto3" json:"score,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	NoteId          string                 `protobuf:"bytes,1,opt,name=note_id,json=noteId,proto3" json:"note_id,omitempty"`
+	Score           float64                `protobuf:"fixed64,2,opt,name=score,proto3" json:"score,omitempty"`
+	Title           string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	StrippedContent string                 `protobuf:"bytes,4,opt,name=stripped_content,json=strippedContent,proto3" json:"stripped_content,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ActivityScore) Reset() {
 	*x = ActivityScore{}
-	mi := &file_proto_activity_proto_msgTypes[1]
+	mi := &file_src_proto_activity_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -254,7 +256,7 @@ func (x *ActivityScore) String() string {
 func (*ActivityScore) ProtoMessage() {}
 
 func (x *ActivityScore) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_activity_proto_msgTypes[1]
+	mi := &file_src_proto_activity_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -267,7 +269,7 @@ func (x *ActivityScore) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ActivityScore.ProtoReflect.Descriptor instead.
 func (*ActivityScore) Descriptor() ([]byte, []int) {
-	return file_proto_activity_proto_rawDescGZIP(), []int{1}
+	return file_src_proto_activity_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *ActivityScore) GetNoteId() string {
@@ -284,9 +286,21 @@ func (x *ActivityScore) GetScore() float64 {
 	return 0
 }
 
-// History filter. Empty fields mean "do not filter on this column".
-// `unique_per_day` collapses repeats to one count per (actor, day)
-// pair before aggregating; it composes with any algorithm.
+func (x *ActivityScore) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *ActivityScore) GetStrippedContent() string {
+	if x != nil {
+		return x.StrippedContent
+	}
+	return ""
+}
+
+// History filter for both RPCs.
 type ActivityFilter struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	NoteId        string                 `protobuf:"bytes,1,opt,name=note_id,json=noteId,proto3" json:"note_id,omitempty"`
@@ -305,7 +319,7 @@ type ActivityFilter struct {
 
 func (x *ActivityFilter) Reset() {
 	*x = ActivityFilter{}
-	mi := &file_proto_activity_proto_msgTypes[2]
+	mi := &file_src_proto_activity_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -317,7 +331,7 @@ func (x *ActivityFilter) String() string {
 func (*ActivityFilter) ProtoMessage() {}
 
 func (x *ActivityFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_activity_proto_msgTypes[2]
+	mi := &file_src_proto_activity_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -330,7 +344,7 @@ func (x *ActivityFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ActivityFilter.ProtoReflect.Descriptor instead.
 func (*ActivityFilter) Descriptor() ([]byte, []int) {
-	return file_proto_activity_proto_rawDescGZIP(), []int{2}
+	return file_src_proto_activity_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ActivityFilter) GetNoteId() string {
@@ -403,8 +417,7 @@ func (x *ActivityFilter) GetUniquePerDay() bool {
 	return false
 }
 
-// Request for `GetActivityHistory`. The requester user_id is used
-// for permission checks and to scope "all visible directories".
+// Request for GetActivityHistory.
 type GetActivityHistoryRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
@@ -415,7 +428,7 @@ type GetActivityHistoryRequest struct {
 
 func (x *GetActivityHistoryRequest) Reset() {
 	*x = GetActivityHistoryRequest{}
-	mi := &file_proto_activity_proto_msgTypes[3]
+	mi := &file_src_proto_activity_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -427,7 +440,7 @@ func (x *GetActivityHistoryRequest) String() string {
 func (*GetActivityHistoryRequest) ProtoMessage() {}
 
 func (x *GetActivityHistoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_activity_proto_msgTypes[3]
+	mi := &file_src_proto_activity_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -440,7 +453,7 @@ func (x *GetActivityHistoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetActivityHistoryRequest.ProtoReflect.Descriptor instead.
 func (*GetActivityHistoryRequest) Descriptor() ([]byte, []int) {
-	return file_proto_activity_proto_rawDescGZIP(), []int{3}
+	return file_src_proto_activity_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetActivityHistoryRequest) GetUserId() string {
@@ -457,8 +470,7 @@ func (x *GetActivityHistoryRequest) GetFilter() *ActivityFilter {
 	return nil
 }
 
-// Request for `GetMostUsedActivity`. Same permission semantics as
-// `GetActivityHistory`; `algorithm` defaults to `count`.
+// Request for GetMostUsedActivity.
 type GetMostUsedActivityRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
@@ -471,7 +483,7 @@ type GetMostUsedActivityRequest struct {
 
 func (x *GetMostUsedActivityRequest) Reset() {
 	*x = GetMostUsedActivityRequest{}
-	mi := &file_proto_activity_proto_msgTypes[4]
+	mi := &file_src_proto_activity_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -483,7 +495,7 @@ func (x *GetMostUsedActivityRequest) String() string {
 func (*GetMostUsedActivityRequest) ProtoMessage() {}
 
 func (x *GetMostUsedActivityRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_activity_proto_msgTypes[4]
+	mi := &file_src_proto_activity_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -496,7 +508,7 @@ func (x *GetMostUsedActivityRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMostUsedActivityRequest.ProtoReflect.Descriptor instead.
 func (*GetMostUsedActivityRequest) Descriptor() ([]byte, []int) {
-	return file_proto_activity_proto_rawDescGZIP(), []int{4}
+	return file_src_proto_activity_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GetMostUsedActivityRequest) GetUserId() string {
@@ -527,11 +539,11 @@ func (x *GetMostUsedActivityRequest) GetLimit() int32 {
 	return 0
 }
 
-var File_proto_activity_proto protoreflect.FileDescriptor
+var File_src_proto_activity_proto protoreflect.FileDescriptor
 
-const file_proto_activity_proto_rawDesc = "" +
+const file_src_proto_activity_proto_rawDesc = "" +
 	"\n" +
-	"\x14proto/activity.proto\x12\x05proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa7\x02\n" +
+	"\x18src/proto/activity.proto\x12\x05proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa7\x02\n" +
 	"\bActivity\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\bactor_id\x18\x02 \x01(\tR\aactorId\x122\n" +
@@ -542,10 +554,12 @@ const file_proto_activity_proto_rawDesc = "" +
 	"\fdirectory_id\x18\x06 \x01(\tR\vdirectoryId\x12\x17\n" +
 	"\arole_id\x18\a \x01(\tR\x06roleId\x12*\n" +
 	"\x02at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\x02at\x12#\n" +
-	"\rmetadata_json\x18\t \x01(\tR\fmetadataJson\">\n" +
+	"\rmetadata_json\x18\t \x01(\tR\fmetadataJson\"\x7f\n" +
 	"\rActivityScore\x12\x17\n" +
 	"\anote_id\x18\x01 \x01(\tR\x06noteId\x12\x14\n" +
-	"\x05score\x18\x02 \x01(\x01R\x05score\"\xfb\x02\n" +
+	"\x05score\x18\x02 \x01(\x01R\x05score\x12\x14\n" +
+	"\x05title\x18\x03 \x01(\tR\x05title\x12)\n" +
+	"\x10stripped_content\x18\x04 \x01(\tR\x0fstrippedContent\"\xfb\x02\n" +
 	"\x0eActivityFilter\x12\x17\n" +
 	"\anote_id\x18\x01 \x01(\tR\x06noteId\x12!\n" +
 	"\fdirectory_id\x18\x02 \x01(\tR\vdirectoryId\x12\x19\n" +
@@ -586,20 +600,20 @@ const file_proto_activity_proto_rawDesc = "" +
 	"\x13GetMostUsedActivity\x12!.proto.GetMostUsedActivityRequest\x1a\x14.proto.ActivityScore0\x01B1Z/github.com/KuramaSyu/Wersu-Rest/src/proto;protob\x06proto3"
 
 var (
-	file_proto_activity_proto_rawDescOnce sync.Once
-	file_proto_activity_proto_rawDescData []byte
+	file_src_proto_activity_proto_rawDescOnce sync.Once
+	file_src_proto_activity_proto_rawDescData []byte
 )
 
-func file_proto_activity_proto_rawDescGZIP() []byte {
-	file_proto_activity_proto_rawDescOnce.Do(func() {
-		file_proto_activity_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_activity_proto_rawDesc), len(file_proto_activity_proto_rawDesc)))
+func file_src_proto_activity_proto_rawDescGZIP() []byte {
+	file_src_proto_activity_proto_rawDescOnce.Do(func() {
+		file_src_proto_activity_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_src_proto_activity_proto_rawDesc), len(file_src_proto_activity_proto_rawDesc)))
 	})
-	return file_proto_activity_proto_rawDescData
+	return file_src_proto_activity_proto_rawDescData
 }
 
-var file_proto_activity_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_proto_activity_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
-var file_proto_activity_proto_goTypes = []any{
+var file_src_proto_activity_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_src_proto_activity_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_src_proto_activity_proto_goTypes = []any{
 	(AccessedAs)(0),                    // 0: proto.AccessedAs
 	(MostUsedAlgorithm)(0),             // 1: proto.MostUsedAlgorithm
 	(*Activity)(nil),                   // 2: proto.Activity
@@ -609,7 +623,7 @@ var file_proto_activity_proto_goTypes = []any{
 	(*GetMostUsedActivityRequest)(nil), // 6: proto.GetMostUsedActivityRequest
 	(*timestamppb.Timestamp)(nil),      // 7: google.protobuf.Timestamp
 }
-var file_proto_activity_proto_depIdxs = []int32{
+var file_src_proto_activity_proto_depIdxs = []int32{
 	0, // 0: proto.Activity.accessed_as:type_name -> proto.AccessedAs
 	7, // 1: proto.Activity.at:type_name -> google.protobuf.Timestamp
 	0, // 2: proto.ActivityFilter.accessed_as:type_name -> proto.AccessedAs
@@ -627,29 +641,29 @@ var file_proto_activity_proto_depIdxs = []int32{
 	0, // [0:6] is the sub-list for field type_name
 }
 
-func init() { file_proto_activity_proto_init() }
-func file_proto_activity_proto_init() {
-	if File_proto_activity_proto != nil {
+func init() { file_src_proto_activity_proto_init() }
+func file_src_proto_activity_proto_init() {
+	if File_src_proto_activity_proto != nil {
 		return
 	}
-	file_proto_activity_proto_msgTypes[2].OneofWrappers = []any{}
-	file_proto_activity_proto_msgTypes[4].OneofWrappers = []any{}
+	file_src_proto_activity_proto_msgTypes[2].OneofWrappers = []any{}
+	file_src_proto_activity_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_activity_proto_rawDesc), len(file_proto_activity_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_src_proto_activity_proto_rawDesc), len(file_src_proto_activity_proto_rawDesc)),
 			NumEnums:      2,
 			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_proto_activity_proto_goTypes,
-		DependencyIndexes: file_proto_activity_proto_depIdxs,
-		EnumInfos:         file_proto_activity_proto_enumTypes,
-		MessageInfos:      file_proto_activity_proto_msgTypes,
+		GoTypes:           file_src_proto_activity_proto_goTypes,
+		DependencyIndexes: file_src_proto_activity_proto_depIdxs,
+		EnumInfos:         file_src_proto_activity_proto_enumTypes,
+		MessageInfos:      file_src_proto_activity_proto_msgTypes,
 	}.Build()
-	File_proto_activity_proto = out.File
-	file_proto_activity_proto_goTypes = nil
-	file_proto_activity_proto_depIdxs = nil
+	File_src_proto_activity_proto = out.File
+	file_src_proto_activity_proto_goTypes = nil
+	file_src_proto_activity_proto_depIdxs = nil
 }

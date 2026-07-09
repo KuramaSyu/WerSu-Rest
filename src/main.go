@@ -84,6 +84,7 @@ func main() {
 	attachmentGrpcClient := proto.NewAttachmentServiceClient(grpcConn)
 	shareingGrpcClient := proto.NewSharingServiceClient(grpcConn)
 	activityGrpcClient := proto.NewActivityStatisticsServiceClient(grpcConn)
+	migrationsGrpcClient := proto.NewThirdpartyMigrationsServiceClient(grpcConn)
 
 	// Initialize RSET controllers
 	authController := controllers.NewAuthController(appConfig.DiscordOAuthConfig, &userGrpcClient, &shareingGrpcClient, appConfig.JwtSecret)
@@ -96,6 +97,7 @@ func main() {
 	attachmentLinkController := controllers.NewAttachmentLinkController(&attachmentGrpcClient)
 	sharingController := controllers.NewSharingController(&shareingGrpcClient)
 	activityController := controllers.NewActivityController(&activityGrpcClient)
+	migrationController := controllers.NewThirdpartyMigrationController(&migrationsGrpcClient)
 
 	// Setup routes
 	routes.SetupRouter(
@@ -110,6 +112,7 @@ func main() {
 		attachmentLinkController,
 		sharingController,
 		activityController,
+		migrationController,
 	)
 
 	// Start the server

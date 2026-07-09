@@ -21,6 +21,7 @@ func SetupRouter(
 	attachmentLinkController *controllers.AttachmentLinkController,
 	sharingController *controllers.SharingController,
 	activityController *controllers.ActivityController,
+	migrationController *controllers.ThirdpartyMigrationController,
 ) {
 
 	// API routes
@@ -112,6 +113,15 @@ func SetupRouter(
 
 		// activity history routes
 		api.GET("/history", activityController.GetActivityHistory)
+
+		// third-party migrations
+		migrations := api.Group("/migrations")
+		{
+			migrations.POST(
+				"/import_bookstack_book",
+				migrationController.ImportBookstackBook,
+			)
+		}
 
 		// route for swagger API docs
 		api.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

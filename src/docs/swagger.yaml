@@ -53,6 +53,28 @@ definitions:
       updated_at:
         type: string
     type: object
+  controllers.BookstackBookImportReply:
+    properties:
+      attachments_uploaded:
+        type: integer
+      book_directory_id:
+        type: string
+      chapters:
+        items:
+          $ref: '#/definitions/controllers.BookstackImportedChapterReply'
+        type: array
+      pages_imported:
+        type: integer
+    type: object
+  controllers.BookstackImportedChapterReply:
+    properties:
+      chapter_name:
+        type: string
+      directory_id:
+        type: string
+      pages_imported:
+        type: integer
+    type: object
   controllers.CreateDirectoryBody:
     properties:
       description:
@@ -1039,6 +1061,11 @@ paths:
         allowed to view. Use `mode=most_used` to stream aggregated note
         scores instead; the `algorithm` query parameter then selects the
         scoring function (count or log_count).
+
+        For entries that reference a note (`note_id` is non-empty), the
+        response embeds `note_title` and `note_content` into the JSON
+        document carried in `metadata_json`, so a single request can be
+        used to render history without further per-note lookups.
       parameters:
       - description: Filter by note ID
         in: query
@@ -1124,6 +1151,55 @@ paths:
       summary: Stream activity history (or most-used scores)
       tags:
       - history
+  /migrations/import_bookstack_book:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Accepts a BookStack book zip via multipart/form-data and forwards
+        it to the BookstackBookImport gRPC streaming RPC in 1 MiB chunks. Returns
+        the created book directory and per-chapter import stats on success.
+      parameters:
+      - description: BookStack book zip archive
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.BookstackBookImportReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Import a BookStack book zip
+      tags:
+      - migrations
   /notes:
     patch:
       consumes:
