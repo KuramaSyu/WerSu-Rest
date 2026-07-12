@@ -21,18 +21,28 @@ func NewDirectoryController(directoryService *proto.DirectoryServiceClient) *Dir
 // DirectoryReply is the REST representation of a directory.
 type DirectoryReply struct {
 	Id            string                        `json:"id"`
-	Name          string                        `json:"name"`
+	Slug          string                        `json:"slug"`
 	DisplayName   string                        `json:"display_name"`
 	Description   string                        `json:"description"`
 	ImageUrl      string                        `json:"image_url"`
-	ParentId      *string                       `json:"parent_id,omitempty"`
+	ParentDirIds  []string                      `json:"parent_dir_ids,omitempty"`
 	Relationships []PermissionRelationshipReply `json:"relationships"`
+	ChildDirIds   []string                      `json:"child_dir_ids,omitempty"`
+	ChildNoteIds  []string                      `json:"child_note_ids,omitempty"`
 }
 
 type GetDirectoriesQuery struct {
 	ParentId *string `form:"parent_id"`
 	Limit    *int32  `form:"limit"`
 	Offset   *int32  `form:"offset"`
+}
+
+// GetDirectoryQuery controls which related entities the server embeds in
+// the returned `Directory` payload.
+type GetDirectoryQuery struct {
+	IncludeParents    bool `form:"include_parents"`
+	IncludeChildDirs  bool `form:"include_child_dirs"`
+	IncludeChildNotes bool `form:"include_child_notes"`
 }
 
 type GetNotesOfDirectoryQuery struct {
@@ -44,21 +54,25 @@ type GetNotesOfDirectoryQuery struct {
 // `GET /directories/:id/notes` when the client omits the query parameter.
 const defaultLimitForDirectoryNotes int32 = 20
 
+// defaultOffsetForDirectoryNotes is the default `offset` applied to
+// `GET /directories/:id/notes` when the client omits the query parameter.
+const defaultOffsetForDirectoryNotes int32 = 0
+
 type CreateDirectoryBody struct {
-	Name        string  `json:"name" binding:"required" example:"engineering"`
-	DisplayName *string `json:"display_name,omitempty" example:"Engineering"`
-	Description *string `json:"description,omitempty" example:"Shared notes for engineering team"`
-	ImageUrl    *string `json:"image_url,omitempty" example:"https://cdn.example.com/engineering.png"`
-	ParentId    *string `json:"parent_id,omitempty" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
+	Name        string   `json:"name" binding:"required" example:"engineering"`
+	DisplayName *string  `json:"display_name,omitempty" example:"Engineering"`
+	Description *string  `json:"description,omitempty" example:"Shared notes for engineering team"`
+	ImageUrl    *string  `json:"image_url,omitempty" example:"https://cdn.example.com/engineering.png"`
+	ParentIds   []string `json:"parent_ids,omitempty" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 }
 
 type PatchDirectoryBody struct {
-	Id          string  `json:"id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
-	Name        *string `json:"name,omitempty" example:"engineering"`
-	DisplayName *string `json:"display_name,omitempty" example:"Engineering"`
-	Description *string `json:"description,omitempty" example:"Shared notes for engineering team"`
-	ImageUrl    *string `json:"image_url,omitempty" example:"https://cdn.example.com/engineering.png"`
-	ParentId    *string `json:"parent_id,omitempty" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
+	Id          string   `json:"id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
+	Name        *string  `json:"name,omitempty" example:"engineering"`
+	DisplayName *string  `json:"display_name,omitempty" example:"Engineering"`
+	Description *string  `json:"description,omitempty" example:"Shared notes for engineering team"`
+	ImageUrl    *string  `json:"image_url,omitempty" example:"https://cdn.example.com/engineering.png"`
+	ParentIds   []string `json:"parent_ids,omitempty" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 }
 
 func directoryReplyFromProto(directory *proto.Directory) DirectoryReply {
@@ -67,19 +81,16 @@ func directoryReplyFromProto(directory *proto.Directory) DirectoryReply {
 		relationships = append(relationships, PermissionRelationshipReplyFromProto(relationship))
 	}
 
-	var parentID *string
-	if directory.ParentId != nil {
-		parentID = directory.ParentId
-	}
-
 	return DirectoryReply{
 		Id:            directory.GetId(),
-		Name:          directory.GetName(),
+		Slug:          directory.GetSlug(),
 		DisplayName:   directory.GetDisplayName(),
 		Description:   directory.GetDescription(),
 		ImageUrl:      directory.GetImageUrl(),
-		ParentId:      parentID,
+		ParentDirIds:  directory.GetParentDirIds(),
 		Relationships: relationships,
+		ChildDirIds:   directory.GetChildDirIds(),
+		ChildNoteIds:  directory.GetChildNoteIds(),
 	}
 }
 
@@ -90,6 +101,9 @@ func directoryReplyFromProto(directory *proto.Directory) DirectoryReply {
 // @Accept json
 // @Produce json
 // @Param id path string true "Directory ID"
+// @Param include_parents query bool false "Include parent directories in the response"
+// @Param include_child_dirs query bool false "Include child directory IDs in the response"
+// @Param include_child_notes query bool false "Include child note IDs in the response"
 // @Success 200 {object} DirectoryReply
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
@@ -107,7 +121,19 @@ func (dc *DirectoryController) GetDirectory(c *gin.Context) {
 		return
 	}
 
-	directory, err := (*dc.DirectoryService).GetDirectory(c, &proto.GetDirectoryRequest{Id: id, UserId: user.ID})
+	var query GetDirectoryQuery
+	if err := c.ShouldBindQuery(&query); err != nil {
+		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
+		return
+	}
+
+	directory, err := (*dc.DirectoryService).GetDirectory(c, &proto.GetDirectoryRequest{
+		Id:                id,
+		UserId:            user.ID,
+		IncludeParents:    query.IncludeParents,
+		IncludeChildDirs:  query.IncludeChildDirs,
+		IncludeChildNotes: query.IncludeChildNotes,
+	})
 	if err != nil {
 		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch directory via gRPC service: %w", err))
 		return
@@ -178,8 +204,8 @@ func (dc *DirectoryController) GetDirectories(c *gin.Context) {
 // @Produce json
 // @Param id path string true "Directory ID"
 // @Param limit query int false "Maximum results to return (default 20)"
-// @Param offset query int false "Pagination offset"
-// @Success 200 {object} []MinimalNote
+// @Param offset query int false "Pagination offset (default 0)"
+// @Success 200 {object} NotesReply
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /directories/{id}/notes [get]
@@ -202,16 +228,20 @@ func (dc *DirectoryController) GetNotesOfDirectory(c *gin.Context) {
 		return
 	}
 
-	limit := query.Limit
-	if limit == nil {
-		defaultLimit := defaultLimitForDirectoryNotes
-		limit = &defaultLimit
+	limit := defaultLimitForDirectoryNotes
+	if query.Limit != nil {
+		limit = *query.Limit
 	}
 
-	stream, err := (*dc.DirectoryService).GetNotesOfDirectory(c, &proto.GetNotesOfDirectoryRequest{
+	offset := defaultOffsetForDirectoryNotes
+	if query.Offset != nil {
+		offset = *query.Offset
+	}
+
+	reply, err := (*dc.DirectoryService).GetNotesOfDirectory(c, &proto.GetNotesOfDirectoryRequest{
 		DirectoryId: id,
 		Limit:       limit,
-		Offset:      query.Offset,
+		Offset:      offset,
 		UserId:      user.ID,
 	})
 	if err != nil {
@@ -219,21 +249,7 @@ func (dc *DirectoryController) GetNotesOfDirectory(c *gin.Context) {
 		return
 	}
 
-	notes := make([]MinimalNote, 0)
-	for {
-		note, err := stream.Recv()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to stream directory notes via gRPC service: %w", err))
-			return
-		}
-
-		notes = append(notes, ConvertProtoMinimalNoteToRest(note))
-	}
-
-	c.JSON(http.StatusOK, notes)
+	c.JSON(http.StatusOK, NotesReplyFromProto(reply))
 }
 
 // CreateDirectory godoc
@@ -265,7 +281,7 @@ func (dc *DirectoryController) CreateDirectory(c *gin.Context) {
 		DisplayName: body.DisplayName,
 		Description: body.Description,
 		ImageUrl:    body.ImageUrl,
-		ParentId:    body.ParentId,
+		ParentIds:   body.ParentIds,
 		UserId:      user.ID,
 	})
 	if err != nil {
@@ -306,7 +322,7 @@ func (dc *DirectoryController) PatchDirectory(c *gin.Context) {
 		DisplayName: body.DisplayName,
 		Description: body.Description,
 		ImageUrl:    body.ImageUrl,
-		ParentId:    body.ParentId,
+		ParentIds:   body.ParentIds,
 		UserId:      user.ID,
 	})
 	if err != nil {

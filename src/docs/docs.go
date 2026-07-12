@@ -604,6 +604,24 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include parent directories in the response",
+                        "name": "include_parents",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include child directory IDs in the response",
+                        "name": "include_child_dirs",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include child note IDs in the response",
+                        "name": "include_child_notes",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -796,7 +814,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Pagination offset",
+                        "description": "Pagination offset (default 0)",
                         "name": "offset",
                         "in": "query"
                     }
@@ -805,10 +823,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/controllers.MinimalNote"
-                            }
+                            "$ref": "#/definitions/controllers.NotesReply"
                         }
                     },
                     "400": {
@@ -1185,10 +1200,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/controllers.MinimalNote"
-                            }
+                            "$ref": "#/definitions/controllers.NotesReply"
                         }
                     },
                     "400": {
@@ -2106,9 +2118,14 @@ const docTemplate = `{
                     "type": "string",
                     "example": "engineering"
                 },
-                "parent_id": {
-                    "type": "string",
-                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                "parent_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                    ]
                 }
             }
         },
@@ -2216,6 +2233,18 @@ const docTemplate = `{
         "controllers.DirectoryReply": {
             "type": "object",
             "properties": {
+                "child_dir_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "child_note_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "description": {
                     "type": "string"
                 },
@@ -2228,17 +2257,20 @@ const docTemplate = `{
                 "image_url": {
                     "type": "string"
                 },
-                "name": {
-                    "type": "string"
-                },
-                "parent_id": {
-                    "type": "string"
+                "parent_dir_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "relationships": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/controllers.PermissionRelationshipReply"
                     }
+                },
+                "slug": {
+                    "type": "string"
                 }
             }
         },
@@ -2276,11 +2308,31 @@ const docTemplate = `{
                 }
             }
         },
+        "controllers.MinimalDirectory": {
+            "type": "object",
+            "properties": {
+                "display_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
         "controllers.MinimalNote": {
             "type": "object",
             "properties": {
                 "author_id": {
                     "type": "string"
+                },
+                "directory_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "id": {
                     "type": "string"
@@ -2294,11 +2346,31 @@ const docTemplate = `{
                 "stripped_content": {
                     "type": "string"
                 },
+                "tag_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "title": {
                     "type": "string"
                 },
                 "updated_at": {
                     "description": "ISO 8601 format",
+                    "type": "string"
+                }
+            }
+        },
+        "controllers.MinimalTag": {
+            "type": "object",
+            "properties": {
+                "display_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "slug": {
                     "type": "string"
                 }
             }
@@ -2312,6 +2384,12 @@ const docTemplate = `{
                 "content": {
                     "type": "string"
                 },
+                "directory_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "id": {
                     "type": "string"
                 },
@@ -2319,6 +2397,12 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/controllers.PermissionRelationshipReply"
+                    }
+                },
+                "tag_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
                     }
                 },
                 "title": {
@@ -2419,6 +2503,29 @@ const docTemplate = `{
                 }
             }
         },
+        "controllers.NotesReply": {
+            "type": "object",
+            "properties": {
+                "directories": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controllers.MinimalDirectory"
+                    }
+                },
+                "notes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controllers.MinimalNote"
+                    }
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controllers.MinimalTag"
+                    }
+                }
+            }
+        },
         "controllers.PatchAttachmentMetadataRequest": {
             "type": "object",
             "required": [
@@ -2462,9 +2569,14 @@ const docTemplate = `{
                     "type": "string",
                     "example": "engineering"
                 },
-                "parent_id": {
-                    "type": "string",
-                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                "parent_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                    ]
                 }
             }
         },
@@ -2478,9 +2590,27 @@ const docTemplate = `{
                     "type": "string",
                     "example": "This is the updated content of my note."
                 },
+                "directory_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                    ]
+                },
                 "id": {
                     "type": "string",
                     "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                },
+                "tag_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                    ]
                 },
                 "title": {
                     "type": "string",

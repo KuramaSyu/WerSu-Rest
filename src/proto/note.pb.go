@@ -81,7 +81,7 @@ type GetSearchNotesRequest_SearchType int32
 
 const (
 	GetSearchNotesRequest_Undefined     GetSearchNotesRequest_SearchType = 0 // default
-	GetSearchNotesRequest_NoSearch      GetSearchNotesRequest_SearchType = 1 // just
+	GetSearchNotesRequest_NoSearch      GetSearchNotesRequest_SearchType = 1 // latest notes
 	GetSearchNotesRequest_FullTextTitle GetSearchNotesRequest_SearchType = 2 // exact match search
 	GetSearchNotesRequest_Fuzzy         GetSearchNotesRequest_SearchType = 3 // typo tolerant search
 	GetSearchNotesRequest_Context       GetSearchNotesRequest_SearchType = 4 // semantic search using embeddings
@@ -264,6 +264,68 @@ func (x *GetSearchNotesRequest) GetUserId() string {
 	return ""
 }
 
+type NotesReply struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Notes []*MinimalNote         `protobuf:"bytes,1,rep,name=notes,proto3" json:"notes,omitempty"`
+	// the directories which appear in the note results
+	Directories []*MinimalDirectory `protobuf:"bytes,2,rep,name=directories,proto3" json:"directories,omitempty"`
+	// the tags which appear in the note results
+	Tags          []*MinimalTag `protobuf:"bytes,3,rep,name=tags,proto3" json:"tags,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NotesReply) Reset() {
+	*x = NotesReply{}
+	mi := &file_src_proto_note_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NotesReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NotesReply) ProtoMessage() {}
+
+func (x *NotesReply) ProtoReflect() protoreflect.Message {
+	mi := &file_src_proto_note_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NotesReply.ProtoReflect.Descriptor instead.
+func (*NotesReply) Descriptor() ([]byte, []int) {
+	return file_src_proto_note_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *NotesReply) GetNotes() []*MinimalNote {
+	if x != nil {
+		return x.Notes
+	}
+	return nil
+}
+
+func (x *NotesReply) GetDirectories() []*MinimalDirectory {
+	if x != nil {
+		return x.Directories
+	}
+	return nil
+}
+
+func (x *NotesReply) GetTags() []*MinimalTag {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
 // Response: represents a minimal Note for search results
 type MinimalNote struct {
 	state           protoimpl.MessageState    `protogen:"open.v1"`
@@ -273,13 +335,15 @@ type MinimalNote struct {
 	UpdatedAt       *timestamppb.Timestamp    `protobuf:"bytes,4,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	StrippedContent string                    `protobuf:"bytes,5,opt,name=stripped_content,json=strippedContent,proto3" json:"stripped_content,omitempty"`
 	Permissions     []*PermissionRelationship `protobuf:"bytes,6,rep,name=permissions,proto3" json:"permissions,omitempty"`
+	DirectoryIds    []string                  `protobuf:"bytes,7,rep,name=directory_ids,json=directoryIds,proto3" json:"directory_ids,omitempty"`
+	TagIds          []string                  `protobuf:"bytes,8,rep,name=tag_ids,json=tagIds,proto3" json:"tag_ids,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
 
 func (x *MinimalNote) Reset() {
 	*x = MinimalNote{}
-	mi := &file_src_proto_note_proto_msgTypes[2]
+	mi := &file_src_proto_note_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -291,7 +355,7 @@ func (x *MinimalNote) String() string {
 func (*MinimalNote) ProtoMessage() {}
 
 func (x *MinimalNote) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[2]
+	mi := &file_src_proto_note_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -304,7 +368,7 @@ func (x *MinimalNote) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MinimalNote.ProtoReflect.Descriptor instead.
 func (*MinimalNote) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{2}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *MinimalNote) GetId() string {
@@ -349,6 +413,140 @@ func (x *MinimalNote) GetPermissions() []*PermissionRelationship {
 	return nil
 }
 
+func (x *MinimalNote) GetDirectoryIds() []string {
+	if x != nil {
+		return x.DirectoryIds
+	}
+	return nil
+}
+
+func (x *MinimalNote) GetTagIds() []string {
+	if x != nil {
+		return x.TagIds
+	}
+	return nil
+}
+
+type MinimalDirectory struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Slug          string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`
+	DisplayName   string                 `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MinimalDirectory) Reset() {
+	*x = MinimalDirectory{}
+	mi := &file_src_proto_note_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MinimalDirectory) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MinimalDirectory) ProtoMessage() {}
+
+func (x *MinimalDirectory) ProtoReflect() protoreflect.Message {
+	mi := &file_src_proto_note_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MinimalDirectory.ProtoReflect.Descriptor instead.
+func (*MinimalDirectory) Descriptor() ([]byte, []int) {
+	return file_src_proto_note_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *MinimalDirectory) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *MinimalDirectory) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+func (x *MinimalDirectory) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
+type MinimalTag struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Slug          string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`
+	DisplayName   string                 `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MinimalTag) Reset() {
+	*x = MinimalTag{}
+	mi := &file_src_proto_note_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MinimalTag) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MinimalTag) ProtoMessage() {}
+
+func (x *MinimalTag) ProtoReflect() protoreflect.Message {
+	mi := &file_src_proto_note_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MinimalTag.ProtoReflect.Descriptor instead.
+func (*MinimalTag) Descriptor() ([]byte, []int) {
+	return file_src_proto_note_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *MinimalTag) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *MinimalTag) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+func (x *MinimalTag) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
 // Response: represents a Note
 type Note struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
@@ -359,13 +557,15 @@ type Note struct {
 	AuthorId  string                 `protobuf:"bytes,5,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
 	// repeated NoteEmbedding embeddings = 6;
 	Permissions   []*PermissionRelationship `protobuf:"bytes,7,rep,name=permissions,proto3" json:"permissions,omitempty"`
+	DirectoryIds  []string                  `protobuf:"bytes,8,rep,name=directory_ids,json=directoryIds,proto3" json:"directory_ids,omitempty"`
+	TagIds        []string                  `protobuf:"bytes,9,rep,name=tag_ids,json=tagIds,proto3" json:"tag_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Note) Reset() {
 	*x = Note{}
-	mi := &file_src_proto_note_proto_msgTypes[3]
+	mi := &file_src_proto_note_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -377,7 +577,7 @@ func (x *Note) String() string {
 func (*Note) ProtoMessage() {}
 
 func (x *Note) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[3]
+	mi := &file_src_proto_note_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -390,7 +590,7 @@ func (x *Note) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Note.ProtoReflect.Descriptor instead.
 func (*Note) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{3}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *Note) GetId() string {
@@ -435,6 +635,20 @@ func (x *Note) GetPermissions() []*PermissionRelationship {
 	return nil
 }
 
+func (x *Note) GetDirectoryIds() []string {
+	if x != nil {
+		return x.DirectoryIds
+	}
+	return nil
+}
+
+func (x *Note) GetTagIds() []string {
+	if x != nil {
+		return x.TagIds
+	}
+	return nil
+}
+
 type NoteResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Note          *Note                  `protobuf:"bytes,1,opt,name=note,proto3" json:"note,omitempty"`
@@ -445,7 +659,7 @@ type NoteResponse struct {
 
 func (x *NoteResponse) Reset() {
 	*x = NoteResponse{}
-	mi := &file_src_proto_note_proto_msgTypes[4]
+	mi := &file_src_proto_note_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -457,7 +671,7 @@ func (x *NoteResponse) String() string {
 func (*NoteResponse) ProtoMessage() {}
 
 func (x *NoteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[4]
+	mi := &file_src_proto_note_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -470,7 +684,7 @@ func (x *NoteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NoteResponse.ProtoReflect.Descriptor instead.
 func (*NoteResponse) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{4}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *NoteResponse) GetNote() *Note {
@@ -497,7 +711,7 @@ type NoteEmbedding struct {
 
 func (x *NoteEmbedding) Reset() {
 	*x = NoteEmbedding{}
-	mi := &file_src_proto_note_proto_msgTypes[5]
+	mi := &file_src_proto_note_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -509,7 +723,7 @@ func (x *NoteEmbedding) String() string {
 func (*NoteEmbedding) ProtoMessage() {}
 
 func (x *NoteEmbedding) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[5]
+	mi := &file_src_proto_note_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -522,7 +736,7 @@ func (x *NoteEmbedding) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NoteEmbedding.ProtoReflect.Descriptor instead.
 func (*NoteEmbedding) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{5}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *NoteEmbedding) GetModel() string {
@@ -541,17 +755,19 @@ func (x *NoteEmbedding) GetEmbedding() []float32 {
 
 // Request to add a note
 type PostNoteRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Title         string                 `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`
-	Content       *string                `protobuf:"bytes,2,opt,name=content,proto3,oneof" json:"content,omitempty"`
-	AuthorId      string                 `protobuf:"bytes,3,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Title    string                 `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`
+	Content  *string                `protobuf:"bytes,2,opt,name=content,proto3,oneof" json:"content,omitempty"`
+	AuthorId string                 `protobuf:"bytes,3,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	// the id of the user making the request - used for permission checking
+	UserId        string `protobuf:"bytes,4,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PostNoteRequest) Reset() {
 	*x = PostNoteRequest{}
-	mi := &file_src_proto_note_proto_msgTypes[6]
+	mi := &file_src_proto_note_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -563,7 +779,7 @@ func (x *PostNoteRequest) String() string {
 func (*PostNoteRequest) ProtoMessage() {}
 
 func (x *PostNoteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[6]
+	mi := &file_src_proto_note_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -576,7 +792,7 @@ func (x *PostNoteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PostNoteRequest.ProtoReflect.Descriptor instead.
 func (*PostNoteRequest) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{6}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *PostNoteRequest) GetTitle() string {
@@ -600,18 +816,26 @@ func (x *PostNoteRequest) GetAuthorId() string {
 	return ""
 }
 
+func (x *PostNoteRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
 // Request to delete a note
 type DeleteNoteRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	AuthorId      string                 `protobuf:"bytes,2,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// the id of the user making the request - used for permission checking
+	UserId        string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DeleteNoteRequest) Reset() {
 	*x = DeleteNoteRequest{}
-	mi := &file_src_proto_note_proto_msgTypes[7]
+	mi := &file_src_proto_note_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -623,7 +847,7 @@ func (x *DeleteNoteRequest) String() string {
 func (*DeleteNoteRequest) ProtoMessage() {}
 
 func (x *DeleteNoteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[7]
+	mi := &file_src_proto_note_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -636,7 +860,7 @@ func (x *DeleteNoteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteNoteRequest.ProtoReflect.Descriptor instead.
 func (*DeleteNoteRequest) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{7}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *DeleteNoteRequest) GetId() string {
@@ -646,26 +870,31 @@ func (x *DeleteNoteRequest) GetId() string {
 	return ""
 }
 
-func (x *DeleteNoteRequest) GetAuthorId() string {
+func (x *DeleteNoteRequest) GetUserId() string {
 	if x != nil {
-		return x.AuthorId
+		return x.UserId
 	}
 	return ""
 }
 
+// Request to alter a note. Any omitted fields will be left unchanged, and any repeated fields will be replaced with the new values.
 type AlterNoteRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Title         *string                `protobuf:"bytes,2,opt,name=title,proto3,oneof" json:"title,omitempty"`
-	Content       *string                `protobuf:"bytes,3,opt,name=content,proto3,oneof" json:"content,omitempty"`
-	AuthorId      *string                `protobuf:"bytes,4,opt,name=author_id,json=authorId,proto3,oneof" json:"author_id,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Id           string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Title        *string                `protobuf:"bytes,2,opt,name=title,proto3,oneof" json:"title,omitempty"`
+	Content      *string                `protobuf:"bytes,3,opt,name=content,proto3,oneof" json:"content,omitempty"`
+	AuthorId     *string                `protobuf:"bytes,4,opt,name=author_id,json=authorId,proto3,oneof" json:"author_id,omitempty"`
+	DirectoryIds []string               `protobuf:"bytes,5,rep,name=directory_ids,json=directoryIds,proto3" json:"directory_ids,omitempty"`
+	TagIds       []string               `protobuf:"bytes,6,rep,name=tag_ids,json=tagIds,proto3" json:"tag_ids,omitempty"`
+	// the user_id of the user making the request, used for permission checking
+	UserId        string `protobuf:"bytes,7,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AlterNoteRequest) Reset() {
 	*x = AlterNoteRequest{}
-	mi := &file_src_proto_note_proto_msgTypes[8]
+	mi := &file_src_proto_note_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -677,7 +906,7 @@ func (x *AlterNoteRequest) String() string {
 func (*AlterNoteRequest) ProtoMessage() {}
 
 func (x *AlterNoteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[8]
+	mi := &file_src_proto_note_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -690,7 +919,7 @@ func (x *AlterNoteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AlterNoteRequest.ProtoReflect.Descriptor instead.
 func (*AlterNoteRequest) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{8}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *AlterNoteRequest) GetId() string {
@@ -721,22 +950,45 @@ func (x *AlterNoteRequest) GetAuthorId() string {
 	return ""
 }
 
+func (x *AlterNoteRequest) GetDirectoryIds() []string {
+	if x != nil {
+		return x.DirectoryIds
+	}
+	return nil
+}
+
+func (x *AlterNoteRequest) GetTagIds() []string {
+	if x != nil {
+		return x.TagIds
+	}
+	return nil
+}
+
+func (x *AlterNoteRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
 type Directory struct {
 	state         protoimpl.MessageState    `protogen:"open.v1"`
 	Id            string                    `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                    `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Slug          string                    `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`
 	DisplayName   string                    `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
 	Description   string                    `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
 	ImageUrl      string                    `protobuf:"bytes,5,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`
-	ParentId      *string                   `protobuf:"bytes,6,opt,name=parent_id,json=parentId,proto3,oneof" json:"parent_id,omitempty"`
+	ParentDirIds  []string                  `protobuf:"bytes,6,rep,name=parent_dir_ids,json=parentDirIds,proto3" json:"parent_dir_ids,omitempty"`
 	Relationships []*PermissionRelationship `protobuf:"bytes,7,rep,name=relationships,proto3" json:"relationships,omitempty"`
+	ChildDirIds   []string                  `protobuf:"bytes,8,rep,name=child_dir_ids,json=childDirIds,proto3" json:"child_dir_ids,omitempty"`
+	ChildNoteIds  []string                  `protobuf:"bytes,9,rep,name=child_note_ids,json=childNoteIds,proto3" json:"child_note_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Directory) Reset() {
 	*x = Directory{}
-	mi := &file_src_proto_note_proto_msgTypes[9]
+	mi := &file_src_proto_note_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -748,7 +1000,7 @@ func (x *Directory) String() string {
 func (*Directory) ProtoMessage() {}
 
 func (x *Directory) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[9]
+	mi := &file_src_proto_note_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -761,7 +1013,7 @@ func (x *Directory) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Directory.ProtoReflect.Descriptor instead.
 func (*Directory) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{9}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *Directory) GetId() string {
@@ -771,9 +1023,9 @@ func (x *Directory) GetId() string {
 	return ""
 }
 
-func (x *Directory) GetName() string {
+func (x *Directory) GetSlug() string {
 	if x != nil {
-		return x.Name
+		return x.Slug
 	}
 	return ""
 }
@@ -799,11 +1051,11 @@ func (x *Directory) GetImageUrl() string {
 	return ""
 }
 
-func (x *Directory) GetParentId() string {
-	if x != nil && x.ParentId != nil {
-		return *x.ParentId
+func (x *Directory) GetParentDirIds() []string {
+	if x != nil {
+		return x.ParentDirIds
 	}
-	return ""
+	return nil
 }
 
 func (x *Directory) GetRelationships() []*PermissionRelationship {
@@ -813,17 +1065,34 @@ func (x *Directory) GetRelationships() []*PermissionRelationship {
 	return nil
 }
 
+func (x *Directory) GetChildDirIds() []string {
+	if x != nil {
+		return x.ChildDirIds
+	}
+	return nil
+}
+
+func (x *Directory) GetChildNoteIds() []string {
+	if x != nil {
+		return x.ChildNoteIds
+	}
+	return nil
+}
+
 type GetDirectoryRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	UserId            string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	IncludeParents    bool                   `protobuf:"varint,3,opt,name=include_parents,json=includeParents,proto3" json:"include_parents,omitempty"`
+	IncludeChildDirs  bool                   `protobuf:"varint,4,opt,name=include_child_dirs,json=includeChildDirs,proto3" json:"include_child_dirs,omitempty"`
+	IncludeChildNotes bool                   `protobuf:"varint,5,opt,name=include_child_notes,json=includeChildNotes,proto3" json:"include_child_notes,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *GetDirectoryRequest) Reset() {
 	*x = GetDirectoryRequest{}
-	mi := &file_src_proto_note_proto_msgTypes[10]
+	mi := &file_src_proto_note_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -835,7 +1104,7 @@ func (x *GetDirectoryRequest) String() string {
 func (*GetDirectoryRequest) ProtoMessage() {}
 
 func (x *GetDirectoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[10]
+	mi := &file_src_proto_note_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -848,7 +1117,7 @@ func (x *GetDirectoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDirectoryRequest.ProtoReflect.Descriptor instead.
 func (*GetDirectoryRequest) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{10}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GetDirectoryRequest) GetId() string {
@@ -865,19 +1134,42 @@ func (x *GetDirectoryRequest) GetUserId() string {
 	return ""
 }
 
+func (x *GetDirectoryRequest) GetIncludeParents() bool {
+	if x != nil {
+		return x.IncludeParents
+	}
+	return false
+}
+
+func (x *GetDirectoryRequest) GetIncludeChildDirs() bool {
+	if x != nil {
+		return x.IncludeChildDirs
+	}
+	return false
+}
+
+func (x *GetDirectoryRequest) GetIncludeChildNotes() bool {
+	if x != nil {
+		return x.IncludeChildNotes
+	}
+	return false
+}
+
+// list all directory contents of a given directory <parent_id>
 type GetDirectoriesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	ParentId      *string                `protobuf:"bytes,2,opt,name=parent_id,json=parentId,proto3,oneof" json:"parent_id,omitempty"`
-	Limit         *int32                 `protobuf:"varint,3,opt,name=limit,proto3,oneof" json:"limit,omitempty"`
-	Offset        *int32                 `protobuf:"varint,4,opt,name=offset,proto3,oneof" json:"offset,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// the requesting user's id, used for permission checking
+	UserId        string  `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	ParentId      *string `protobuf:"bytes,2,opt,name=parent_id,json=parentId,proto3,oneof" json:"parent_id,omitempty"`
+	Limit         *int32  `protobuf:"varint,3,opt,name=limit,proto3,oneof" json:"limit,omitempty"`
+	Offset        *int32  `protobuf:"varint,4,opt,name=offset,proto3,oneof" json:"offset,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetDirectoriesRequest) Reset() {
 	*x = GetDirectoriesRequest{}
-	mi := &file_src_proto_note_proto_msgTypes[11]
+	mi := &file_src_proto_note_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -889,7 +1181,7 @@ func (x *GetDirectoriesRequest) String() string {
 func (*GetDirectoriesRequest) ProtoMessage() {}
 
 func (x *GetDirectoriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[11]
+	mi := &file_src_proto_note_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -902,7 +1194,7 @@ func (x *GetDirectoriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDirectoriesRequest.ProtoReflect.Descriptor instead.
 func (*GetDirectoriesRequest) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{11}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GetDirectoriesRequest) GetUserId() string {
@@ -934,20 +1226,22 @@ func (x *GetDirectoriesRequest) GetOffset() int32 {
 }
 
 type CreateDirectoryRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	DisplayName   *string                `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3,oneof" json:"display_name,omitempty"`
-	Description   *string                `protobuf:"bytes,3,opt,name=description,proto3,oneof" json:"description,omitempty"`
-	ImageUrl      *string                `protobuf:"bytes,4,opt,name=image_url,json=imageUrl,proto3,oneof" json:"image_url,omitempty"`
-	ParentId      *string                `protobuf:"bytes,5,opt,name=parent_id,json=parentId,proto3,oneof" json:"parent_id,omitempty"`
-	UserId        string                 `protobuf:"bytes,6,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Name        string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	DisplayName *string                `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3,oneof" json:"display_name,omitempty"`
+	Description *string                `protobuf:"bytes,3,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	ImageUrl    *string                `protobuf:"bytes,4,opt,name=image_url,json=imageUrl,proto3,oneof" json:"image_url,omitempty"`
+	ParentIds   []string               `protobuf:"bytes,5,rep,name=parent_ids,json=parentIds,proto3" json:"parent_ids,omitempty"`
+	// the user_id of the user making the request, used for permission checking
+	// its also the author of the directory
+	UserId        string `protobuf:"bytes,6,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateDirectoryRequest) Reset() {
 	*x = CreateDirectoryRequest{}
-	mi := &file_src_proto_note_proto_msgTypes[12]
+	mi := &file_src_proto_note_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -959,7 +1253,7 @@ func (x *CreateDirectoryRequest) String() string {
 func (*CreateDirectoryRequest) ProtoMessage() {}
 
 func (x *CreateDirectoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[12]
+	mi := &file_src_proto_note_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -972,7 +1266,7 @@ func (x *CreateDirectoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateDirectoryRequest.ProtoReflect.Descriptor instead.
 func (*CreateDirectoryRequest) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{12}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *CreateDirectoryRequest) GetName() string {
@@ -1003,11 +1297,11 @@ func (x *CreateDirectoryRequest) GetImageUrl() string {
 	return ""
 }
 
-func (x *CreateDirectoryRequest) GetParentId() string {
-	if x != nil && x.ParentId != nil {
-		return *x.ParentId
+func (x *CreateDirectoryRequest) GetParentIds() []string {
+	if x != nil {
+		return x.ParentIds
 	}
-	return ""
+	return nil
 }
 
 func (x *CreateDirectoryRequest) GetUserId() string {
@@ -1017,6 +1311,8 @@ func (x *CreateDirectoryRequest) GetUserId() string {
 	return ""
 }
 
+// any ommited fields will be left unchanged
+// and any repeated fields will be replaced with the new values.
 type AlterDirectoryRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -1024,7 +1320,7 @@ type AlterDirectoryRequest struct {
 	DisplayName   *string                `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3,oneof" json:"display_name,omitempty"`
 	Description   *string                `protobuf:"bytes,4,opt,name=description,proto3,oneof" json:"description,omitempty"`
 	ImageUrl      *string                `protobuf:"bytes,5,opt,name=image_url,json=imageUrl,proto3,oneof" json:"image_url,omitempty"`
-	ParentId      *string                `protobuf:"bytes,6,opt,name=parent_id,json=parentId,proto3,oneof" json:"parent_id,omitempty"`
+	ParentIds     []string               `protobuf:"bytes,6,rep,name=parent_ids,json=parentIds,proto3" json:"parent_ids,omitempty"`
 	UserId        string                 `protobuf:"bytes,7,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1032,7 +1328,7 @@ type AlterDirectoryRequest struct {
 
 func (x *AlterDirectoryRequest) Reset() {
 	*x = AlterDirectoryRequest{}
-	mi := &file_src_proto_note_proto_msgTypes[13]
+	mi := &file_src_proto_note_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1044,7 +1340,7 @@ func (x *AlterDirectoryRequest) String() string {
 func (*AlterDirectoryRequest) ProtoMessage() {}
 
 func (x *AlterDirectoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[13]
+	mi := &file_src_proto_note_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1057,7 +1353,7 @@ func (x *AlterDirectoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AlterDirectoryRequest.ProtoReflect.Descriptor instead.
 func (*AlterDirectoryRequest) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{13}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *AlterDirectoryRequest) GetId() string {
@@ -1095,11 +1391,11 @@ func (x *AlterDirectoryRequest) GetImageUrl() string {
 	return ""
 }
 
-func (x *AlterDirectoryRequest) GetParentId() string {
-	if x != nil && x.ParentId != nil {
-		return *x.ParentId
+func (x *AlterDirectoryRequest) GetParentIds() []string {
+	if x != nil {
+		return x.ParentIds
 	}
-	return ""
+	return nil
 }
 
 func (x *AlterDirectoryRequest) GetUserId() string {
@@ -1119,7 +1415,7 @@ type DeleteDirectoryRequest struct {
 
 func (x *DeleteDirectoryRequest) Reset() {
 	*x = DeleteDirectoryRequest{}
-	mi := &file_src_proto_note_proto_msgTypes[14]
+	mi := &file_src_proto_note_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1131,7 +1427,7 @@ func (x *DeleteDirectoryRequest) String() string {
 func (*DeleteDirectoryRequest) ProtoMessage() {}
 
 func (x *DeleteDirectoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[14]
+	mi := &file_src_proto_note_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1144,7 +1440,7 @@ func (x *DeleteDirectoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteDirectoryRequest.ProtoReflect.Descriptor instead.
 func (*DeleteDirectoryRequest) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{14}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *DeleteDirectoryRequest) GetId() string {
@@ -1164,8 +1460,8 @@ func (x *DeleteDirectoryRequest) GetUserId() string {
 type GetNotesOfDirectoryRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	DirectoryId   string                 `protobuf:"bytes,1,opt,name=directory_id,json=directoryId,proto3" json:"directory_id,omitempty"`
-	Limit         *int32                 `protobuf:"varint,2,opt,name=limit,proto3,oneof" json:"limit,omitempty"`
-	Offset        *int32                 `protobuf:"varint,3,opt,name=offset,proto3,oneof" json:"offset,omitempty"`
+	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	Offset        int32                  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
 	UserId        string                 `protobuf:"bytes,4,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1173,7 +1469,7 @@ type GetNotesOfDirectoryRequest struct {
 
 func (x *GetNotesOfDirectoryRequest) Reset() {
 	*x = GetNotesOfDirectoryRequest{}
-	mi := &file_src_proto_note_proto_msgTypes[15]
+	mi := &file_src_proto_note_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1185,7 +1481,7 @@ func (x *GetNotesOfDirectoryRequest) String() string {
 func (*GetNotesOfDirectoryRequest) ProtoMessage() {}
 
 func (x *GetNotesOfDirectoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[15]
+	mi := &file_src_proto_note_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1198,7 +1494,7 @@ func (x *GetNotesOfDirectoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetNotesOfDirectoryRequest.ProtoReflect.Descriptor instead.
 func (*GetNotesOfDirectoryRequest) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{15}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *GetNotesOfDirectoryRequest) GetDirectoryId() string {
@@ -1209,15 +1505,15 @@ func (x *GetNotesOfDirectoryRequest) GetDirectoryId() string {
 }
 
 func (x *GetNotesOfDirectoryRequest) GetLimit() int32 {
-	if x != nil && x.Limit != nil {
-		return *x.Limit
+	if x != nil {
+		return x.Limit
 	}
 	return 0
 }
 
 func (x *GetNotesOfDirectoryRequest) GetOffset() int32 {
-	if x != nil && x.Offset != nil {
-		return *x.Offset
+	if x != nil {
+		return x.Offset
 	}
 	return 0
 }
@@ -1239,7 +1535,7 @@ type PermissionSubject struct {
 
 func (x *PermissionSubject) Reset() {
 	*x = PermissionSubject{}
-	mi := &file_src_proto_note_proto_msgTypes[16]
+	mi := &file_src_proto_note_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1251,7 +1547,7 @@ func (x *PermissionSubject) String() string {
 func (*PermissionSubject) ProtoMessage() {}
 
 func (x *PermissionSubject) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[16]
+	mi := &file_src_proto_note_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1264,7 +1560,7 @@ func (x *PermissionSubject) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PermissionSubject.ProtoReflect.Descriptor instead.
 func (*PermissionSubject) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{16}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *PermissionSubject) GetObjectType() PermissionObjectType {
@@ -1291,7 +1587,7 @@ type PermissionResource struct {
 
 func (x *PermissionResource) Reset() {
 	*x = PermissionResource{}
-	mi := &file_src_proto_note_proto_msgTypes[17]
+	mi := &file_src_proto_note_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1303,7 +1599,7 @@ func (x *PermissionResource) String() string {
 func (*PermissionResource) ProtoMessage() {}
 
 func (x *PermissionResource) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[17]
+	mi := &file_src_proto_note_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1316,7 +1612,7 @@ func (x *PermissionResource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PermissionResource.ProtoReflect.Descriptor instead.
 func (*PermissionResource) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{17}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *PermissionResource) GetObjectType() PermissionObjectType {
@@ -1344,7 +1640,7 @@ type PermissionRelationship struct {
 
 func (x *PermissionRelationship) Reset() {
 	*x = PermissionRelationship{}
-	mi := &file_src_proto_note_proto_msgTypes[18]
+	mi := &file_src_proto_note_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1356,7 +1652,7 @@ func (x *PermissionRelationship) String() string {
 func (*PermissionRelationship) ProtoMessage() {}
 
 func (x *PermissionRelationship) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[18]
+	mi := &file_src_proto_note_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1369,7 +1665,7 @@ func (x *PermissionRelationship) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PermissionRelationship.ProtoReflect.Descriptor instead.
 func (*PermissionRelationship) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{18}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *PermissionRelationship) GetRelation() string {
@@ -1404,7 +1700,7 @@ type GetPermissionsRequest struct {
 
 func (x *GetPermissionsRequest) Reset() {
 	*x = GetPermissionsRequest{}
-	mi := &file_src_proto_note_proto_msgTypes[19]
+	mi := &file_src_proto_note_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1416,7 +1712,7 @@ func (x *GetPermissionsRequest) String() string {
 func (*GetPermissionsRequest) ProtoMessage() {}
 
 func (x *GetPermissionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[19]
+	mi := &file_src_proto_note_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1429,7 +1725,7 @@ func (x *GetPermissionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPermissionsRequest.ProtoReflect.Descriptor instead.
 func (*GetPermissionsRequest) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{19}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *GetPermissionsRequest) GetObjectType() PermissionObjectType {
@@ -1465,7 +1761,7 @@ type CreatePermissionRequest struct {
 
 func (x *CreatePermissionRequest) Reset() {
 	*x = CreatePermissionRequest{}
-	mi := &file_src_proto_note_proto_msgTypes[20]
+	mi := &file_src_proto_note_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1477,7 +1773,7 @@ func (x *CreatePermissionRequest) String() string {
 func (*CreatePermissionRequest) ProtoMessage() {}
 
 func (x *CreatePermissionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[20]
+	mi := &file_src_proto_note_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1490,7 +1786,7 @@ func (x *CreatePermissionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatePermissionRequest.ProtoReflect.Descriptor instead.
 func (*CreatePermissionRequest) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{20}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *CreatePermissionRequest) GetObjectType() PermissionObjectType {
@@ -1533,7 +1829,7 @@ type DeletePermissionRequest struct {
 
 func (x *DeletePermissionRequest) Reset() {
 	*x = DeletePermissionRequest{}
-	mi := &file_src_proto_note_proto_msgTypes[21]
+	mi := &file_src_proto_note_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1545,7 +1841,7 @@ func (x *DeletePermissionRequest) String() string {
 func (*DeletePermissionRequest) ProtoMessage() {}
 
 func (x *DeletePermissionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[21]
+	mi := &file_src_proto_note_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1558,7 +1854,7 @@ func (x *DeletePermissionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePermissionRequest.ProtoReflect.Descriptor instead.
 func (*DeletePermissionRequest) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{21}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *DeletePermissionRequest) GetObjectType() PermissionObjectType {
@@ -1601,7 +1897,7 @@ type ReplacePermissionsRequest struct {
 
 func (x *ReplacePermissionsRequest) Reset() {
 	*x = ReplacePermissionsRequest{}
-	mi := &file_src_proto_note_proto_msgTypes[22]
+	mi := &file_src_proto_note_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1613,7 +1909,7 @@ func (x *ReplacePermissionsRequest) String() string {
 func (*ReplacePermissionsRequest) ProtoMessage() {}
 
 func (x *ReplacePermissionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[22]
+	mi := &file_src_proto_note_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1626,7 +1922,7 @@ func (x *ReplacePermissionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplacePermissionsRequest.ProtoReflect.Descriptor instead.
 func (*ReplacePermissionsRequest) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{22}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ReplacePermissionsRequest) GetObjectType() PermissionObjectType {
@@ -1668,7 +1964,7 @@ type PermissionsResponse struct {
 
 func (x *PermissionsResponse) Reset() {
 	*x = PermissionsResponse{}
-	mi := &file_src_proto_note_proto_msgTypes[23]
+	mi := &file_src_proto_note_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1680,7 +1976,7 @@ func (x *PermissionsResponse) String() string {
 func (*PermissionsResponse) ProtoMessage() {}
 
 func (x *PermissionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[23]
+	mi := &file_src_proto_note_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1693,7 +1989,7 @@ func (x *PermissionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PermissionsResponse.ProtoReflect.Descriptor instead.
 func (*PermissionsResponse) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{23}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *PermissionsResponse) GetObjectType() PermissionObjectType {
@@ -1733,7 +2029,7 @@ type NoteVersionSummary struct {
 
 func (x *NoteVersionSummary) Reset() {
 	*x = NoteVersionSummary{}
-	mi := &file_src_proto_note_proto_msgTypes[24]
+	mi := &file_src_proto_note_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1745,7 +2041,7 @@ func (x *NoteVersionSummary) String() string {
 func (*NoteVersionSummary) ProtoMessage() {}
 
 func (x *NoteVersionSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[24]
+	mi := &file_src_proto_note_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1758,7 +2054,7 @@ func (x *NoteVersionSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NoteVersionSummary.ProtoReflect.Descriptor instead.
 func (*NoteVersionSummary) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{24}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *NoteVersionSummary) GetVersionId() string {
@@ -1822,7 +2118,7 @@ type GetNoteVersionsRequest struct {
 
 func (x *GetNoteVersionsRequest) Reset() {
 	*x = GetNoteVersionsRequest{}
-	mi := &file_src_proto_note_proto_msgTypes[25]
+	mi := &file_src_proto_note_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1834,7 +2130,7 @@ func (x *GetNoteVersionsRequest) String() string {
 func (*GetNoteVersionsRequest) ProtoMessage() {}
 
 func (x *GetNoteVersionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[25]
+	mi := &file_src_proto_note_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1847,7 +2143,7 @@ func (x *GetNoteVersionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetNoteVersionsRequest.ProtoReflect.Descriptor instead.
 func (*GetNoteVersionsRequest) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{25}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *GetNoteVersionsRequest) GetNoteId() string {
@@ -1891,7 +2187,7 @@ type GetDirectoryActivityRequest struct {
 
 func (x *GetDirectoryActivityRequest) Reset() {
 	*x = GetDirectoryActivityRequest{}
-	mi := &file_src_proto_note_proto_msgTypes[26]
+	mi := &file_src_proto_note_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1903,7 +2199,7 @@ func (x *GetDirectoryActivityRequest) String() string {
 func (*GetDirectoryActivityRequest) ProtoMessage() {}
 
 func (x *GetDirectoryActivityRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[26]
+	mi := &file_src_proto_note_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1916,7 +2212,7 @@ func (x *GetDirectoryActivityRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDirectoryActivityRequest.ProtoReflect.Descriptor instead.
 func (*GetDirectoryActivityRequest) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{26}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *GetDirectoryActivityRequest) GetDirectoryId() string {
@@ -1968,7 +2264,7 @@ type NoteVersionContent struct {
 
 func (x *NoteVersionContent) Reset() {
 	*x = NoteVersionContent{}
-	mi := &file_src_proto_note_proto_msgTypes[27]
+	mi := &file_src_proto_note_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1980,7 +2276,7 @@ func (x *NoteVersionContent) String() string {
 func (*NoteVersionContent) ProtoMessage() {}
 
 func (x *NoteVersionContent) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[27]
+	mi := &file_src_proto_note_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1993,7 +2289,7 @@ func (x *NoteVersionContent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NoteVersionContent.ProtoReflect.Descriptor instead.
 func (*NoteVersionContent) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{27}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *NoteVersionContent) GetNoteId() string {
@@ -2049,7 +2345,7 @@ type GetNoteVersionContentRequest struct {
 
 func (x *GetNoteVersionContentRequest) Reset() {
 	*x = GetNoteVersionContentRequest{}
-	mi := &file_src_proto_note_proto_msgTypes[28]
+	mi := &file_src_proto_note_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2061,7 +2357,7 @@ func (x *GetNoteVersionContentRequest) String() string {
 func (*GetNoteVersionContentRequest) ProtoMessage() {}
 
 func (x *GetNoteVersionContentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[28]
+	mi := &file_src_proto_note_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2074,7 +2370,7 @@ func (x *GetNoteVersionContentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetNoteVersionContentRequest.ProtoReflect.Descriptor instead.
 func (*GetNoteVersionContentRequest) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{28}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *GetNoteVersionContentRequest) GetNoteId() string {
@@ -2109,7 +2405,7 @@ type RestoreNoteVersionRequest struct {
 
 func (x *RestoreNoteVersionRequest) Reset() {
 	*x = RestoreNoteVersionRequest{}
-	mi := &file_src_proto_note_proto_msgTypes[29]
+	mi := &file_src_proto_note_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2121,7 +2417,7 @@ func (x *RestoreNoteVersionRequest) String() string {
 func (*RestoreNoteVersionRequest) ProtoMessage() {}
 
 func (x *RestoreNoteVersionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_src_proto_note_proto_msgTypes[29]
+	mi := &file_src_proto_note_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2134,7 +2430,7 @@ func (x *RestoreNoteVersionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestoreNoteVersionRequest.ProtoReflect.Descriptor instead.
 func (*RestoreNoteVersionRequest) Descriptor() ([]byte, []int) {
-	return file_src_proto_note_proto_rawDescGZIP(), []int{29}
+	return file_src_proto_note_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *RestoreNoteVersionRequest) GetNoteId() string {
@@ -2179,7 +2475,12 @@ const file_src_proto_note_proto_rawDesc = "" +
 	"\bNoSearch\x10\x01\x12\x11\n" +
 	"\rFullTextTitle\x10\x02\x12\t\n" +
 	"\x05Fuzzy\x10\x03\x12\v\n" +
-	"\aContext\x10\x04\"\xf7\x01\n" +
+	"\aContext\x10\x04\"\x98\x01\n" +
+	"\n" +
+	"NotesReply\x12(\n" +
+	"\x05notes\x18\x01 \x03(\v2\x12.proto.MinimalNoteR\x05notes\x129\n" +
+	"\vdirectories\x18\x02 \x03(\v2\x17.proto.MinimalDirectoryR\vdirectories\x12%\n" +
+	"\x04tags\x18\x03 \x03(\v2\x11.proto.MinimalTagR\x04tags\"\xb5\x02\n" +
 	"\vMinimalNote\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1b\n" +
@@ -2187,7 +2488,18 @@ const file_src_proto_note_proto_rawDesc = "" +
 	"\n" +
 	"updated_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12)\n" +
 	"\x10stripped_content\x18\x05 \x01(\tR\x0fstrippedContent\x12?\n" +
-	"\vpermissions\x18\x06 \x03(\v2\x1d.proto.PermissionRelationshipR\vpermissions\"\xe5\x01\n" +
+	"\vpermissions\x18\x06 \x03(\v2\x1d.proto.PermissionRelationshipR\vpermissions\x12#\n" +
+	"\rdirectory_ids\x18\a \x03(\tR\fdirectoryIds\x12\x17\n" +
+	"\atag_ids\x18\b \x03(\tR\x06tagIds\"Y\n" +
+	"\x10MinimalDirectory\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04slug\x18\x02 \x01(\tR\x04slug\x12!\n" +
+	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\"S\n" +
+	"\n" +
+	"MinimalTag\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04slug\x18\x02 \x01(\tR\x04slug\x12!\n" +
+	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\"\xa3\x02\n" +
 	"\x04Note\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x18\n" +
@@ -2195,7 +2507,9 @@ const file_src_proto_note_proto_rawDesc = "" +
 	"\n" +
 	"updated_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1b\n" +
 	"\tauthor_id\x18\x05 \x01(\tR\bauthorId\x12?\n" +
-	"\vpermissions\x18\a \x03(\v2\x1d.proto.PermissionRelationshipR\vpermissionsJ\x04\b\x06\x10\a\"\xb5\x01\n" +
+	"\vpermissions\x18\a \x03(\v2\x1d.proto.PermissionRelationshipR\vpermissions\x12#\n" +
+	"\rdirectory_ids\x18\b \x03(\tR\fdirectoryIds\x12\x17\n" +
+	"\atag_ids\x18\t \x03(\tR\x06tagIdsJ\x04\b\x06\x10\a\"\xb5\x01\n" +
 	"\fNoteResponse\x12\x1f\n" +
 	"\x04note\x18\x01 \x01(\v2\v.proto.NoteR\x04note\x12E\n" +
 	"\fid_token_map\x18\x02 \x03(\v2#.proto.NoteResponse.IdTokenMapEntryR\n" +
@@ -2205,39 +2519,46 @@ const file_src_proto_note_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"C\n" +
 	"\rNoteEmbedding\x12\x14\n" +
 	"\x05model\x18\x01 \x01(\tR\x05model\x12\x1c\n" +
-	"\tembedding\x18\x02 \x03(\x02R\tembedding\"o\n" +
+	"\tembedding\x18\x02 \x03(\x02R\tembedding\"\x88\x01\n" +
 	"\x0fPostNoteRequest\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12\x1d\n" +
 	"\acontent\x18\x02 \x01(\tH\x00R\acontent\x88\x01\x01\x12\x1b\n" +
-	"\tauthor_id\x18\x03 \x01(\tR\bauthorIdB\n" +
+	"\tauthor_id\x18\x03 \x01(\tR\bauthorId\x12\x17\n" +
+	"\auser_id\x18\x04 \x01(\tR\x06userIdB\n" +
 	"\n" +
-	"\b_content\"@\n" +
+	"\b_content\"<\n" +
 	"\x11DeleteNoteRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\tauthor_id\x18\x02 \x01(\tR\bauthorId\"\xa2\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"\xf9\x01\n" +
 	"\x10AlterNoteRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\x05title\x18\x02 \x01(\tH\x00R\x05title\x88\x01\x01\x12\x1d\n" +
 	"\acontent\x18\x03 \x01(\tH\x01R\acontent\x88\x01\x01\x12 \n" +
-	"\tauthor_id\x18\x04 \x01(\tH\x02R\bauthorId\x88\x01\x01B\b\n" +
+	"\tauthor_id\x18\x04 \x01(\tH\x02R\bauthorId\x88\x01\x01\x12#\n" +
+	"\rdirectory_ids\x18\x05 \x03(\tR\fdirectoryIds\x12\x17\n" +
+	"\atag_ids\x18\x06 \x03(\tR\x06tagIds\x12\x17\n" +
+	"\auser_id\x18\a \x01(\tR\x06userIdB\b\n" +
 	"\x06_titleB\n" +
 	"\n" +
 	"\b_contentB\f\n" +
 	"\n" +
-	"_author_id\"\x86\x02\n" +
+	"_author_id\"\xc6\x02\n" +
 	"\tDirectory\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12!\n" +
+	"\x04slug\x18\x02 \x01(\tR\x04slug\x12!\n" +
 	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x12 \n" +
 	"\vdescription\x18\x04 \x01(\tR\vdescription\x12\x1b\n" +
-	"\timage_url\x18\x05 \x01(\tR\bimageUrl\x12 \n" +
-	"\tparent_id\x18\x06 \x01(\tH\x00R\bparentId\x88\x01\x01\x12C\n" +
-	"\rrelationships\x18\a \x03(\v2\x1d.proto.PermissionRelationshipR\rrelationshipsB\f\n" +
-	"\n" +
-	"_parent_id\">\n" +
+	"\timage_url\x18\x05 \x01(\tR\bimageUrl\x12$\n" +
+	"\x0eparent_dir_ids\x18\x06 \x03(\tR\fparentDirIds\x12C\n" +
+	"\rrelationships\x18\a \x03(\v2\x1d.proto.PermissionRelationshipR\rrelationships\x12\"\n" +
+	"\rchild_dir_ids\x18\b \x03(\tR\vchildDirIds\x12$\n" +
+	"\x0echild_note_ids\x18\t \x03(\tR\fchildNoteIds\"\xc5\x01\n" +
 	"\x13GetDirectoryRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
-	"\auser_id\x18\x02 \x01(\tR\x06userId\"\xad\x01\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\x12'\n" +
+	"\x0finclude_parents\x18\x03 \x01(\bR\x0eincludeParents\x12,\n" +
+	"\x12include_child_dirs\x18\x04 \x01(\bR\x10includeChildDirs\x12.\n" +
+	"\x13include_child_notes\x18\x05 \x01(\bR\x11includeChildNotes\"\xad\x01\n" +
 	"\x15GetDirectoriesRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12 \n" +
 	"\tparent_id\x18\x02 \x01(\tH\x00R\bparentId\x88\x01\x01\x12\x19\n" +
@@ -2246,45 +2567,41 @@ const file_src_proto_note_proto_rawDesc = "" +
 	"\n" +
 	"_parent_idB\b\n" +
 	"\x06_limitB\t\n" +
-	"\a_offset\"\x95\x02\n" +
+	"\a_offset\"\x84\x02\n" +
 	"\x16CreateDirectoryRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12&\n" +
 	"\fdisplay_name\x18\x02 \x01(\tH\x00R\vdisplayName\x88\x01\x01\x12%\n" +
 	"\vdescription\x18\x03 \x01(\tH\x01R\vdescription\x88\x01\x01\x12 \n" +
-	"\timage_url\x18\x04 \x01(\tH\x02R\bimageUrl\x88\x01\x01\x12 \n" +
-	"\tparent_id\x18\x05 \x01(\tH\x03R\bparentId\x88\x01\x01\x12\x17\n" +
+	"\timage_url\x18\x04 \x01(\tH\x02R\bimageUrl\x88\x01\x01\x12\x1d\n" +
+	"\n" +
+	"parent_ids\x18\x05 \x03(\tR\tparentIds\x12\x17\n" +
 	"\auser_id\x18\x06 \x01(\tR\x06userIdB\x0f\n" +
 	"\r_display_nameB\x0e\n" +
 	"\f_descriptionB\f\n" +
 	"\n" +
-	"_image_urlB\f\n" +
-	"\n" +
-	"_parent_id\"\xb2\x02\n" +
+	"_image_url\"\xa1\x02\n" +
 	"\x15AlterDirectoryRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\x04name\x18\x02 \x01(\tH\x00R\x04name\x88\x01\x01\x12&\n" +
 	"\fdisplay_name\x18\x03 \x01(\tH\x01R\vdisplayName\x88\x01\x01\x12%\n" +
 	"\vdescription\x18\x04 \x01(\tH\x02R\vdescription\x88\x01\x01\x12 \n" +
-	"\timage_url\x18\x05 \x01(\tH\x03R\bimageUrl\x88\x01\x01\x12 \n" +
-	"\tparent_id\x18\x06 \x01(\tH\x04R\bparentId\x88\x01\x01\x12\x17\n" +
+	"\timage_url\x18\x05 \x01(\tH\x03R\bimageUrl\x88\x01\x01\x12\x1d\n" +
+	"\n" +
+	"parent_ids\x18\x06 \x03(\tR\tparentIds\x12\x17\n" +
 	"\auser_id\x18\a \x01(\tR\x06userIdB\a\n" +
 	"\x05_nameB\x0f\n" +
 	"\r_display_nameB\x0e\n" +
 	"\f_descriptionB\f\n" +
 	"\n" +
-	"_image_urlB\f\n" +
-	"\n" +
-	"_parent_id\"A\n" +
+	"_image_url\"A\n" +
 	"\x16DeleteDirectoryRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
-	"\auser_id\x18\x02 \x01(\tR\x06userId\"\xa5\x01\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"\x86\x01\n" +
 	"\x1aGetNotesOfDirectoryRequest\x12!\n" +
-	"\fdirectory_id\x18\x01 \x01(\tR\vdirectoryId\x12\x19\n" +
-	"\x05limit\x18\x02 \x01(\x05H\x00R\x05limit\x88\x01\x01\x12\x1b\n" +
-	"\x06offset\x18\x03 \x01(\x05H\x01R\x06offset\x88\x01\x01\x12\x17\n" +
-	"\auser_id\x18\x04 \x01(\tR\x06userIdB\b\n" +
-	"\x06_limitB\t\n" +
-	"\a_offset\"n\n" +
+	"\fdirectory_id\x18\x01 \x01(\tR\vdirectoryId\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x16\n" +
+	"\x06offset\x18\x03 \x01(\x05R\x06offset\x12\x17\n" +
+	"\auser_id\x18\x04 \x01(\tR\x06userId\"n\n" +
 	"\x11PermissionSubject\x12<\n" +
 	"\vobject_type\x18\x01 \x01(\x0e2\x1b.proto.PermissionObjectTypeR\n" +
 	"objectType\x12\x1b\n" +
@@ -2376,21 +2693,21 @@ const file_src_proto_note_proto_rawDesc = "" +
 	"\x1bPERMISSION_OBJECT_TYPE_NOTE\x10\x01\x12$\n" +
 	" PERMISSION_OBJECT_TYPE_DIRECTORY\x10\x02\x12\x1f\n" +
 	"\x1bPERMISSION_OBJECT_TYPE_USER\x10\x03\x12%\n" +
-	"!PERMISSION_OBJECT_TYPE_ATTACHMENT\x10\x042\xa0\x02\n" +
+	"!PERMISSION_OBJECT_TYPE_ATTACHMENT\x10\x042\x9d\x02\n" +
 	"\vNoteService\x125\n" +
 	"\aGetNote\x12\x15.proto.GetNoteRequest\x1a\x13.proto.NoteResponse\x12/\n" +
 	"\bPostNote\x12\x16.proto.PostNoteRequest\x1a\v.proto.Note\x121\n" +
 	"\tPatchNote\x12\x17.proto.AlterNoteRequest\x1a\v.proto.Note\x123\n" +
 	"\n" +
-	"DeleteNote\x12\x18.proto.DeleteNoteRequest\x1a\v.proto.Note\x12A\n" +
-	"\vSearchNotes\x12\x1c.proto.GetSearchNotesRequest\x1a\x12.proto.MinimalNote0\x012\xae\x03\n" +
+	"DeleteNote\x12\x18.proto.DeleteNoteRequest\x1a\v.proto.Note\x12>\n" +
+	"\vSearchNotes\x12\x1c.proto.GetSearchNotesRequest\x1a\x11.proto.NotesReply2\xab\x03\n" +
 	"\x10DirectoryService\x12<\n" +
 	"\fGetDirectory\x12\x1a.proto.GetDirectoryRequest\x1a\x10.proto.Directory\x12B\n" +
 	"\x0eGetDirectories\x12\x1c.proto.GetDirectoriesRequest\x1a\x10.proto.Directory0\x01\x12B\n" +
 	"\x0fCreateDirectory\x12\x1d.proto.CreateDirectoryRequest\x1a\x10.proto.Directory\x12@\n" +
 	"\x0ePatchDirectory\x12\x1c.proto.AlterDirectoryRequest\x1a\x10.proto.Directory\x12B\n" +
-	"\x0fDeleteDirectory\x12\x1d.proto.DeleteDirectoryRequest\x1a\x10.proto.Directory\x12N\n" +
-	"\x13GetNotesOfDirectory\x12!.proto.GetNotesOfDirectoryRequest\x1a\x12.proto.MinimalNote0\x012\xd3\x02\n" +
+	"\x0fDeleteDirectory\x12\x1d.proto.DeleteDirectoryRequest\x1a\x10.proto.Directory\x12K\n" +
+	"\x13GetNotesOfDirectory\x12!.proto.GetNotesOfDirectoryRequest\x1a\x11.proto.NotesReply2\xd3\x02\n" +
 	"\x11PermissionService\x12J\n" +
 	"\x0eGetPermissions\x12\x1c.proto.GetPermissionsRequest\x1a\x1a.proto.PermissionsResponse\x12N\n" +
 	"\x10CreatePermission\x12\x1e.proto.CreatePermissionRequest\x1a\x1a.proto.PermissionsResponse\x12N\n" +
@@ -2415,110 +2732,116 @@ func file_src_proto_note_proto_rawDescGZIP() []byte {
 }
 
 var file_src_proto_note_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_src_proto_note_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
+var file_src_proto_note_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
 var file_src_proto_note_proto_goTypes = []any{
 	(PermissionObjectType)(0),             // 0: proto.PermissionObjectType
 	(GetSearchNotesRequest_SearchType)(0), // 1: proto.GetSearchNotesRequest.SearchType
 	(*GetNoteRequest)(nil),                // 2: proto.GetNoteRequest
 	(*GetSearchNotesRequest)(nil),         // 3: proto.GetSearchNotesRequest
-	(*MinimalNote)(nil),                   // 4: proto.MinimalNote
-	(*Note)(nil),                          // 5: proto.Note
-	(*NoteResponse)(nil),                  // 6: proto.NoteResponse
-	(*NoteEmbedding)(nil),                 // 7: proto.NoteEmbedding
-	(*PostNoteRequest)(nil),               // 8: proto.PostNoteRequest
-	(*DeleteNoteRequest)(nil),             // 9: proto.DeleteNoteRequest
-	(*AlterNoteRequest)(nil),              // 10: proto.AlterNoteRequest
-	(*Directory)(nil),                     // 11: proto.Directory
-	(*GetDirectoryRequest)(nil),           // 12: proto.GetDirectoryRequest
-	(*GetDirectoriesRequest)(nil),         // 13: proto.GetDirectoriesRequest
-	(*CreateDirectoryRequest)(nil),        // 14: proto.CreateDirectoryRequest
-	(*AlterDirectoryRequest)(nil),         // 15: proto.AlterDirectoryRequest
-	(*DeleteDirectoryRequest)(nil),        // 16: proto.DeleteDirectoryRequest
-	(*GetNotesOfDirectoryRequest)(nil),    // 17: proto.GetNotesOfDirectoryRequest
-	(*PermissionSubject)(nil),             // 18: proto.PermissionSubject
-	(*PermissionResource)(nil),            // 19: proto.PermissionResource
-	(*PermissionRelationship)(nil),        // 20: proto.PermissionRelationship
-	(*GetPermissionsRequest)(nil),         // 21: proto.GetPermissionsRequest
-	(*CreatePermissionRequest)(nil),       // 22: proto.CreatePermissionRequest
-	(*DeletePermissionRequest)(nil),       // 23: proto.DeletePermissionRequest
-	(*ReplacePermissionsRequest)(nil),     // 24: proto.ReplacePermissionsRequest
-	(*PermissionsResponse)(nil),           // 25: proto.PermissionsResponse
-	(*NoteVersionSummary)(nil),            // 26: proto.NoteVersionSummary
-	(*GetNoteVersionsRequest)(nil),        // 27: proto.GetNoteVersionsRequest
-	(*GetDirectoryActivityRequest)(nil),   // 28: proto.GetDirectoryActivityRequest
-	(*NoteVersionContent)(nil),            // 29: proto.NoteVersionContent
-	(*GetNoteVersionContentRequest)(nil),  // 30: proto.GetNoteVersionContentRequest
-	(*RestoreNoteVersionRequest)(nil),     // 31: proto.RestoreNoteVersionRequest
-	nil,                                   // 32: proto.NoteResponse.IdTokenMapEntry
-	(*timestamppb.Timestamp)(nil),         // 33: google.protobuf.Timestamp
+	(*NotesReply)(nil),                    // 4: proto.NotesReply
+	(*MinimalNote)(nil),                   // 5: proto.MinimalNote
+	(*MinimalDirectory)(nil),              // 6: proto.MinimalDirectory
+	(*MinimalTag)(nil),                    // 7: proto.MinimalTag
+	(*Note)(nil),                          // 8: proto.Note
+	(*NoteResponse)(nil),                  // 9: proto.NoteResponse
+	(*NoteEmbedding)(nil),                 // 10: proto.NoteEmbedding
+	(*PostNoteRequest)(nil),               // 11: proto.PostNoteRequest
+	(*DeleteNoteRequest)(nil),             // 12: proto.DeleteNoteRequest
+	(*AlterNoteRequest)(nil),              // 13: proto.AlterNoteRequest
+	(*Directory)(nil),                     // 14: proto.Directory
+	(*GetDirectoryRequest)(nil),           // 15: proto.GetDirectoryRequest
+	(*GetDirectoriesRequest)(nil),         // 16: proto.GetDirectoriesRequest
+	(*CreateDirectoryRequest)(nil),        // 17: proto.CreateDirectoryRequest
+	(*AlterDirectoryRequest)(nil),         // 18: proto.AlterDirectoryRequest
+	(*DeleteDirectoryRequest)(nil),        // 19: proto.DeleteDirectoryRequest
+	(*GetNotesOfDirectoryRequest)(nil),    // 20: proto.GetNotesOfDirectoryRequest
+	(*PermissionSubject)(nil),             // 21: proto.PermissionSubject
+	(*PermissionResource)(nil),            // 22: proto.PermissionResource
+	(*PermissionRelationship)(nil),        // 23: proto.PermissionRelationship
+	(*GetPermissionsRequest)(nil),         // 24: proto.GetPermissionsRequest
+	(*CreatePermissionRequest)(nil),       // 25: proto.CreatePermissionRequest
+	(*DeletePermissionRequest)(nil),       // 26: proto.DeletePermissionRequest
+	(*ReplacePermissionsRequest)(nil),     // 27: proto.ReplacePermissionsRequest
+	(*PermissionsResponse)(nil),           // 28: proto.PermissionsResponse
+	(*NoteVersionSummary)(nil),            // 29: proto.NoteVersionSummary
+	(*GetNoteVersionsRequest)(nil),        // 30: proto.GetNoteVersionsRequest
+	(*GetDirectoryActivityRequest)(nil),   // 31: proto.GetDirectoryActivityRequest
+	(*NoteVersionContent)(nil),            // 32: proto.NoteVersionContent
+	(*GetNoteVersionContentRequest)(nil),  // 33: proto.GetNoteVersionContentRequest
+	(*RestoreNoteVersionRequest)(nil),     // 34: proto.RestoreNoteVersionRequest
+	nil,                                   // 35: proto.NoteResponse.IdTokenMapEntry
+	(*timestamppb.Timestamp)(nil),         // 36: google.protobuf.Timestamp
 }
 var file_src_proto_note_proto_depIdxs = []int32{
 	1,  // 0: proto.GetSearchNotesRequest.search_type:type_name -> proto.GetSearchNotesRequest.SearchType
-	33, // 1: proto.MinimalNote.updated_at:type_name -> google.protobuf.Timestamp
-	20, // 2: proto.MinimalNote.permissions:type_name -> proto.PermissionRelationship
-	33, // 3: proto.Note.updated_at:type_name -> google.protobuf.Timestamp
-	20, // 4: proto.Note.permissions:type_name -> proto.PermissionRelationship
-	5,  // 5: proto.NoteResponse.note:type_name -> proto.Note
-	32, // 6: proto.NoteResponse.id_token_map:type_name -> proto.NoteResponse.IdTokenMapEntry
-	20, // 7: proto.Directory.relationships:type_name -> proto.PermissionRelationship
-	0,  // 8: proto.PermissionSubject.object_type:type_name -> proto.PermissionObjectType
-	0,  // 9: proto.PermissionResource.object_type:type_name -> proto.PermissionObjectType
-	18, // 10: proto.PermissionRelationship.subject:type_name -> proto.PermissionSubject
-	19, // 11: proto.PermissionRelationship.resource:type_name -> proto.PermissionResource
-	0,  // 12: proto.GetPermissionsRequest.object_type:type_name -> proto.PermissionObjectType
-	0,  // 13: proto.CreatePermissionRequest.object_type:type_name -> proto.PermissionObjectType
-	20, // 14: proto.CreatePermissionRequest.relationship:type_name -> proto.PermissionRelationship
-	0,  // 15: proto.DeletePermissionRequest.object_type:type_name -> proto.PermissionObjectType
-	20, // 16: proto.DeletePermissionRequest.relationship:type_name -> proto.PermissionRelationship
-	0,  // 17: proto.ReplacePermissionsRequest.object_type:type_name -> proto.PermissionObjectType
-	20, // 18: proto.ReplacePermissionsRequest.relationships:type_name -> proto.PermissionRelationship
-	0,  // 19: proto.PermissionsResponse.object_type:type_name -> proto.PermissionObjectType
-	20, // 20: proto.PermissionsResponse.relationships:type_name -> proto.PermissionRelationship
-	33, // 21: proto.NoteVersionSummary.created_at:type_name -> google.protobuf.Timestamp
-	33, // 22: proto.NoteVersionContent.created_at:type_name -> google.protobuf.Timestamp
-	2,  // 23: proto.NoteService.GetNote:input_type -> proto.GetNoteRequest
-	8,  // 24: proto.NoteService.PostNote:input_type -> proto.PostNoteRequest
-	10, // 25: proto.NoteService.PatchNote:input_type -> proto.AlterNoteRequest
-	9,  // 26: proto.NoteService.DeleteNote:input_type -> proto.DeleteNoteRequest
-	3,  // 27: proto.NoteService.SearchNotes:input_type -> proto.GetSearchNotesRequest
-	12, // 28: proto.DirectoryService.GetDirectory:input_type -> proto.GetDirectoryRequest
-	13, // 29: proto.DirectoryService.GetDirectories:input_type -> proto.GetDirectoriesRequest
-	14, // 30: proto.DirectoryService.CreateDirectory:input_type -> proto.CreateDirectoryRequest
-	15, // 31: proto.DirectoryService.PatchDirectory:input_type -> proto.AlterDirectoryRequest
-	16, // 32: proto.DirectoryService.DeleteDirectory:input_type -> proto.DeleteDirectoryRequest
-	17, // 33: proto.DirectoryService.GetNotesOfDirectory:input_type -> proto.GetNotesOfDirectoryRequest
-	21, // 34: proto.PermissionService.GetPermissions:input_type -> proto.GetPermissionsRequest
-	22, // 35: proto.PermissionService.CreatePermission:input_type -> proto.CreatePermissionRequest
-	23, // 36: proto.PermissionService.DeletePermission:input_type -> proto.DeletePermissionRequest
-	24, // 37: proto.PermissionService.ReplacePermissions:input_type -> proto.ReplacePermissionsRequest
-	27, // 38: proto.NoteVersionService.GetNoteVersions:input_type -> proto.GetNoteVersionsRequest
-	28, // 39: proto.NoteVersionService.GetDirectoryActivity:input_type -> proto.GetDirectoryActivityRequest
-	30, // 40: proto.NoteVersionService.GetNoteVersionContent:input_type -> proto.GetNoteVersionContentRequest
-	31, // 41: proto.NoteVersionService.RestoreNoteVersion:input_type -> proto.RestoreNoteVersionRequest
-	6,  // 42: proto.NoteService.GetNote:output_type -> proto.NoteResponse
-	5,  // 43: proto.NoteService.PostNote:output_type -> proto.Note
-	5,  // 44: proto.NoteService.PatchNote:output_type -> proto.Note
-	5,  // 45: proto.NoteService.DeleteNote:output_type -> proto.Note
-	4,  // 46: proto.NoteService.SearchNotes:output_type -> proto.MinimalNote
-	11, // 47: proto.DirectoryService.GetDirectory:output_type -> proto.Directory
-	11, // 48: proto.DirectoryService.GetDirectories:output_type -> proto.Directory
-	11, // 49: proto.DirectoryService.CreateDirectory:output_type -> proto.Directory
-	11, // 50: proto.DirectoryService.PatchDirectory:output_type -> proto.Directory
-	11, // 51: proto.DirectoryService.DeleteDirectory:output_type -> proto.Directory
-	4,  // 52: proto.DirectoryService.GetNotesOfDirectory:output_type -> proto.MinimalNote
-	25, // 53: proto.PermissionService.GetPermissions:output_type -> proto.PermissionsResponse
-	25, // 54: proto.PermissionService.CreatePermission:output_type -> proto.PermissionsResponse
-	25, // 55: proto.PermissionService.DeletePermission:output_type -> proto.PermissionsResponse
-	25, // 56: proto.PermissionService.ReplacePermissions:output_type -> proto.PermissionsResponse
-	26, // 57: proto.NoteVersionService.GetNoteVersions:output_type -> proto.NoteVersionSummary
-	26, // 58: proto.NoteVersionService.GetDirectoryActivity:output_type -> proto.NoteVersionSummary
-	29, // 59: proto.NoteVersionService.GetNoteVersionContent:output_type -> proto.NoteVersionContent
-	5,  // 60: proto.NoteVersionService.RestoreNoteVersion:output_type -> proto.Note
-	42, // [42:61] is the sub-list for method output_type
-	23, // [23:42] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	5,  // 1: proto.NotesReply.notes:type_name -> proto.MinimalNote
+	6,  // 2: proto.NotesReply.directories:type_name -> proto.MinimalDirectory
+	7,  // 3: proto.NotesReply.tags:type_name -> proto.MinimalTag
+	36, // 4: proto.MinimalNote.updated_at:type_name -> google.protobuf.Timestamp
+	23, // 5: proto.MinimalNote.permissions:type_name -> proto.PermissionRelationship
+	36, // 6: proto.Note.updated_at:type_name -> google.protobuf.Timestamp
+	23, // 7: proto.Note.permissions:type_name -> proto.PermissionRelationship
+	8,  // 8: proto.NoteResponse.note:type_name -> proto.Note
+	35, // 9: proto.NoteResponse.id_token_map:type_name -> proto.NoteResponse.IdTokenMapEntry
+	23, // 10: proto.Directory.relationships:type_name -> proto.PermissionRelationship
+	0,  // 11: proto.PermissionSubject.object_type:type_name -> proto.PermissionObjectType
+	0,  // 12: proto.PermissionResource.object_type:type_name -> proto.PermissionObjectType
+	21, // 13: proto.PermissionRelationship.subject:type_name -> proto.PermissionSubject
+	22, // 14: proto.PermissionRelationship.resource:type_name -> proto.PermissionResource
+	0,  // 15: proto.GetPermissionsRequest.object_type:type_name -> proto.PermissionObjectType
+	0,  // 16: proto.CreatePermissionRequest.object_type:type_name -> proto.PermissionObjectType
+	23, // 17: proto.CreatePermissionRequest.relationship:type_name -> proto.PermissionRelationship
+	0,  // 18: proto.DeletePermissionRequest.object_type:type_name -> proto.PermissionObjectType
+	23, // 19: proto.DeletePermissionRequest.relationship:type_name -> proto.PermissionRelationship
+	0,  // 20: proto.ReplacePermissionsRequest.object_type:type_name -> proto.PermissionObjectType
+	23, // 21: proto.ReplacePermissionsRequest.relationships:type_name -> proto.PermissionRelationship
+	0,  // 22: proto.PermissionsResponse.object_type:type_name -> proto.PermissionObjectType
+	23, // 23: proto.PermissionsResponse.relationships:type_name -> proto.PermissionRelationship
+	36, // 24: proto.NoteVersionSummary.created_at:type_name -> google.protobuf.Timestamp
+	36, // 25: proto.NoteVersionContent.created_at:type_name -> google.protobuf.Timestamp
+	2,  // 26: proto.NoteService.GetNote:input_type -> proto.GetNoteRequest
+	11, // 27: proto.NoteService.PostNote:input_type -> proto.PostNoteRequest
+	13, // 28: proto.NoteService.PatchNote:input_type -> proto.AlterNoteRequest
+	12, // 29: proto.NoteService.DeleteNote:input_type -> proto.DeleteNoteRequest
+	3,  // 30: proto.NoteService.SearchNotes:input_type -> proto.GetSearchNotesRequest
+	15, // 31: proto.DirectoryService.GetDirectory:input_type -> proto.GetDirectoryRequest
+	16, // 32: proto.DirectoryService.GetDirectories:input_type -> proto.GetDirectoriesRequest
+	17, // 33: proto.DirectoryService.CreateDirectory:input_type -> proto.CreateDirectoryRequest
+	18, // 34: proto.DirectoryService.PatchDirectory:input_type -> proto.AlterDirectoryRequest
+	19, // 35: proto.DirectoryService.DeleteDirectory:input_type -> proto.DeleteDirectoryRequest
+	20, // 36: proto.DirectoryService.GetNotesOfDirectory:input_type -> proto.GetNotesOfDirectoryRequest
+	24, // 37: proto.PermissionService.GetPermissions:input_type -> proto.GetPermissionsRequest
+	25, // 38: proto.PermissionService.CreatePermission:input_type -> proto.CreatePermissionRequest
+	26, // 39: proto.PermissionService.DeletePermission:input_type -> proto.DeletePermissionRequest
+	27, // 40: proto.PermissionService.ReplacePermissions:input_type -> proto.ReplacePermissionsRequest
+	30, // 41: proto.NoteVersionService.GetNoteVersions:input_type -> proto.GetNoteVersionsRequest
+	31, // 42: proto.NoteVersionService.GetDirectoryActivity:input_type -> proto.GetDirectoryActivityRequest
+	33, // 43: proto.NoteVersionService.GetNoteVersionContent:input_type -> proto.GetNoteVersionContentRequest
+	34, // 44: proto.NoteVersionService.RestoreNoteVersion:input_type -> proto.RestoreNoteVersionRequest
+	9,  // 45: proto.NoteService.GetNote:output_type -> proto.NoteResponse
+	8,  // 46: proto.NoteService.PostNote:output_type -> proto.Note
+	8,  // 47: proto.NoteService.PatchNote:output_type -> proto.Note
+	8,  // 48: proto.NoteService.DeleteNote:output_type -> proto.Note
+	4,  // 49: proto.NoteService.SearchNotes:output_type -> proto.NotesReply
+	14, // 50: proto.DirectoryService.GetDirectory:output_type -> proto.Directory
+	14, // 51: proto.DirectoryService.GetDirectories:output_type -> proto.Directory
+	14, // 52: proto.DirectoryService.CreateDirectory:output_type -> proto.Directory
+	14, // 53: proto.DirectoryService.PatchDirectory:output_type -> proto.Directory
+	14, // 54: proto.DirectoryService.DeleteDirectory:output_type -> proto.Directory
+	4,  // 55: proto.DirectoryService.GetNotesOfDirectory:output_type -> proto.NotesReply
+	28, // 56: proto.PermissionService.GetPermissions:output_type -> proto.PermissionsResponse
+	28, // 57: proto.PermissionService.CreatePermission:output_type -> proto.PermissionsResponse
+	28, // 58: proto.PermissionService.DeletePermission:output_type -> proto.PermissionsResponse
+	28, // 59: proto.PermissionService.ReplacePermissions:output_type -> proto.PermissionsResponse
+	29, // 60: proto.NoteVersionService.GetNoteVersions:output_type -> proto.NoteVersionSummary
+	29, // 61: proto.NoteVersionService.GetDirectoryActivity:output_type -> proto.NoteVersionSummary
+	32, // 62: proto.NoteVersionService.GetNoteVersionContent:output_type -> proto.NoteVersionContent
+	8,  // 63: proto.NoteVersionService.RestoreNoteVersion:output_type -> proto.Note
+	45, // [45:64] is the sub-list for method output_type
+	26, // [26:45] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_src_proto_note_proto_init() }
@@ -2526,22 +2849,20 @@ func file_src_proto_note_proto_init() {
 	if File_src_proto_note_proto != nil {
 		return
 	}
-	file_src_proto_note_proto_msgTypes[6].OneofWrappers = []any{}
-	file_src_proto_note_proto_msgTypes[8].OneofWrappers = []any{}
 	file_src_proto_note_proto_msgTypes[9].OneofWrappers = []any{}
 	file_src_proto_note_proto_msgTypes[11].OneofWrappers = []any{}
-	file_src_proto_note_proto_msgTypes[12].OneofWrappers = []any{}
-	file_src_proto_note_proto_msgTypes[13].OneofWrappers = []any{}
+	file_src_proto_note_proto_msgTypes[14].OneofWrappers = []any{}
 	file_src_proto_note_proto_msgTypes[15].OneofWrappers = []any{}
-	file_src_proto_note_proto_msgTypes[25].OneofWrappers = []any{}
-	file_src_proto_note_proto_msgTypes[26].OneofWrappers = []any{}
+	file_src_proto_note_proto_msgTypes[16].OneofWrappers = []any{}
+	file_src_proto_note_proto_msgTypes[28].OneofWrappers = []any{}
+	file_src_proto_note_proto_msgTypes[29].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_src_proto_note_proto_rawDesc), len(file_src_proto_note_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   31,
+			NumMessages:   34,
 			NumExtensions: 0,
 			NumServices:   4,
 		},

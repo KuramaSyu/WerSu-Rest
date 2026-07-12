@@ -20,13 +20,15 @@ type GetNoteRequest struct {
 }
 
 type NoteReply struct {
-	Id          string                        `json:"id"`
-	Title       string                        `json:"title"`
-	Content     string                        `json:"content"`
-	UpdatedAt   time.Time                     `json:"updated_at"`
-	AuthorId    string                        `json:"author_id"`
-	Permissions []PermissionRelationshipReply `json:"permissions"`
-	Tokens      map[string]string             `json:"tokens,omitempty"`
+	Id           string                        `json:"id"`
+	Title        string                        `json:"title"`
+	Content      string                        `json:"content"`
+	UpdatedAt    time.Time                     `json:"updated_at"`
+	AuthorId     string                        `json:"author_id"`
+	Permissions  []PermissionRelationshipReply `json:"permissions"`
+	Tokens       map[string]string             `json:"tokens,omitempty"`
+	DirectoryIds []string                      `json:"directory_ids,omitempty"`
+	TagIds       []string                      `json:"tag_ids,omitempty"`
 }
 
 // PermissionSubjectReply represents the subject side of a permission tuple in REST responses.
@@ -85,9 +87,11 @@ type PostNoteRequest struct {
 }
 
 type PatchNoteRequest struct {
-	Id      string `json:"id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
-	Title   string `json:"title" binding:"omitempty" example:"Updated Note Title"`
-	Content string `json:"content" binding:"omitempty" example:"This is the updated content of my note."`
+	Id           string   `json:"id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
+	Title        string   `json:"title" binding:"omitempty" example:"Updated Note Title"`
+	Content      string   `json:"content" binding:"omitempty" example:"This is the updated content of my note."`
+	DirectoryIds []string `json:"directory_ids,omitempty" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
+	TagIds       []string `json:"tag_ids,omitempty" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 }
 
 // NoteReplyFromProto converts a protobuf Note message to a NoteReply struct.
@@ -104,12 +108,14 @@ func NoteReplyFromProto(note *proto.Note) NoteReply {
 	}
 
 	return NoteReply{
-		Id:          note.Id,
-		Title:       note.Title,
-		Content:     note.Content,
-		UpdatedAt:   note.UpdatedAt.AsTime(),
-		AuthorId:    note.AuthorId,
-		Permissions: permissions,
+		Id:           note.Id,
+		Title:        note.Title,
+		Content:      note.Content,
+		UpdatedAt:    note.UpdatedAt.AsTime(),
+		AuthorId:     note.AuthorId,
+		Permissions:  permissions,
+		DirectoryIds: note.GetDirectoryIds(),
+		TagIds:       note.GetTagIds(),
 	}
 }
 
@@ -197,6 +203,7 @@ func (uc *NoteController) PostNote(c *gin.Context) {
 		Title:    postNoteRequest.Title,
 		Content:  &postNoteRequest.Content,
 		AuthorId: user.ID,
+		UserId:   user.ID,
 	}
 	note, err := (*uc.NoteService).PostNote(c, &grpcPostNoteRequest)
 	if err != nil {
@@ -236,10 +243,13 @@ func (uc *NoteController) PatchNote(c *gin.Context) {
 
 	// gRPC service call
 	grpcAlterNoteRequest := proto.AlterNoteRequest{
-		Id:       patchNoteRequest.Id,
-		Title:    &patchNoteRequest.Title,
-		Content:  &patchNoteRequest.Content,
-		AuthorId: &user.ID,
+		Id:           patchNoteRequest.Id,
+		Title:        &patchNoteRequest.Title,
+		Content:      &patchNoteRequest.Content,
+		AuthorId:     &user.ID,
+		UserId:       user.ID,
+		DirectoryIds: patchNoteRequest.DirectoryIds,
+		TagIds:       patchNoteRequest.TagIds,
 	}
 	note, err := (*uc.NoteService).PatchNote(c, &grpcAlterNoteRequest)
 	if err != nil {
@@ -279,8 +289,8 @@ func (uc *NoteController) DeleteNote(c *gin.Context) {
 
 	// gRPC service call
 	grpcDeleteNoteRequest := proto.DeleteNoteRequest{
-		Id:       id,
-		AuthorId: user.ID,
+		Id:     id,
+		UserId: user.ID,
 	}
 	note, err := (*uc.NoteService).DeleteNote(c, &grpcDeleteNoteRequest)
 	if err != nil {

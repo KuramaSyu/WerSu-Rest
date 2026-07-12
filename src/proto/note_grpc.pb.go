@@ -39,7 +39,7 @@ type NoteServiceClient interface {
 	PostNote(ctx context.Context, in *PostNoteRequest, opts ...grpc.CallOption) (*Note, error)
 	PatchNote(ctx context.Context, in *AlterNoteRequest, opts ...grpc.CallOption) (*Note, error)
 	DeleteNote(ctx context.Context, in *DeleteNoteRequest, opts ...grpc.CallOption) (*Note, error)
-	SearchNotes(ctx context.Context, in *GetSearchNotesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[MinimalNote], error)
+	SearchNotes(ctx context.Context, in *GetSearchNotesRequest, opts ...grpc.CallOption) (*NotesReply, error)
 }
 
 type noteServiceClient struct {
@@ -90,24 +90,15 @@ func (c *noteServiceClient) DeleteNote(ctx context.Context, in *DeleteNoteReques
 	return out, nil
 }
 
-func (c *noteServiceClient) SearchNotes(ctx context.Context, in *GetSearchNotesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[MinimalNote], error) {
+func (c *noteServiceClient) SearchNotes(ctx context.Context, in *GetSearchNotesRequest, opts ...grpc.CallOption) (*NotesReply, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &NoteService_ServiceDesc.Streams[0], NoteService_SearchNotes_FullMethodName, cOpts...)
+	out := new(NotesReply)
+	err := c.cc.Invoke(ctx, NoteService_SearchNotes_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[GetSearchNotesRequest, MinimalNote]{ClientStream: stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
+	return out, nil
 }
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type NoteService_SearchNotesClient = grpc.ServerStreamingClient[MinimalNote]
 
 // NoteServiceServer is the server API for NoteService service.
 // All implementations must embed UnimplementedNoteServiceServer
@@ -122,7 +113,7 @@ type NoteServiceServer interface {
 	PostNote(context.Context, *PostNoteRequest) (*Note, error)
 	PatchNote(context.Context, *AlterNoteRequest) (*Note, error)
 	DeleteNote(context.Context, *DeleteNoteRequest) (*Note, error)
-	SearchNotes(*GetSearchNotesRequest, grpc.ServerStreamingServer[MinimalNote]) error
+	SearchNotes(context.Context, *GetSearchNotesRequest) (*NotesReply, error)
 	mustEmbedUnimplementedNoteServiceServer()
 }
 
@@ -145,8 +136,8 @@ func (UnimplementedNoteServiceServer) PatchNote(context.Context, *AlterNoteReque
 func (UnimplementedNoteServiceServer) DeleteNote(context.Context, *DeleteNoteRequest) (*Note, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteNote not implemented")
 }
-func (UnimplementedNoteServiceServer) SearchNotes(*GetSearchNotesRequest, grpc.ServerStreamingServer[MinimalNote]) error {
-	return status.Error(codes.Unimplemented, "method SearchNotes not implemented")
+func (UnimplementedNoteServiceServer) SearchNotes(context.Context, *GetSearchNotesRequest) (*NotesReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchNotes not implemented")
 }
 func (UnimplementedNoteServiceServer) mustEmbedUnimplementedNoteServiceServer() {}
 func (UnimplementedNoteServiceServer) testEmbeddedByValue()                     {}
@@ -241,16 +232,23 @@ func _NoteService_DeleteNote_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-func _NoteService_SearchNotes_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(GetSearchNotesRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
+func _NoteService_SearchNotes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSearchNotesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
 	}
-	return srv.(NoteServiceServer).SearchNotes(m, &grpc.GenericServerStream[GetSearchNotesRequest, MinimalNote]{ServerStream: stream})
+	if interceptor == nil {
+		return srv.(NoteServiceServer).SearchNotes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NoteService_SearchNotes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NoteServiceServer).SearchNotes(ctx, req.(*GetSearchNotesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type NoteService_SearchNotesServer = grpc.ServerStreamingServer[MinimalNote]
 
 // NoteService_ServiceDesc is the grpc.ServiceDesc for NoteService service.
 // It's only intended for direct use with grpc.RegisterService,
@@ -275,14 +273,12 @@ var NoteService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "DeleteNote",
 			Handler:    _NoteService_DeleteNote_Handler,
 		},
-	},
-	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "SearchNotes",
-			Handler:       _NoteService_SearchNotes_Handler,
-			ServerStreams: true,
+			MethodName: "SearchNotes",
+			Handler:    _NoteService_SearchNotes_Handler,
 		},
 	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "src/proto/note.proto",
 }
 
@@ -304,7 +300,7 @@ type DirectoryServiceClient interface {
 	CreateDirectory(ctx context.Context, in *CreateDirectoryRequest, opts ...grpc.CallOption) (*Directory, error)
 	PatchDirectory(ctx context.Context, in *AlterDirectoryRequest, opts ...grpc.CallOption) (*Directory, error)
 	DeleteDirectory(ctx context.Context, in *DeleteDirectoryRequest, opts ...grpc.CallOption) (*Directory, error)
-	GetNotesOfDirectory(ctx context.Context, in *GetNotesOfDirectoryRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[MinimalNote], error)
+	GetNotesOfDirectory(ctx context.Context, in *GetNotesOfDirectoryRequest, opts ...grpc.CallOption) (*NotesReply, error)
 }
 
 type directoryServiceClient struct {
@@ -374,24 +370,15 @@ func (c *directoryServiceClient) DeleteDirectory(ctx context.Context, in *Delete
 	return out, nil
 }
 
-func (c *directoryServiceClient) GetNotesOfDirectory(ctx context.Context, in *GetNotesOfDirectoryRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[MinimalNote], error) {
+func (c *directoryServiceClient) GetNotesOfDirectory(ctx context.Context, in *GetNotesOfDirectoryRequest, opts ...grpc.CallOption) (*NotesReply, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &DirectoryService_ServiceDesc.Streams[1], DirectoryService_GetNotesOfDirectory_FullMethodName, cOpts...)
+	out := new(NotesReply)
+	err := c.cc.Invoke(ctx, DirectoryService_GetNotesOfDirectory_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &grpc.GenericClientStream[GetNotesOfDirectoryRequest, MinimalNote]{ClientStream: stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
+	return out, nil
 }
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type DirectoryService_GetNotesOfDirectoryClient = grpc.ServerStreamingClient[MinimalNote]
 
 // DirectoryServiceServer is the server API for DirectoryService service.
 // All implementations must embed UnimplementedDirectoryServiceServer
@@ -402,7 +389,7 @@ type DirectoryServiceServer interface {
 	CreateDirectory(context.Context, *CreateDirectoryRequest) (*Directory, error)
 	PatchDirectory(context.Context, *AlterDirectoryRequest) (*Directory, error)
 	DeleteDirectory(context.Context, *DeleteDirectoryRequest) (*Directory, error)
-	GetNotesOfDirectory(*GetNotesOfDirectoryRequest, grpc.ServerStreamingServer[MinimalNote]) error
+	GetNotesOfDirectory(context.Context, *GetNotesOfDirectoryRequest) (*NotesReply, error)
 	mustEmbedUnimplementedDirectoryServiceServer()
 }
 
@@ -428,8 +415,8 @@ func (UnimplementedDirectoryServiceServer) PatchDirectory(context.Context, *Alte
 func (UnimplementedDirectoryServiceServer) DeleteDirectory(context.Context, *DeleteDirectoryRequest) (*Directory, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteDirectory not implemented")
 }
-func (UnimplementedDirectoryServiceServer) GetNotesOfDirectory(*GetNotesOfDirectoryRequest, grpc.ServerStreamingServer[MinimalNote]) error {
-	return status.Error(codes.Unimplemented, "method GetNotesOfDirectory not implemented")
+func (UnimplementedDirectoryServiceServer) GetNotesOfDirectory(context.Context, *GetNotesOfDirectoryRequest) (*NotesReply, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetNotesOfDirectory not implemented")
 }
 func (UnimplementedDirectoryServiceServer) mustEmbedUnimplementedDirectoryServiceServer() {}
 func (UnimplementedDirectoryServiceServer) testEmbeddedByValue()                          {}
@@ -535,16 +522,23 @@ func _DirectoryService_DeleteDirectory_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DirectoryService_GetNotesOfDirectory_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(GetNotesOfDirectoryRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
+func _DirectoryService_GetNotesOfDirectory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetNotesOfDirectoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
 	}
-	return srv.(DirectoryServiceServer).GetNotesOfDirectory(m, &grpc.GenericServerStream[GetNotesOfDirectoryRequest, MinimalNote]{ServerStream: stream})
+	if interceptor == nil {
+		return srv.(DirectoryServiceServer).GetNotesOfDirectory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DirectoryService_GetNotesOfDirectory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DirectoryServiceServer).GetNotesOfDirectory(ctx, req.(*GetNotesOfDirectoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type DirectoryService_GetNotesOfDirectoryServer = grpc.ServerStreamingServer[MinimalNote]
 
 // DirectoryService_ServiceDesc is the grpc.ServiceDesc for DirectoryService service.
 // It's only intended for direct use with grpc.RegisterService,
@@ -569,16 +563,15 @@ var DirectoryService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "DeleteDirectory",
 			Handler:    _DirectoryService_DeleteDirectory_Handler,
 		},
+		{
+			MethodName: "GetNotesOfDirectory",
+			Handler:    _DirectoryService_GetNotesOfDirectory_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "GetDirectories",
 			Handler:       _DirectoryService_GetDirectories_Handler,
-			ServerStreams: true,
-		},
-		{
-			StreamName:    "GetNotesOfDirectory",
-			Handler:       _DirectoryService_GetNotesOfDirectory_Handler,
 			ServerStreams: true,
 		},
 	},

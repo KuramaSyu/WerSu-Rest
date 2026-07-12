@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,55 +14,8 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
-
-// mockDirectoryMinimalNoteStream is a lightweight fake that implements the
-// grpc.ServerStreamingClient interface for MinimalNote, used by
-// GetNotesOfDirectory in the directory gRPC service.
-type mockDirectoryMinimalNoteStream struct {
-	ctx   context.Context
-	notes []*proto.MinimalNote
-	index int
-}
-
-// Recv returns the next minimal note until EOF to end the stream.
-func (m *mockDirectoryMinimalNoteStream) Recv() (*proto.MinimalNote, error) {
-	if m.index >= len(m.notes) {
-		return nil, io.EOF
-	}
-	note := m.notes[m.index]
-	m.index++
-	return note, nil
-}
-
-func (m *mockDirectoryMinimalNoteStream) Header() (metadata.MD, error) {
-	return metadata.MD{}, nil
-}
-
-func (m *mockDirectoryMinimalNoteStream) Trailer() metadata.MD {
-	return metadata.MD{}
-}
-
-func (m *mockDirectoryMinimalNoteStream) CloseSend() error {
-	return nil
-}
-
-func (m *mockDirectoryMinimalNoteStream) Context() context.Context {
-	if m.ctx != nil {
-		return m.ctx
-	}
-	return context.Background()
-}
-
-func (m *mockDirectoryMinimalNoteStream) SendMsg(interface{}) error {
-	return nil
-}
-
-func (m *mockDirectoryMinimalNoteStream) RecvMsg(interface{}) error {
-	return nil
-}
 
 // mockDirectoryServiceClient is a configurable fake that captures request
 // payloads and returns canned responses for DirectoryService RPCs.
@@ -73,7 +25,7 @@ type mockDirectoryServiceClient struct {
 	createDirectory     func(ctx context.Context, in *proto.CreateDirectoryRequest, opts ...grpc.CallOption) (*proto.Directory, error)
 	patchDirectory      func(ctx context.Context, in *proto.AlterDirectoryRequest, opts ...grpc.CallOption) (*proto.Directory, error)
 	deleteDirectory     func(ctx context.Context, in *proto.DeleteDirectoryRequest, opts ...grpc.CallOption) (*proto.Directory, error)
-	getNotesOfDirectory func(ctx context.Context, in *proto.GetNotesOfDirectoryRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[proto.MinimalNote], error)
+	getNotesOfDirectory func(ctx context.Context, in *proto.GetNotesOfDirectoryRequest, opts ...grpc.CallOption) (*proto.NotesReply, error)
 }
 
 func (m *mockDirectoryServiceClient) GetDirectory(ctx context.Context, in *proto.GetDirectoryRequest, opts ...grpc.CallOption) (*proto.Directory, error) {
@@ -96,7 +48,7 @@ func (m *mockDirectoryServiceClient) DeleteDirectory(ctx context.Context, in *pr
 	return m.deleteDirectory(ctx, in, opts...)
 }
 
-func (m *mockDirectoryServiceClient) GetNotesOfDirectory(ctx context.Context, in *proto.GetNotesOfDirectoryRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[proto.MinimalNote], error) {
+func (m *mockDirectoryServiceClient) GetNotesOfDirectory(ctx context.Context, in *proto.GetNotesOfDirectoryRequest, opts ...grpc.CallOption) (*proto.NotesReply, error) {
 	return m.getNotesOfDirectory(ctx, in, opts...)
 }
 
@@ -130,8 +82,8 @@ func setupDirectoryRouter(client proto.DirectoryServiceClient) *gin.Engine {
 
 func TestGetNotesOfDirectory(t *testing.T) {
 	updatedAt := time.Date(2026, 1, 15, 10, 0, 0, 0, time.UTC)
-	stream := &mockDirectoryMinimalNoteStream{
-		notes: []*proto.MinimalNote{
+	reply := &proto.NotesReply{
+		Notes: []*proto.MinimalNote{
 			{
 				Id:              "note-1",
 				Title:           "First",
@@ -150,20 +102,20 @@ func TestGetNotesOfDirectory(t *testing.T) {
 	}
 
 	client := &mockDirectoryServiceClient{}
-	client.getNotesOfDirectory = func(ctx context.Context, in *proto.GetNotesOfDirectoryRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[proto.MinimalNote], error) {
+	client.getNotesOfDirectory = func(ctx context.Context, in *proto.GetNotesOfDirectoryRequest, opts ...grpc.CallOption) (*proto.NotesReply, error) {
 		if in.GetDirectoryId() != "dir-1" {
 			t.Fatalf("expected directory_id dir-1, got %s", in.GetDirectoryId())
 		}
 		if in.GetUserId() != "user-1" {
 			t.Fatalf("expected user_id user-1, got %s", in.GetUserId())
 		}
-		if in.Limit == nil || *in.Limit != 5 {
-			t.Fatalf("expected limit 5, got %v", in.Limit)
+		if in.GetLimit() != 5 {
+			t.Fatalf("expected limit 5, got %d", in.GetLimit())
 		}
-		if in.Offset == nil || *in.Offset != 2 {
-			t.Fatalf("expected offset 2, got %v", in.Offset)
+		if in.GetOffset() != 2 {
+			t.Fatalf("expected offset 2, got %d", in.GetOffset())
 		}
-		return stream, nil
+		return reply, nil
 	}
 
 	router := setupDirectoryRouter(client)
@@ -175,39 +127,39 @@ func TestGetNotesOfDirectory(t *testing.T) {
 		t.Fatalf("expected status 200, got %d", response.Code)
 	}
 
-	var payload []MinimalNote
+	var payload NotesReply
 	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 
-	if len(payload) != 2 {
-		t.Fatalf("expected 2 notes, got %d", len(payload))
+	if len(payload.Notes) != 2 {
+		t.Fatalf("expected 2 notes, got %d", len(payload.Notes))
 	}
 
-	if payload[0].Id != "note-1" || payload[0].Title != "First" {
-		t.Fatalf("unexpected first note payload: %+v", payload[0])
+	if payload.Notes[0].Id != "note-1" || payload.Notes[0].Title != "First" {
+		t.Fatalf("unexpected first note payload: %+v", payload.Notes[0])
 	}
-	if payload[0].UpdatedAt != updatedAt.Format(time.RFC3339) {
-		t.Fatalf("unexpected updated_at: %v", payload[0].UpdatedAt)
+	if payload.Notes[0].UpdatedAt != updatedAt.Format(time.RFC3339) {
+		t.Fatalf("unexpected updated_at: %v", payload.Notes[0].UpdatedAt)
 	}
-	if payload[1].Id != "note-2" || payload[1].Title != "Second" {
-		t.Fatalf("unexpected second note payload: %+v", payload[1])
+	if payload.Notes[1].Id != "note-2" || payload.Notes[1].Title != "Second" {
+		t.Fatalf("unexpected second note payload: %+v", payload.Notes[1])
 	}
 }
 
 func TestGetNotesOfDirectoryDefaultsLimitTo20(t *testing.T) {
 	client := &mockDirectoryServiceClient{}
-	client.getNotesOfDirectory = func(ctx context.Context, in *proto.GetNotesOfDirectoryRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[proto.MinimalNote], error) {
+	client.getNotesOfDirectory = func(ctx context.Context, in *proto.GetNotesOfDirectoryRequest, opts ...grpc.CallOption) (*proto.NotesReply, error) {
 		if in.GetDirectoryId() != "dir-2" {
 			t.Fatalf("expected directory_id dir-2, got %s", in.GetDirectoryId())
 		}
-		if in.Limit == nil || *in.Limit != 20 {
-			t.Fatalf("expected default limit 20, got %v", in.Limit)
+		if in.GetLimit() != 20 {
+			t.Fatalf("expected default limit 20, got %d", in.GetLimit())
 		}
-		if in.Offset != nil {
-			t.Fatalf("expected no offset, got %v", *in.Offset)
+		if in.GetOffset() != 0 {
+			t.Fatalf("expected default offset 0, got %d", in.GetOffset())
 		}
-		return &mockDirectoryMinimalNoteStream{notes: []*proto.MinimalNote{}}, nil
+		return &proto.NotesReply{}, nil
 	}
 
 	router := setupDirectoryRouter(client)
@@ -219,11 +171,11 @@ func TestGetNotesOfDirectoryDefaultsLimitTo20(t *testing.T) {
 		t.Fatalf("expected status 200, got %d", response.Code)
 	}
 
-	var payload []MinimalNote
+	var payload NotesReply
 	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
-	if len(payload) != 0 {
-		t.Fatalf("expected empty list, got %d notes", len(payload))
+	if len(payload.Notes) != 0 {
+		t.Fatalf("expected empty notes list, got %d notes", len(payload.Notes))
 	}
 }

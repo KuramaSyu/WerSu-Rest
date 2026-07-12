@@ -62,6 +62,31 @@ type MinimalNote struct {
 	UpdatedAt       string                        `json:"updated_at"` // ISO 8601 format
 	StrippedContent string                        `json:"stripped_content"`
 	Permissions     []PermissionRelationshipReply `json:"permissions"`
+	DirectoryIds    []string                      `json:"directory_ids,omitempty"`
+	TagIds          []string                      `json:"tag_ids,omitempty"`
+}
+
+// MinimalDirectory is the REST representation of a proto.MinimalDirectory.
+type MinimalDirectory struct {
+	Id          string `json:"id"`
+	Slug        string `json:"slug"`
+	DisplayName string `json:"display_name"`
+}
+
+// MinimalTag is the REST representation of a proto.MinimalTag.
+type MinimalTag struct {
+	Id          string `json:"id"`
+	Slug        string `json:"slug"`
+	DisplayName string `json:"display_name"`
+}
+
+// NotesReply is the REST representation of a proto.NotesReply. It bundles
+// the matching notes with the directories and tags referenced by them so
+// the client can render a single response without follow-up calls.
+type NotesReply struct {
+	Notes       []MinimalNote      `json:"notes"`
+	Directories []MinimalDirectory `json:"directories"`
+	Tags        []MinimalTag       `json:"tags"`
 }
 
 // ConvertProtoMinimalNoteToRest converts a proto.MinimalNote to REST MinimalNote
@@ -84,6 +109,58 @@ func ConvertProtoMinimalNoteToRest(protoNote *proto.MinimalNote) MinimalNote {
 		UpdatedAt:       updatedAt,
 		StrippedContent: protoNote.StrippedContent,
 		Permissions:     permissions,
+		DirectoryIds:    protoNote.GetDirectoryIds(),
+		TagIds:          protoNote.GetTagIds(),
+	}
+}
+
+// ConvertProtoMinimalDirectoryToRest converts a proto.MinimalDirectory to REST MinimalDirectory.
+func ConvertProtoMinimalDirectoryToRest(protoDirectory *proto.MinimalDirectory) MinimalDirectory {
+	return MinimalDirectory{
+		Id:          protoDirectory.GetId(),
+		Slug:        protoDirectory.GetSlug(),
+		DisplayName: protoDirectory.GetDisplayName(),
+	}
+}
+
+// ConvertProtoMinimalTagToRest converts a proto.MinimalTag to REST MinimalTag.
+func ConvertProtoMinimalTagToRest(protoTag *proto.MinimalTag) MinimalTag {
+	return MinimalTag{
+		Id:          protoTag.GetId(),
+		Slug:        protoTag.GetSlug(),
+		DisplayName: protoTag.GetDisplayName(),
+	}
+}
+
+// NotesReplyFromProto converts a proto.NotesReply into the REST NotesReply shape.
+func NotesReplyFromProto(reply *proto.NotesReply) NotesReply {
+	if reply == nil {
+		return NotesReply{
+			Notes:       []MinimalNote{},
+			Directories: []MinimalDirectory{},
+			Tags:        []MinimalTag{},
+		}
+	}
+
+	notes := make([]MinimalNote, 0, len(reply.GetNotes()))
+	for _, note := range reply.GetNotes() {
+		notes = append(notes, ConvertProtoMinimalNoteToRest(note))
+	}
+
+	directories := make([]MinimalDirectory, 0, len(reply.GetDirectories()))
+	for _, directory := range reply.GetDirectories() {
+		directories = append(directories, ConvertProtoMinimalDirectoryToRest(directory))
+	}
+
+	tags := make([]MinimalTag, 0, len(reply.GetTags()))
+	for _, tag := range reply.GetTags() {
+		tags = append(tags, ConvertProtoMinimalTagToRest(tag))
+	}
+
+	return NotesReply{
+		Notes:       notes,
+		Directories: directories,
+		Tags:        tags,
 	}
 }
 
@@ -97,7 +174,7 @@ func ConvertProtoMinimalNoteToRest(protoNote *proto.MinimalNote) MinimalNote {
 // @Param query query string true "Search query"
 // @Param limit query int true "Maximum results to return"
 // @Param offset query int true "Pagination offset"
-// @Success 200 {object} []MinimalNote
+// @Success 200 {object} NotesReply
 // @Failure 400 {object} map[string]string
 // @Router /notes/search [get]
 func (uc *SearchNotesController) GetNotes(c *gin.Context) {
@@ -123,21 +200,11 @@ func (uc *SearchNotesController) GetNotes(c *gin.Context) {
 		Offset:     getSearchNotesRequest.Offset,
 		UserId:     user.ID,
 	}
-	stream, err := (*uc.NoteService).SearchNotes(c, &grpcSearchNotesRequest)
+	reply, err := (*uc.NoteService).SearchNotes(c, &grpcSearchNotesRequest)
 	if err != nil {
 		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to search notes via gRPC service: %w", err))
 		return
 	}
-	// collect all notes from stream
-	var notes []MinimalNote = []MinimalNote{}
-	for {
-		note, err := stream.Recv()
-		if err != nil {
-			break
-		}
-		notes = append(notes, ConvertProtoMinimalNoteToRest(note))
-	}
 
-	// respond
-	c.JSON(http.StatusOK, notes)
+	c.JSON(http.StatusOK, NotesReplyFromProto(reply))
 }
