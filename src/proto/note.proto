@@ -145,6 +145,9 @@ message GetDirectoriesRequest {
     optional string parent_id = 2;
     optional int32 limit = 3;
     optional int32 offset = 4;
+    bool include_parents = 5;
+    bool include_child_dirs = 6;
+    bool include_child_notes = 7;
 }
 
 message CreateDirectoryRequest {

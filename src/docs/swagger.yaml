@@ -821,6 +821,18 @@ paths:
         in: query
         name: offset
         type: integer
+      - description: Include parent directory IDs in each response
+        in: query
+        name: include_parents
+        type: boolean
+      - description: Include child directory IDs in each response
+        in: query
+        name: include_child_dirs
+        type: boolean
+      - description: Include child note IDs in each response
+        in: query
+        name: include_child_notes
+        type: boolean
       produces:
       - application/json
       responses:

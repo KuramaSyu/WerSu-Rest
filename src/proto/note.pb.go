@@ -1159,12 +1159,15 @@ func (x *GetDirectoryRequest) GetIncludeChildNotes() bool {
 type GetDirectoriesRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// the requesting user's id, used for permission checking
-	UserId        string  `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	ParentId      *string `protobuf:"bytes,2,opt,name=parent_id,json=parentId,proto3,oneof" json:"parent_id,omitempty"`
-	Limit         *int32  `protobuf:"varint,3,opt,name=limit,proto3,oneof" json:"limit,omitempty"`
-	Offset        *int32  `protobuf:"varint,4,opt,name=offset,proto3,oneof" json:"offset,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	UserId            string  `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	ParentId          *string `protobuf:"bytes,2,opt,name=parent_id,json=parentId,proto3,oneof" json:"parent_id,omitempty"`
+	Limit             *int32  `protobuf:"varint,3,opt,name=limit,proto3,oneof" json:"limit,omitempty"`
+	Offset            *int32  `protobuf:"varint,4,opt,name=offset,proto3,oneof" json:"offset,omitempty"`
+	IncludeParents    bool    `protobuf:"varint,5,opt,name=include_parents,json=includeParents,proto3" json:"include_parents,omitempty"`
+	IncludeChildDirs  bool    `protobuf:"varint,6,opt,name=include_child_dirs,json=includeChildDirs,proto3" json:"include_child_dirs,omitempty"`
+	IncludeChildNotes bool    `protobuf:"varint,7,opt,name=include_child_notes,json=includeChildNotes,proto3" json:"include_child_notes,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *GetDirectoriesRequest) Reset() {
@@ -1223,6 +1226,27 @@ func (x *GetDirectoriesRequest) GetOffset() int32 {
 		return *x.Offset
 	}
 	return 0
+}
+
+func (x *GetDirectoriesRequest) GetIncludeParents() bool {
+	if x != nil {
+		return x.IncludeParents
+	}
+	return false
+}
+
+func (x *GetDirectoriesRequest) GetIncludeChildDirs() bool {
+	if x != nil {
+		return x.IncludeChildDirs
+	}
+	return false
+}
+
+func (x *GetDirectoriesRequest) GetIncludeChildNotes() bool {
+	if x != nil {
+		return x.IncludeChildNotes
+	}
+	return false
 }
 
 type CreateDirectoryRequest struct {
@@ -2558,12 +2582,15 @@ const file_src_proto_note_proto_rawDesc = "" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12'\n" +
 	"\x0finclude_parents\x18\x03 \x01(\bR\x0eincludeParents\x12,\n" +
 	"\x12include_child_dirs\x18\x04 \x01(\bR\x10includeChildDirs\x12.\n" +
-	"\x13include_child_notes\x18\x05 \x01(\bR\x11includeChildNotes\"\xad\x01\n" +
+	"\x13include_child_notes\x18\x05 \x01(\bR\x11includeChildNotes\"\xb4\x02\n" +
 	"\x15GetDirectoriesRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12 \n" +
 	"\tparent_id\x18\x02 \x01(\tH\x00R\bparentId\x88\x01\x01\x12\x19\n" +
 	"\x05limit\x18\x03 \x01(\x05H\x01R\x05limit\x88\x01\x01\x12\x1b\n" +
-	"\x06offset\x18\x04 \x01(\x05H\x02R\x06offset\x88\x01\x01B\f\n" +
+	"\x06offset\x18\x04 \x01(\x05H\x02R\x06offset\x88\x01\x01\x12'\n" +
+	"\x0finclude_parents\x18\x05 \x01(\bR\x0eincludeParents\x12,\n" +
+	"\x12include_child_dirs\x18\x06 \x01(\bR\x10includeChildDirs\x12.\n" +
+	"\x13include_child_notes\x18\a \x01(\bR\x11includeChildNotesB\f\n" +
 	"\n" +
 	"_parent_idB\b\n" +
 	"\x06_limitB\t\n" +

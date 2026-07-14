@@ -372,6 +372,24 @@ const docTemplate = `{
                         "description": "Pagination offset",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include parent directory IDs in each response",
+                        "name": "include_parents",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include child directory IDs in each response",
+                        "name": "include_child_dirs",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include child note IDs in each response",
+                        "name": "include_child_notes",
+                        "in": "query"
                     }
                 ],
                 "responses": {

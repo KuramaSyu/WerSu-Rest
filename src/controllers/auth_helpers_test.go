@@ -70,15 +70,70 @@ func TestSetGinErrorUpgradesWrappedGrpcUnavailable(t *testing.T) {
 	}
 }
 
+// TestSetGinErrorUpgradesGrpcNotFoundTo404 confirms that calling
+// SetGinError with status=500 and a gRPC NotFound error results in a
+// 404 response so REST clients see "entity missing" as 404 instead of
+// a generic 500.
+func TestSetGinErrorUpgradesGrpcNotFoundTo404(t *testing.T) {
+	recorder, _ := runSetGinError(t, http.StatusInternalServerError,
+		status.Error(codes.NotFound, "User not found"))
+
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", recorder.Code)
+	}
+}
+
+// TestSetGinErrorUpgradesWrappedGrpcNotFound verifies that the NotFound
+// upgrade still fires when the gRPC status error is wrapped via
+// fmt.Errorf("...: %w"). SetGinError must look through the wrapping to
+// find the original gRPC code.
+func TestSetGinErrorUpgradesWrappedGrpcNotFound(t *testing.T) {
+	wrapped := fmt.Errorf("failed to fetch user via gRPC service: %w",
+		status.Error(codes.NotFound, "User not found"))
+
+	recorder, _ := runSetGinError(t, http.StatusInternalServerError, wrapped)
+
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 for wrapped NotFound error, got %d", recorder.Code)
+	}
+}
+
+// TestSetGinErrorUpgradesGrpcPermissionDeniedTo403 confirms that calling
+// SetGinError with status=500 and a gRPC PermissionDenied error results
+// in a 403 response so REST clients see "no permission" as 403 instead of
+// a generic 500.
+func TestSetGinErrorUpgradesGrpcPermissionDeniedTo403(t *testing.T) {
+	recorder, _ := runSetGinError(t, http.StatusInternalServerError,
+		status.Error(codes.PermissionDenied, "user has no permission"))
+
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", recorder.Code)
+	}
+}
+
+// TestSetGinErrorUpgradesWrappedGrpcPermissionDenied verifies that the
+// PermissionDenied upgrade still fires when the gRPC status error is
+// wrapped via fmt.Errorf("...: %w"). SetGinError must look through the
+// wrapping to find the original gRPC code.
+func TestSetGinErrorUpgradesWrappedGrpcPermissionDenied(t *testing.T) {
+	wrapped := fmt.Errorf("failed to fetch directory via gRPC service: %w",
+		status.Error(codes.PermissionDenied, "user has no permission to view directory"))
+
+	recorder, _ := runSetGinError(t, http.StatusInternalServerError, wrapped)
+
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("expected 403 for wrapped PermissionDenied error, got %d", recorder.Code)
+	}
+}
+
 // TestSetGinErrorLeavesOtherGrpcCodesAs500 ensures only the configured
-// "unreachable" codes trigger the upgrade. Other gRPC codes (Internal,
-// PermissionDenied, NotFound, ...) must continue to surface as 500 since
-// they represent server- or permission-side issues, not transport failures.
+// "unreachable", "not found", and "permission denied" codes trigger an
+// upgrade. Other gRPC codes (Internal, Unauthenticated, ...) must continue
+// to surface as 500 since they represent server- or auth-side issues, not
+// transport failures, missing entities, or permission failures.
 func TestSetGinErrorLeavesOtherGrpcCodesAs500(t *testing.T) {
 	cases := []codes.Code{
 		codes.Internal,
-		codes.PermissionDenied,
-		codes.NotFound,
 		codes.Unauthenticated,
 	}
 
@@ -108,8 +163,8 @@ func TestSetGinErrorLeavesPlainErrorAs500(t *testing.T) {
 
 // TestSetGinErrorDoesNotUpgradeNon500Statuses verifies the upgrade is
 // scoped to the 500 path. A codes.Unavailable error wrapped in a 400 or
-// 403 call must keep its original status, so the existing PermissionDenied
-// -> 403 and NotFound -> 404 mappings in the controllers are not broken.
+// 403 call must keep its original status, so controllers that explicitly
+// return 400 / 401 / 403 / 404 are not overridden by the gRPC translation.
 func TestSetGinErrorDoesNotUpgradeNon500Statuses(t *testing.T) {
 	cases := []int{
 		http.StatusBadRequest,

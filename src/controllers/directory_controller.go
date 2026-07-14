@@ -32,9 +32,12 @@ type DirectoryReply struct {
 }
 
 type GetDirectoriesQuery struct {
-	ParentId *string `form:"parent_id"`
-	Limit    *int32  `form:"limit"`
-	Offset   *int32  `form:"offset"`
+	ParentId          *string `form:"parent_id"`
+	Limit             *int32  `form:"limit"`
+	Offset            *int32  `form:"offset"`
+	IncludeParents    bool    `form:"include_parents"`
+	IncludeChildDirs  bool    `form:"include_child_dirs"`
+	IncludeChildNotes bool    `form:"include_child_notes"`
 }
 
 // GetDirectoryQuery controls which related entities the server embeds in
@@ -151,6 +154,9 @@ func (dc *DirectoryController) GetDirectory(c *gin.Context) {
 // @Param parent_id query string false "Parent directory ID"
 // @Param limit query int false "Maximum results to return"
 // @Param offset query int false "Pagination offset"
+// @Param include_parents query bool false "Include parent directory IDs in each response"
+// @Param include_child_dirs query bool false "Include child directory IDs in each response"
+// @Param include_child_notes query bool false "Include child note IDs in each response"
 // @Success 200 {object} []DirectoryReply
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
@@ -169,10 +175,13 @@ func (dc *DirectoryController) GetDirectories(c *gin.Context) {
 	}
 
 	stream, err := (*dc.DirectoryService).GetDirectories(c, &proto.GetDirectoriesRequest{
-		UserId:   user.ID,
-		ParentId: query.ParentId,
-		Limit:    query.Limit,
-		Offset:   query.Offset,
+		UserId:            user.ID,
+		ParentId:          query.ParentId,
+		Limit:             query.Limit,
+		Offset:            query.Offset,
+		IncludeParents:    query.IncludeParents,
+		IncludeChildDirs:  query.IncludeChildDirs,
+		IncludeChildNotes: query.IncludeChildNotes,
 	})
 	if err != nil {
 		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch directories via gRPC service: %w", err))

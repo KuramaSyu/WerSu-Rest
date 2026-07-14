@@ -152,11 +152,28 @@ func UnpackJWT(token string, secret string) (*jwt.RegisteredClaims, int, error) 
 //     http.StatusServiceUnavailable (503). This lets every gRPC-calling
 //     controller report a "backend down / overloaded" condition without each
 //     handler having to inspect the error itself.
-//   - For any other status (e.g. 400, 401, 403, 404) the response is written
-//     unchanged, so the gRPC upgrade only kicks in for genuine 500 paths.
+//   - When `status` is http.StatusInternalServerError and `err` (or any error
+//     it wraps) carries a gRPC status code of NotFound, the response is
+//     automatically upgraded to http.StatusNotFound (404). This propagates
+//     "entity missing" cleanly to REST clients without each handler having
+//     to inspect the error itself.
+//   - When `status` is http.StatusInternalServerError and `err` (or any error
+//     it wraps) carries a gRPC status code of PermissionDenied, the response
+//     is automatically upgraded to http.StatusForbidden (403). This propagates
+//     "no permission" cleanly to REST clients without each handler having to
+//     inspect the error itself.
+//   - For any other status (e.g. 400, 401) the response is written unchanged,
+//     so the gRPC upgrades only kick in for genuine 500 paths.
 func SetGinError(c *gin.Context, status int, err error) {
-	if status == http.StatusInternalServerError && isGrpcBackendUnavailable(err) {
-		status = http.StatusServiceUnavailable
+	if status == http.StatusInternalServerError {
+		switch {
+		case isGrpcBackendUnavailable(err):
+			status = http.StatusServiceUnavailable
+		case isGrpcNotFound(err):
+			status = http.StatusNotFound
+		case isGrpcPermissionDenied(err):
+			status = http.StatusForbidden
+		}
 	}
 	c.JSON(status, gin.H{"error": err.Error()})
 
@@ -177,6 +194,34 @@ func isGrpcBackendUnavailable(err error) bool {
 		return true
 	}
 	return false
+}
+
+// isGrpcNotFound reports whether err (or any wrapped error in its chain)
+// carries a gRPC status code of NotFound. SetGinError uses this to upgrade
+// 500 paths to 404 so "entity missing" reaches REST clients as 404 without
+// each handler having to inspect the error itself.
+//
+// Returns false for nil, for plain (non-gRPC) errors, and for any other
+// gRPC status code.
+func isGrpcNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	return status.Code(err) == codes.NotFound
+}
+
+// isGrpcPermissionDenied reports whether err (or any wrapped error in its
+// chain) carries a gRPC status code of PermissionDenied. SetGinError uses
+// this to upgrade 500 paths to 403 so "no permission" reaches REST clients
+// as 403 without each handler having to inspect the error itself.
+//
+// Returns false for nil, for plain (non-gRPC) errors, and for any other
+// gRPC status code.
+func isGrpcPermissionDenied(err error) bool {
+	if err == nil {
+		return false
+	}
+	return status.Code(err) == codes.PermissionDenied
 }
 
 // GenerateJWT creates a new JSON Web Token (JWT) for a given user ID.
