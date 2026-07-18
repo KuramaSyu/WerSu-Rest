@@ -86,10 +86,16 @@ type PostNoteRequest struct {
 	Content string `json:"content" binding:"required" example:"This is the content of my note."`
 }
 
+// PatchNoteRequest mirrors the gRPC AlterNoteRequest for the REST API.
+//
+// All scalar fields except `id` are pointers so we can distinguish between
+// "field omitted" (leave the value unchanged) and "field set to zero value"
+// (explicitly clear it). The proto layer uses the same distinction via
+// `optional` fields and oneof wrappers.
 type PatchNoteRequest struct {
 	Id           string   `json:"id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
-	Title        string   `json:"title" binding:"omitempty" example:"Updated Note Title"`
-	Content      string   `json:"content" binding:"omitempty" example:"This is the updated content of my note."`
+	Title        *string  `json:"title,omitempty" example:"Updated Note Title"`
+	Content      *string  `json:"content,omitempty" example:"This is the updated content of my note."`
 	DirectoryIds []string `json:"directory_ids,omitempty" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 	TagIds       []string `json:"tag_ids,omitempty" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 }
@@ -243,14 +249,30 @@ func (uc *NoteController) PatchNote(c *gin.Context) {
 
 	// gRPC service call
 	grpcAlterNoteRequest := proto.AlterNoteRequest{
-		Id:           patchNoteRequest.Id,
-		Title:        &patchNoteRequest.Title,
-		Content:      &patchNoteRequest.Content,
-		AuthorId:     &user.ID,
-		UserId:       user.ID,
-		DirectoryIds: patchNoteRequest.DirectoryIds,
-		TagIds:       patchNoteRequest.TagIds,
+		Id: patchNoteRequest.Id,
+		// Title/Content are `*string` so a nil value (omitted over REST)
+		// is forwarded as "leave unchanged" instead of "set to empty".
+		Title:    patchNoteRequest.Title,
+		Content:  patchNoteRequest.Content,
+		AuthorId: &user.ID,
+		UserId:   user.ID,
 	}
+	// Wrap DirectoryIds/TagIds in the oneof only when the field was
+	// provided over REST (even if explicitly empty). When omitted, the
+	// oneof stays unset so the server leaves the existing value alone.
+	if patchNoteRequest.DirectoryIds != nil {
+		grpcAlterNoteRequest.DirectoryIdsChange = &proto.AlterNoteRequest_DirectoryIds{
+			DirectoryIds: &proto.IdsOrUndefined{Ids: patchNoteRequest.DirectoryIds},
+		}
+	}
+	if patchNoteRequest.TagIds != nil {
+		grpcAlterNoteRequest.TagIdsChange = &proto.AlterNoteRequest_TagIds{
+			TagIds: &proto.IdsOrUndefined{Ids: patchNoteRequest.TagIds},
+		}
+	}
+	fmt.Println("gRPC Patch request: ", &grpcAlterNoteRequest)
+	fmt.Println("Json Patch request: ", &patchNoteRequest)
+
 	note, err := (*uc.NoteService).PatchNote(c, &grpcAlterNoteRequest)
 	if err != nil {
 		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to patch note via gRPC service: %w", err))
