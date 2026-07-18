@@ -465,10 +465,6 @@ func (ac *AttachmentController) DeleteAttachment(c *gin.Context) {
 	}
 
 	log.Printf("request with key %s", params.Key)
-	if err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid attachment key: %w", err))
-		return
-	}
 
 	response, err := (*ac.AttachmentService).DeleteAttachment(
 		c,
