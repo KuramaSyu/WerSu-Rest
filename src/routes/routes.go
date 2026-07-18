@@ -22,6 +22,7 @@ func SetupRouter(
 	sharingController *controllers.SharingController,
 	activityController *controllers.ActivityController,
 	migrationController *controllers.ThirdpartyMigrationController,
+	statusController *controllers.StatusController,
 ) {
 
 	// API routes
@@ -31,6 +32,9 @@ func SetupRouter(
 		api.GET("/ping", func(c *gin.Context) {
 			c.JSON(200, gin.H{"message": "pong"})
 		})
+
+		// Service reachability status
+		api.GET("/status", statusController.GetStatus)
 
 		// Note routes
 		notes := api.Group("/notes")

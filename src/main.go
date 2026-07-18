@@ -98,6 +98,7 @@ func main() {
 	sharingController := controllers.NewSharingController(&shareingGrpcClient)
 	activityController := controllers.NewActivityController(&activityGrpcClient)
 	migrationController := controllers.NewThirdpartyMigrationController(&migrationsGrpcClient)
+	statusController := controllers.NewStatusController(appConfig, &userGrpcClient, s3Client)
 
 	// Setup routes
 	routes.SetupRouter(
@@ -113,6 +114,7 @@ func main() {
 		sharingController,
 		activityController,
 		migrationController,
+		statusController,
 	)
 
 	// Start the server
