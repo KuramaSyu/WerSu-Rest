@@ -356,7 +356,7 @@ func (ac *AttachmentController) GetImage(c *gin.Context) {
 		}
 	}
 
-	url := buildImgproxyURL(ac.ImgproxyAddress, &params.Key, params.Width, params.Height, params.Format)
+	url := ac.buildImgproxyURL(&params.Key, params.Width, params.Height, params.Format)
 	log.Printf("Make ImgProxy request to %s", url)
 
 	// attachment, err := (*ac.AttachmentService).GetAttachment(
@@ -502,15 +502,17 @@ func (ac *AttachmentController) PutToS3(file io.Reader) (string, error) {
 	return key, nil
 }
 
-// build imgproxy url with given parameters
-func buildImgproxyURL(
-	address *string,
+// buildImgproxyURL constructs the imgproxy processing URL for an attachment.
+// The bucket is sourced from the configured default S3 bucket
+// (GARAGE_DEFAULT_BUCKET) rather than hardcoded, so the controller respects
+// whatever bucket name the deployment has been configured with.
+func (ac *AttachmentController) buildImgproxyURL(
 	attachment *string,
 	width *int,
 	height *int,
 	format *string,
 ) string {
-	var baseURL = *address + "/insecure/"
+	var baseURL = *ac.ImgproxyAddress + "/insecure/"
 	var resizePart string
 	if width != nil {
 		// width is provided, height is auto
@@ -528,7 +530,8 @@ func buildImgproxyURL(
 	if format != nil {
 		formatPart = *format
 	}
-	bucket := "garage"
+	bucket := ac.S3DefaultBucket
+
 	// eleminate trailing / of attachment
 	*attachment = strings.TrimPrefix(*attachment, "/")
 	s3Part := fmt.Sprintf("/plain/s3://%s/%s", bucket, *attachment)
