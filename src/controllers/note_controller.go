@@ -20,15 +20,16 @@ type GetNoteRequest struct {
 }
 
 type NoteReply struct {
-	Id           string                        `json:"id"`
-	Title        string                        `json:"title"`
-	Content      string                        `json:"content"`
-	UpdatedAt    time.Time                     `json:"updated_at"`
-	AuthorId     string                        `json:"author_id"`
-	Permissions  []PermissionRelationshipReply `json:"permissions"`
-	Tokens       map[string]string             `json:"tokens,omitempty"`
-	DirectoryIds []string                      `json:"directory_ids,omitempty"`
-	TagIds       []string                      `json:"tag_ids,omitempty"`
+	Id            string                        `json:"id"`
+	Title         string                        `json:"title"`
+	Content       string                        `json:"content"`
+	UpdatedAt     time.Time                     `json:"updated_at"`
+	AuthorId      string                        `json:"author_id"`
+	Permissions   []PermissionRelationshipReply `json:"permissions"`
+	Tokens        map[string]string             `json:"tokens,omitempty"`
+	DirectoryIds  []string                      `json:"directory_ids,omitempty"`
+	TagIds        []string                      `json:"tag_ids,omitempty"`
+	AttachmentIds []string                      `json:"attachment_ids,omitempty"`
 }
 
 // PermissionSubjectReply represents the subject side of a permission tuple in REST responses.
@@ -114,14 +115,15 @@ func NoteReplyFromProto(note *proto.Note) NoteReply {
 	}
 
 	return NoteReply{
-		Id:           note.Id,
-		Title:        note.Title,
-		Content:      note.Content,
-		UpdatedAt:    note.UpdatedAt.AsTime(),
-		AuthorId:     note.AuthorId,
-		Permissions:  permissions,
-		DirectoryIds: note.GetDirectoryIds(),
-		TagIds:       note.GetTagIds(),
+		Id:            note.Id,
+		Title:         note.Title,
+		Content:       note.Content,
+		UpdatedAt:     note.UpdatedAt.AsTime(),
+		AuthorId:      note.AuthorId,
+		Permissions:   permissions,
+		DirectoryIds:  note.GetDirectoryIds(),
+		TagIds:        note.GetTagIds(),
+		AttachmentIds: note.GetAttachmentIds(),
 	}
 }
 

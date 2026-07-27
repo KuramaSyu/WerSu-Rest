@@ -2396,6 +2396,12 @@ const docTemplate = `{
         "controllers.NoteReply": {
             "type": "object",
             "properties": {
+                "attachment_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "author_id": {
                     "type": "string"
                 },

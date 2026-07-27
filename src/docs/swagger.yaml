@@ -268,6 +268,10 @@ definitions:
     type: object
   controllers.NoteReply:
     properties:
+      attachment_ids:
+        items:
+          type: string
+        type: array
       author_id:
         type: string
       content:
