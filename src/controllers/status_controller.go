@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/hex"
 	"fmt"
 	"net"
@@ -17,6 +18,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/gin-gonic/gin"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -27,6 +29,10 @@ import (
 // defaultImgproxyPort is the port the imgproxy HTTP server listens on by
 // default; used as a fallback if IMGPROXY_ADDRESS doesn't include a port.
 const defaultImgproxyPort = "8083"
+
+// defaultPostgresPort is the port Postgres listens on by default; used as
+// a fallback when DATABASE_DSN doesn't include an explicit port.
+const defaultPostgresPort = "5432"
 
 // CheckResult is the per-check payload reported for every reachability probe.
 type CheckResult struct {
@@ -59,6 +65,7 @@ type ServiceStatus struct {
 // StatusResponse is the body returned by GET /api/status.
 type StatusResponse struct {
 	OverallOK bool          `json:"overall_ok"`
+	Postgres  ServiceStatus `json:"postgres"`
 	Garage    ServiceStatus `json:"garage"`
 	SpiceDB   ServiceStatus `json:"spicedb"`
 	WerSu     ServiceStatus `json:"wersu"`
@@ -97,8 +104,8 @@ func NewStatusController(
 // GetStatus godoc
 // @Summary      Service reachability status
 // @Description  Reports DNS reachability and service-level reachability for
-// @Description  Garage (S3), SpiceDB (gRPC), imgproxy (HTTP /health), and
-// @Description  the WerSu gRPC backend.
+// @Description  Garage (S3), SpiceDB (gRPC), imgproxy (HTTP /health), the
+// @Description  WerSu gRPC backend, and Postgres (when DATABASE_DSN is set).
 // @Description  The response is always returned with HTTP 200; inspect the
 // @Description  `overall_ok` and per-service `reachable` flags for health.
 // @Tags         Status
@@ -112,7 +119,7 @@ func (sc *StatusController) GetStatus(c *gin.Context) {
 	var (
 		wg      sync.WaitGroup
 		mu      sync.Mutex
-		results = make(map[string]ServiceStatus, 4)
+		results = make(map[string]ServiceStatus, 5)
 	)
 
 	run := func(name string, fn func(context.Context) ServiceStatus) {
@@ -123,11 +130,12 @@ func (sc *StatusController) GetStatus(c *gin.Context) {
 		mu.Unlock()
 	}
 
-	wg.Add(4)
+	wg.Add(5)
 	go run("garage", sc.checkGarage)
 	go run("spicedb", sc.checkSpiceDB)
 	go run("imgproxy", sc.checkImgproxy)
 	go run("wersu", sc.checkWerSu)
+	go run("postgres", sc.checkPostgres)
 	wg.Wait()
 
 	resp := StatusResponse{
@@ -135,12 +143,17 @@ func (sc *StatusController) GetStatus(c *gin.Context) {
 		SpiceDB:   results["spicedb"],
 		Imgproxy:  results["imgproxy"],
 		WerSu:     results["wersu"],
+		Postgres:  results["postgres"],
 		CheckedAt: time.Now().UTC(),
 	}
+	// Postgres is optional: when DATABASE_DSN is empty the probe reports
+	// itself as not configured, so we don't factor it into OverallOK.
+	postgresOK := resp.Postgres.Reachable || resp.Postgres.Error == "DATABASE_DSN is not configured"
 	resp.OverallOK = resp.Garage.Reachable &&
 		resp.SpiceDB.Reachable &&
 		resp.WerSu.Reachable &&
-		resp.Imgproxy.Reachable
+		resp.Imgproxy.Reachable &&
+		postgresOK
 
 	c.JSON(http.StatusOK, resp)
 }
@@ -220,6 +233,45 @@ func (sc *StatusController) checkImgproxy(ctx context.Context) ServiceStatus {
 	}
 
 	st.Service = sc.probeImgproxy(ctx, host, port)
+	st.Service.Address = joinHostPort(host, port)
+	st.Reachable = st.Service.Reachable
+	if !st.Reachable {
+		st.Error = st.Service.Error
+	}
+	return st
+}
+
+// checkPostgres verifies DNS reachability of the host embedded in
+// DATABASE_DSN and then opens a short-lived Postgres connection and runs
+// `SELECT 1`. The DSN is intentionally optional — when it's empty the
+// probe reports itself as not configured rather than failing the overall
+// status, since the application itself does not depend on it.
+//
+// The address reported back is the redacted DSN: credentials and query
+// string (sslmode, ...) are stripped so the full DSN never leaves the
+// server.
+func (sc *StatusController) checkPostgres(ctx context.Context) ServiceStatus {
+	dsn := sc.appConfig.DatabaseDSN
+	st := ServiceStatus{Address: redactPostgresDSN(dsn)}
+
+	if dsn == "" {
+		st.Error = "DATABASE_DSN is not configured"
+		return st
+	}
+
+	host, port, err := parsePostgresDSN(dsn)
+	if err != nil {
+		st.Error = fmt.Sprintf("parse DSN: %v", err)
+		return st
+	}
+
+	st.DNS = checkDNS(ctx, host)
+	if !st.DNS.Reachable {
+		st.Error = st.DNS.Error
+		return st
+	}
+
+	st.Service = sc.probePostgres(ctx, dsn, host, port)
 	st.Service.Address = joinHostPort(host, port)
 	st.Reachable = st.Service.Reachable
 	if !st.Reachable {
@@ -407,6 +459,79 @@ func (sc *StatusController) probeImgproxy(ctx context.Context, host, port string
 	res.Reachable = true
 	res.Detail = "GET /health returned 200 OK"
 	return res
+}
+
+// probePostgres opens a Postgres connection via the pgx/stdlib driver
+// and runs `SELECT 1`. The connection is closed immediately after the
+// ping so this probe has no persistent state on the server.
+func (sc *StatusController) probePostgres(ctx context.Context, dsn, host, port string) CheckResult {
+	start := time.Now()
+	res := CheckResult{Address: joinHostPort(host, port)}
+
+	callCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		res.Error = fmt.Sprintf("open db: %v", err)
+		res.LatencyMs = msSince(start)
+		return res
+	}
+	defer db.Close()
+
+	if err := db.PingContext(callCtx); err != nil {
+		res.Error = fmt.Sprintf("ping db: %v", err)
+		res.LatencyMs = msSince(start)
+		return res
+	}
+
+	res.LatencyMs = msSince(start)
+	res.Reachable = true
+	res.Detail = "SELECT 1 ok"
+	return res
+}
+
+// parsePostgresDSN extracts (host, port) from a libpq-style URL DSN such
+// as `postgres://user:pass@host:5432/db?sslmode=disable`. Returns an
+// error if the DSN can't be parsed or has no host.
+func parsePostgresDSN(dsn string) (host, port string, err error) {
+	u, err := url.Parse(dsn)
+	if err != nil {
+		return "", "", fmt.Errorf("parse url: %w", err)
+	}
+	if u.Host == "" {
+		return "", "", fmt.Errorf("DSN has no host")
+	}
+	host = u.Hostname()
+	port = u.Port()
+	if port == "" {
+		port = defaultPostgresPort
+	}
+	return host, port, nil
+}
+
+// redactPostgresDSN returns the DSN with credentials replaced by `***`
+// and the query string dropped. The query string carries the sslmode and
+// any other flags; neither belongs in the status response.
+//
+//	postgres://alice:s3cret@db.example.com:5432/app?sslmode=disable
+//	  -> postgres://***@db.example.com:5432/app
+//
+// If the DSN is empty or can't be parsed, the input is returned as-is
+// (the caller handles the "not configured" / "parse failed" cases).
+func redactPostgresDSN(dsn string) string {
+	if dsn == "" {
+		return ""
+	}
+	u, err := url.Parse(dsn)
+	if err != nil || u.Host == "" {
+		return dsn
+	}
+	if u.User != nil {
+		u.User = url.UserPassword("***", "***")
+	}
+	u.RawQuery = ""
+	return u.String()
 }
 
 // ---------- helpers ----------

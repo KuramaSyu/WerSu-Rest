@@ -25,3 +25,8 @@ GARAGE_DEFAULT_BUCKET=garage
 # garage for docker, localhost when running on machine
 S3_ENDPOINT=http://garage:3900
 S3_REGION=garage
+
+# PostgreSQL DSN — ONLY used by the /api/status probe to check DB reachability.
+# Leave empty to skip the database check; the application itself does not
+# depend on this value.
+DATABASE_DSN=postgres://postgres:postgres@localhost:5432/db?sslmode=disable

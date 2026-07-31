@@ -23,6 +23,9 @@ type Config struct {
 	S3SecretKey        string
 	S3DefaultBucket    string
 	JwtSecret          string
+	// DatabaseDSN is consumed only by the /api/status probe. It is optional;
+	// when empty, the database check is reported as not configured.
+	DatabaseDSN string
 }
 
 var AppConfig *Config
@@ -49,6 +52,9 @@ func Load() *Config {
 	S3SecretKey := os.Getenv("GARAGE_DEFAULT_SECRET_KEY")
 	S3DefaultBucket := os.Getenv("GARAGE_DEFAULT_BUCKET")
 	JwtSecret := os.Getenv("JWT_SECRET")
+	// Optional: only used by the status probe. Not required for the app
+	// to start.
+	DatabaseDSN := os.Getenv("DATABASE_DSN")
 
 	// Validate required configuration
 
@@ -133,6 +139,7 @@ func Load() *Config {
 		S3SecretKey:        S3SecretKey,
 		S3DefaultBucket:    S3DefaultBucket,
 		JwtSecret:          JwtSecret,
+		DatabaseDSN:        DatabaseDSN,
 	}
 	PrintConfig(AppConfig)
 	return AppConfig
@@ -154,6 +161,11 @@ func PrintConfig(cfg *Config) {
 	log.Println("S3 Region:       ", cfg.S3Region)
 	log.Println("S3 Access Key:   ", maskSensitiveValue(cfg.S3AccessKey))
 	log.Println("S3 Secret Key:   ", maskSensitiveValue(cfg.S3SecretKey))
+	if cfg.DatabaseDSN != "" {
+		log.Println("Database DSN:     ", maskSensitiveValue(cfg.DatabaseDSN))
+	} else {
+		log.Println("Database DSN:     (not configured)")
+	}
 	log.Println("S3 Default Bucket:", cfg.S3DefaultBucket)
 	// Avoid printing S3 Secret Key.
 }
