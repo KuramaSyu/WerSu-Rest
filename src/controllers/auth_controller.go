@@ -98,7 +98,8 @@ func (ac *AuthController) Callback(c *gin.Context) {
 
 	token, err := ac.OAuthConfig.Exchange(c, code)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to exchange code for token"})
+		log.Printf("Failed to exchange code for token: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to exchange code for token. This could happen, because Discord Client ID or Client Secret is invalid"})
 		return
 	}
 
