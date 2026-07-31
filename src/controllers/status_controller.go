@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -138,6 +139,17 @@ func (sc *StatusController) GetStatus(c *gin.Context) {
 	go run("postgres", sc.checkPostgres)
 	wg.Wait()
 
+	// mask keys which are maybe within the responses
+	for name, st := range results {
+		st.Error = maskKeysInString(st.Error)
+		st.Detail = maskKeysInString(st.Detail)
+		st.DNS.Error = maskKeysInString(st.DNS.Error)
+		st.DNS.Detail = maskKeysInString(st.DNS.Detail)
+		st.Service.Error = maskKeysInString(st.Service.Error)
+		st.Service.Detail = maskKeysInString(st.Service.Detail)
+		results[name] = st
+	}
+
 	resp := StatusResponse{
 		Garage:    results["garage"],
 		SpiceDB:   results["spicedb"],
@@ -161,7 +173,7 @@ func (sc *StatusController) GetStatus(c *gin.Context) {
 // ---------- individual probes ----------
 
 func (sc *StatusController) checkGarage(ctx context.Context) ServiceStatus {
-	st := ServiceStatus{Address: sc.appConfig.S3Endpoint}
+	st := ServiceStatus{Address: redactURLCredentials(sc.appConfig.S3Endpoint)}
 
 	host, port := splitHostPort(sc.appConfig.S3Endpoint, "3900")
 	st.DNS = checkDNS(ctx, host)
@@ -223,7 +235,7 @@ func (sc *StatusController) checkWerSu(ctx context.Context) ServiceStatus {
 // with and without a signing key, since /health doesn't require any URL
 // signature.
 func (sc *StatusController) checkImgproxy(ctx context.Context) ServiceStatus {
-	st := ServiceStatus{Address: sc.appConfig.ImgproxyAddress}
+	st := ServiceStatus{Address: redactURLCredentials(sc.appConfig.ImgproxyAddress)}
 
 	host, port := splitHostPort(sc.appConfig.ImgproxyAddress, defaultImgproxyPort)
 	st.DNS = checkDNS(ctx, host)
@@ -520,18 +532,76 @@ func parsePostgresDSN(dsn string) (host, port string, err error) {
 // If the DSN is empty or can't be parsed, the input is returned as-is
 // (the caller handles the "not configured" / "parse failed" cases).
 func redactPostgresDSN(dsn string) string {
-	if dsn == "" {
+	return redactURLCredentials(dsn)
+}
+
+// redactURLCredentials strips embedded `user:pass@` from a URL-shaped
+// address and drops the query string. Bare `host:port` values and URLs
+// without credentials pass through unchanged; addresses that can't be
+// parsed are returned as-is.
+//
+//	http://alice:s3cret@garage:3900 -> http://***@garage:3900
+//	garage:3900                      -> garage:3900
+//	https://imgproxy.example.com     -> https://imgproxy.example.com
+func redactURLCredentials(addr string) string {
+	if addr == "" {
 		return ""
 	}
-	u, err := url.Parse(dsn)
+	u, err := url.Parse(addr)
 	if err != nil || u.Host == "" {
-		return dsn
+		return addr
 	}
-	if u.User != nil {
-		u.User = url.UserPassword("***", "***")
+	if u.User == nil {
+		// No userinfo; just strip the query string.
+		if i := strings.Index(addr, "?"); i >= 0 {
+			return addr[:i]
+		}
+		return addr
 	}
-	u.RawQuery = ""
-	return u.String()
+	// url.UserPassword percent-encodes the placeholder ("***" ->
+	// "%2A%2A%2A"), which would surface literally to the frontend.
+	// Do the swap on the raw string instead so the asterisks survive.
+	userStart := strings.Index(addr, "://") + 3
+	relAt := strings.Index(addr[userStart:], "@")
+	if relAt < 0 {
+		return addr
+	}
+	out := addr[:userStart] + "***" + addr[userStart+relAt:]
+	if i := strings.Index(out, "?"); i >= 0 {
+		return out[:i]
+	}
+	return out
+}
+
+// maskSensitiveValue mirrors `config.maskSensitiveValue`. It is duplicated
+// here so the controllers package can scrub response strings without
+// exporting the symbol from `config`. Keep the two in sync.
+func maskSensitiveValue(value string) string {
+	if len(value) <= 4 {
+		return "****"
+	}
+	return value[:2] + "****" + value[len(value)-2:]
+}
+
+// tokenPatterns match substrings that look like API keys, JWTs, or
+// bearer tokens. Each match is replaced by `maskSensitiveValue` of the
+// match so the surrounding text (hostnames, error context) is preserved.
+var tokenPatterns = []*regexp.Regexp{
+	regexp.MustCompile(`AKIA[0-9A-Z]{16}`),                                     // AWS access key ID
+	regexp.MustCompile(`eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+`), // JWT
+	regexp.MustCompile(`(?i)bearer\s+[A-Za-z0-9._\-+/=]{16,}`),                 // Bearer token
+}
+
+// maskKeysInString replaces each key-shaped substring in s with
+// `maskSensitiveValue` of the match. Non-matching characters pass
+// through unchanged.
+func maskKeysInString(s string) string {
+	for _, p := range tokenPatterns {
+		s = p.ReplaceAllStringFunc(s, func(match string) string {
+			return maskSensitiveValue(match)
+		})
+	}
+	return s
 }
 
 // ---------- helpers ----------

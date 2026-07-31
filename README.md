@@ -38,6 +38,35 @@ swag init
 go run src/main.go
 ```
 
+### docker
+
+The image is built from [`Dockerfile`](Dockerfile). The binary inside the
+container reads configuration from process env first and falls back to a
+`.env` file in its working directory (`/app`), so both delivery paths
+work:
+
+Pass the host `.env` as env vars (recommended):
+
+```bash
+docker build -t wersu-rest .
+docker run --rm -p 8080:8080 --env-file .env wersu-rest
+```
+
+Or mount the `.env` file at the working directory so `godotenv.Load()`
+picks it up directly:
+
+```bash
+docker run --rm -p 8080:8080 \
+    -v "$(pwd)/.env:/app/.env:ro" \
+    wersu-rest
+```
+
+`FRONTEND_URL` works in both setups: it ends up on
+`config.AppConfig.FrontendURL`, which is what `main.go` uses for the CORS
+allow-list and what `auth_controller.go` redirects the OAuth callback to.
+The `.dockerignore` already excludes `.env`, so a stray `.env` on the
+host is never baked into the image.
+
 ##### proxy Openinary requests
 
 Set the following environment variables to forward media requests through this API:
