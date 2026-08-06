@@ -77,6 +77,7 @@ func main() {
 
 	// Initialize gRPC clients
 	userGrpcClient := proto.NewUserServiceClient(grpcConn)
+	authGrpcClient := proto.NewAuthServiceClient(grpcConn)
 	noteGrpcClient := proto.NewNoteServiceClient(grpcConn)
 	noteVersionGrpcClient := proto.NewNoteVersionServiceClient(grpcConn)
 	directoryGrpcClient := proto.NewDirectoryServiceClient(grpcConn)
@@ -86,8 +87,19 @@ func main() {
 	activityGrpcClient := proto.NewActivityStatisticsServiceClient(grpcConn)
 	migrationsGrpcClient := proto.NewThirdpartyMigrationsServiceClient(grpcConn)
 
-	// Initialize RSET controllers
-	authController := controllers.NewAuthController(appConfig.DiscordOAuthConfig, &userGrpcClient, &shareingGrpcClient, appConfig.JwtSecret)
+	// Initialize RSET controllers.
+	//
+	// The auth controller now takes the AuthService client (not the
+	// legacy UserService). The Discord OAuth config is the first
+	// argument; Google OAuth is optional and may be nil if the env
+	// vars are unset.
+	authController := controllers.NewAuthController(
+		appConfig.DiscordOAuthConfig,
+		appConfig.GoogleOAuthConfig,
+		authGrpcClient,
+		&shareingGrpcClient,
+		appConfig.JwtSecret,
+	)
 	noteController := controllers.NewNoteController(&noteGrpcClient)
 	noteSearchController := controllers.NewSearchNoteController(&noteGrpcClient)
 	noteVersionController := controllers.NewNoteVersionController(&noteVersionGrpcClient)
