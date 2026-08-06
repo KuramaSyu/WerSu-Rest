@@ -137,8 +137,36 @@ func SetupRouter(
 		auth.GET("/access-token", authController.GetAccessToken)
 		auth.POST("/public-access-token", authController.GetPublicAccessToken)
 
+		// Discord OAuth
 		auth.GET("/discord", authController.Login)
 		auth.GET("/discord/callback", authController.Callback)
+
+		// Google OAuth
+		auth.GET("/google", authController.GoogleLogin)
+		auth.GET("/google/callback", authController.GoogleCallback)
+
+		// Password + passkey login (unified entry point)
+		auth.POST("/login", authController.PostLogin)
+		auth.POST("/signup", authController.PostSignup)
+
+		// Passkey ceremony endpoints. These are stubbed on the gRPC
+		// backend until the `VerifyPasskey` RPC is implemented; the
+		// REST controller returns 501 in the meantime.
+		auth.POST("/passkey/register/begin", authController.PostPasskeyRegisterBegin)
+		auth.POST("/passkey/register/finish", authController.PostPasskeyRegisterFinish)
+		auth.POST("/passkey/login/begin", authController.PostPasskeyLoginBegin)
+		auth.POST("/passkey/login/finish", authController.PostPasskeyLoginFinish)
+
+		// Account linking (must be authenticated)
+		auth.POST("/link/discord", authController.PostLinkDiscord)
+		auth.POST("/link/google", authController.PostLinkGoogle)
+		auth.POST("/link/password", authController.PostLinkPassword)
+		auth.POST("/link/passkey/begin", authController.PostLinkPasskeyBegin)
+		auth.POST("/link/passkey/finish", authController.PostLinkPasskeyFinish)
+
+		// Linked-credentials summary
+		auth.GET("/me/credentials", authController.GetLinkedCredentials)
+
 		auth.GET("/user", authController.GetUser)
 		auth.GET("/logout", authController.Logout)
 	}
