@@ -46,6 +46,10 @@ message UserAuth {
     google.protobuf.Timestamp email_verified_at = 4;
     bool is_active = 5;
     google.protobuf.Timestamp created_at = 6;
+    // Absolute URL to the user's avatar. Empty string means none
+    // is configured. The REST controller maps this to JSON null
+    // on the frontend.
+    string avatar_url = 7;
 }
 
 // A stored credential. Exactly one of the `payload` oneof fields is
@@ -124,6 +128,10 @@ message CreateUserAuthRequest {
     string email = 1;
     string username = 2;
     string password_hash = 3;
+    // Optional. Absolute URL to the user's avatar (resolved by the
+    // REST controller via Discord/Google/Gravatar fallbacks). Empty
+    // string means none. The frontend maps empty to JSON null.
+    string avatar_url = 4;
 }
 
 message CreateUserAuthResponse {
@@ -156,6 +164,11 @@ message UpdateUserAuthRequest {
     oneof email_verified_change {
         google.protobuf.Timestamp email_verified_at_set = 7;
         google.protobuf.Empty email_verified_at_clear = 8;
+    }
+
+    oneof avatar_url_change {
+        string avatar_url_set = 9;
+        google.protobuf.Empty avatar_url_clear = 10;
     }
 }
 

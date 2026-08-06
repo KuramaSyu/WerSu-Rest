@@ -75,9 +75,9 @@ type LoginStrategy interface {
 type Kind string
 
 const (
-	KindDiscord Kind = "discord"
-	KindGoogle  Kind = "google"
-	KindPassword Kind = "password"
+	KindDiscord     Kind = "discord"
+	KindGoogle      Kind = "google"
+	KindPassword    Kind = "password"
 	KindPasskeyKind Kind = "passkey"
 )
 

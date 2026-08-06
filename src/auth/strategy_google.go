@@ -17,11 +17,16 @@ import (
 // OpenID userinfo response indicates this) and we mark the auth
 // user as email_verified when it's set.
 type GoogleStrategy struct {
-	Auth     AuthServiceClientIface
-	GoogleId string
-	Email    string
+	Auth          AuthServiceClientIface
+	GoogleId      string
+	Email         string
 	EmailVerified bool
-	Username string
+	Username      string
+
+	// AvatarUrl is the resolved absolute URL to the user's avatar.
+	// The controller sets this to Google's `picture` URL when the
+	// user has one, or empty string if Google didn't provide one.
+	AvatarUrl string
 }
 
 // Login implements LoginStrategy.
@@ -53,6 +58,7 @@ func (s *GoogleStrategy) Login(ctx context.Context) (*proto.UserAuth, error) {
 		Email:        s.Email,
 		Username:     s.Username,
 		PasswordHash: "",
+		AvatarUrl:    s.AvatarUrl,
 	})
 	if err != nil {
 		if isAlreadyExists(err) {
@@ -76,8 +82,8 @@ func (s *GoogleStrategy) Login(ctx context.Context) (*proto.UserAuth, error) {
 	if s.EmailVerified && s.Email != "" {
 		now := nowTimestamp()
 		_, err = s.Auth.UpdateUserAuth(ctx, &proto.UpdateUserAuthRequest{
-			UserId:                 createResp.GetUser().GetId(),
-			RequesterId:            createResp.GetUser().GetId(),
+			UserId:      createResp.GetUser().GetId(),
+			RequesterId: createResp.GetUser().GetId(),
 			EmailVerifiedChange: &proto.UpdateUserAuthRequest_EmailVerifiedAtSet{
 				EmailVerifiedAtSet: now,
 			},

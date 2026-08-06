@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/KuramaSyu/WerSu-Rest/src/auth"
 	"github.com/KuramaSyu/WerSu-Rest/src/config"
@@ -89,10 +90,10 @@ type LoginRequest struct {
 
 	// Passkey fields (verified by the controller via the WebAuthn
 	// ceremony; the strategy just persists the result).
-	CredentialId      []byte   `json:"credential_id,omitempty"`
-	ClientDataJSON    []byte   `json:"client_data_json,omitempty"`
-	AuthenticatorData []byte   `json:"authenticator_data,omitempty"`
-	Signature         []byte   `json:"signature,omitempty"`
+	CredentialId      []byte `json:"credential_id,omitempty"`
+	ClientDataJSON    []byte `json:"client_data_json,omitempty"`
+	AuthenticatorData []byte `json:"authenticator_data,omitempty"`
+	Signature         []byte `json:"signature,omitempty"`
 }
 
 // SignupRequest is the dedicated entry point for password signup.
@@ -195,6 +196,7 @@ func (ac *AuthController) Callback(c *gin.Context) {
 	// does the GetUserAuth -> CreateUserAuth dance and returns the
 	// authenticated user. The controller doesn't know whether the
 	// user existed before.
+	discordAvatar := auth.DiscordAvatarURL(int64(d_user.DiscordId), d_user.Avatar)
 	strategy := &auth.DiscordStrategy{
 		Auth:          ac.authService,
 		DiscordId:     int64(d_user.DiscordId),
@@ -202,6 +204,7 @@ func (ac *AuthController) Callback(c *gin.Context) {
 		Avatar:        d_user.Avatar,
 		Email:         d_user.Email,
 		Discriminator: d_user.Discriminator,
+		AvatarUrl:     discordAvatar,
 	}
 	authUser, err := strategy.Login(c.Request.Context())
 	if err != nil {
@@ -412,13 +415,20 @@ func (ac *AuthController) PostSignup(c *gin.Context) {
 		return
 	}
 
+	// Resolve the avatar *at signup time* so the user has something
+	// to display from the very first request. Gravatar is the
+	// fallback for password signups -- it'll either show the user's
+	// actual Gravatar if they have one, or a generated identicon.
+	gravatarAvatar := auth.GravatarURL(req.Email)
+
 	strategy := &auth.PasswordStrategy{
-		Auth:     ac.authService,
-		Hasher:   ac.Hasher,
-		Email:    req.Email,
-		Username: req.Username,
-		Password: req.Password,
-		Signup:   true,
+		Auth:      ac.authService,
+		Hasher:    ac.Hasher,
+		Email:     req.Email,
+		Username:  req.Username,
+		Password:  req.Password,
+		Signup:    true,
+		AvatarUrl: gravatarAvatar,
 	}
 	user, err := strategy.Login(c.Request.Context())
 	if err != nil {
@@ -498,18 +508,21 @@ func (ac *AuthController) GoogleCallback(c *gin.Context) {
 		Email         string `json:"email"`
 		EmailVerified bool   `json:"email_verified"`
 		Name          string `json:"name"`
+		Picture       string `json:"picture"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&gu); err != nil {
 		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("google userinfo parse: %w", err))
 		return
 	}
 
+	googleAvatar := auth.GoogleAvatarURL(gu.Picture)
 	strategy := &auth.GoogleStrategy{
 		Auth:          ac.authService,
 		GoogleId:      gu.Sub,
 		Email:         gu.Email,
 		EmailVerified: gu.EmailVerified,
 		Username:      gu.Name,
+		AvatarUrl:     googleAvatar,
 	}
 	user, err := strategy.Login(c.Request.Context())
 	if err != nil {
@@ -582,19 +595,42 @@ func (ac *AuthController) PostLinkDiscord(c *gin.Context) {
 		return
 	}
 	discordId := c.Query("discord_id")
+	avatarHash := c.Query("avatar_hash")
 	if discordId == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "discord_id is required"})
 		return
 	}
-	_, err = ac.authService.LinkCredential(c, &proto.LinkCredentialRequest{
-		UserId: user.ID,
-		RequesterId: user.ID,
-		Kind: proto.CredentialKind_CREDENTIAL_KIND_DISCORD,
-		Payload: &proto.LinkCredentialRequest_DiscordId{DiscordId: discordId},
-	})
+	did, err := strconv.ParseInt(discordId, 10, 64)
 	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "discord_id must be an integer"})
+		return
+	}
+	if _, err := ac.authService.LinkCredential(c, &proto.LinkCredentialRequest{
+		UserId:      user.ID,
+		RequesterId: user.ID,
+		Kind:        proto.CredentialKind_CREDENTIAL_KIND_DISCORD,
+		Payload:     &proto.LinkCredentialRequest_DiscordId{DiscordId: discordId},
+	}); err != nil {
 		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("link discord failed: %w", err))
 		return
+	}
+
+	// Refresh the avatar with the new Discord provider. The
+	// frontend should call this with the latest Discord profile
+	// data after the OAuth dance.
+	if avatarURL := auth.DiscordAvatarURL(did, avatarHash); avatarURL != "" {
+		if _, err := ac.authService.UpdateUserAuth(c, &proto.UpdateUserAuthRequest{
+			UserId:      user.ID,
+			RequesterId: user.ID,
+			AvatarUrlChange: &proto.UpdateUserAuthRequest_AvatarUrlSet{
+				AvatarUrlSet: avatarURL,
+			},
+		}); err != nil {
+			// Non-fatal: the credential is linked, but the avatar
+			// didn't update. The frontend will see the old avatar
+			// until the next refresh.
+			log.Printf("link discord: avatar update failed: %v", err)
+		}
 	}
 	c.JSON(http.StatusOK, gin.H{"linked": "discord"})
 }
@@ -607,19 +643,34 @@ func (ac *AuthController) PostLinkGoogle(c *gin.Context) {
 		return
 	}
 	googleId := c.Query("google_id")
+	picture := c.Query("picture")
 	if googleId == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "google_id is required"})
 		return
 	}
-	_, err = ac.authService.LinkCredential(c, &proto.LinkCredentialRequest{
-		UserId: user.ID,
+	if _, err := ac.authService.LinkCredential(c, &proto.LinkCredentialRequest{
+		UserId:      user.ID,
 		RequesterId: user.ID,
-		Kind: proto.CredentialKind_CREDENTIAL_KIND_GOOGLE,
-		Payload: &proto.LinkCredentialRequest_GoogleId{GoogleId: googleId},
-	})
-	if err != nil {
+		Kind:        proto.CredentialKind_CREDENTIAL_KIND_GOOGLE,
+		Payload:     &proto.LinkCredentialRequest_GoogleId{GoogleId: googleId},
+	}); err != nil {
 		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("link google failed: %w", err))
 		return
+	}
+
+	// Refresh the avatar with the new Google provider. The frontend
+	// should call this with the latest Google userinfo data after
+	// the OAuth dance.
+	if avatarURL := auth.GoogleAvatarURL(picture); avatarURL != "" {
+		if _, err := ac.authService.UpdateUserAuth(c, &proto.UpdateUserAuthRequest{
+			UserId:      user.ID,
+			RequesterId: user.ID,
+			AvatarUrlChange: &proto.UpdateUserAuthRequest_AvatarUrlSet{
+				AvatarUrlSet: avatarURL,
+			},
+		}); err != nil {
+			log.Printf("link google: avatar update failed: %v", err)
+		}
 	}
 	c.JSON(http.StatusOK, gin.H{"linked": "google"})
 }
@@ -642,10 +693,10 @@ func (ac *AuthController) PostLinkPassword(c *gin.Context) {
 		return
 	}
 	_, err = ac.authService.LinkCredential(c, &proto.LinkCredentialRequest{
-		UserId: user.ID,
+		UserId:      user.ID,
 		RequesterId: user.ID,
-		Kind: proto.CredentialKind_CREDENTIAL_KIND_PASSWORD,
-		Payload: &proto.LinkCredentialRequest_PasswordHash{PasswordHash: hash},
+		Kind:        proto.CredentialKind_CREDENTIAL_KIND_PASSWORD,
+		Payload:     &proto.LinkCredentialRequest_PasswordHash{PasswordHash: hash},
 	})
 	if err != nil {
 		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("link password failed: %w", err))
@@ -681,6 +732,6 @@ func (ac *AuthController) GetLinkedCredentials(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"credentials": resp.GetCredentials(),
-		"passkeys": resp.GetPasskeys(),
+		"passkeys":    resp.GetPasskeys(),
 	})
 }

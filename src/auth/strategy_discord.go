@@ -20,12 +20,18 @@ import (
 // and because the user has no email from Discord, the email field
 // is left empty.
 type DiscordStrategy struct {
-	Auth      AuthServiceClientIface
-	DiscordId int64
-	Username  string
-	Avatar    string
-	Email     string
+	Auth          AuthServiceClientIface
+	DiscordId     int64
+	Username      string
+	Avatar        string
+	Email         string
 	Discriminator string
+
+	// AvatarUrl is the resolved absolute URL to the user's avatar.
+	// The controller sets this to the Discord CDN URL when the user
+	// has a custom avatar, or empty string if Discord didn't provide
+	// one. The strategy propagates it to CreateUserAuth.
+	AvatarUrl string
 }
 
 // Login implements LoginStrategy.
@@ -71,6 +77,7 @@ func (s *DiscordStrategy) Login(ctx context.Context) (*proto.UserAuth, error) {
 		Email:        email,
 		Username:     s.Username,
 		PasswordHash: "",
+		AvatarUrl:    s.AvatarUrl,
 	})
 	if err != nil {
 		if isAlreadyExists(err) {

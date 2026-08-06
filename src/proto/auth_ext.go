@@ -91,6 +91,7 @@ func (u *UserAuth) ParseJS() *models.JsUserAuth {
 		Username:        u.Username,
 		EmailVerifiedAt: u.EmailVerifiedAt.AsTime(),
 		IsActive:        u.IsActive,
+		AvatarURL:       u.AvatarUrl,
 	}
 }
 

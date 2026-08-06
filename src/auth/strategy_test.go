@@ -10,6 +10,7 @@ import (
 
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
 )
+
 // ---------- Kind resolution ----------
 
 func TestResolveKindKnown(t *testing.T) {

@@ -88,9 +88,9 @@ func TestCredentialPayloadNil(t *testing.T) {
 
 func TestLinkCredentialPayloadAllKinds(t *testing.T) {
 	cases := []struct {
-		name    string
-		req     *LinkCredentialRequest
-		want    string
+		name string
+		req  *LinkCredentialRequest
+		want string
 	}{
 		{
 			"discord",

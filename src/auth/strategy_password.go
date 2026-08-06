@@ -13,11 +13,11 @@ import (
 // memory=64 MiB, iterations=3, parallelism=4, salt=16 bytes, hash=32 bytes.
 // Tune `m` upward on production hardware if login latency is fine.
 const (
-	argonMemory    uint32 = 64 * 1024 // 64 MiB
-	argonIterations uint32 = 3
-	argonParallelism uint8 = 4
-	argonSaltLen    uint32 = 16
-	argonHashLen    uint32 = 32
+	argonMemory      uint32 = 64 * 1024 // 64 MiB
+	argonIterations  uint32 = 3
+	argonParallelism uint8  = 4
+	argonSaltLen     uint32 = 16
+	argonHashLen     uint32 = 32
 )
 
 // PasswordHasher is the small surface a PasswordStrategy needs to
@@ -68,12 +68,17 @@ func (Argon2Hasher) Verify(plaintext, encoded string) (bool, error) {
 //   - Signup=true: create a new user with the hashed password. The
 //     email must not yet exist.
 type PasswordStrategy struct {
-	Auth    AuthServiceClientIface
-	Hasher  PasswordHasher
+	Auth     AuthServiceClientIface
+	Hasher   PasswordHasher
 	Email    string
 	Password string
 	Username string // only used during signup
 	Signup   bool
+
+	// AvatarUrl is the resolved absolute URL to the user's avatar.
+	// The controller fills it (typically via Gravatar fallback based
+	// on Email) and the strategy propagates it on signup.
+	AvatarUrl string
 }
 
 // InvalidCredentialsError is returned by password login when the
@@ -112,6 +117,7 @@ func (s *PasswordStrategy) signup(ctx context.Context) (*proto.UserAuth, error) 
 		Email:        s.Email,
 		Username:     s.Username,
 		PasswordHash: hash,
+		AvatarUrl:    s.AvatarUrl,
 	})
 	if err != nil {
 		// ALREADY_EXISTS on the email is a conflict that the

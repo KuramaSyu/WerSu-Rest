@@ -17,15 +17,15 @@ import (
 // The strategy is invoked from POST /api/auth/passkey/register/finish
 // after the browser has signed the challenge.
 type PasskeyRegisterStrategy struct {
-	Auth    AuthServiceClientIface
-	UserId  string
+	Auth        AuthServiceClientIface
+	UserId      string
 	RequesterId string
 
 	// Outputs from the WebAuthn ceremony (passed through):
-	CredentialId  []byte
-	PublicKey     []byte
-	Transports    []string
-	Aaguid        []byte
+	CredentialId   []byte
+	PublicKey      []byte
+	Transports     []string
+	Aaguid         []byte
 	BackupEligible bool
 	BackupState    bool
 	UserVerified   bool
@@ -48,16 +48,16 @@ func (s *PasskeyRegisterStrategy) Login(ctx context.Context) (*proto.UserAuth, e
 	}
 
 	resp, err := s.Auth.RegisterPasskey(ctx, &proto.RegisterPasskeyRequest{
-		UserId:          s.UserId,
-		RequesterId:     s.RequesterId,
-		CredentialId:    s.CredentialId,
-		PublicKey:       s.PublicKey,
-		Transports:      s.Transports,
-		Aaguid:          s.Aaguid,
-		BackupEligible:  s.BackupEligible,
-		BackupState:     s.BackupState,
-		UserVerified:    s.UserVerified,
-		FriendlyName:    s.FriendlyName,
+		UserId:         s.UserId,
+		RequesterId:    s.RequesterId,
+		CredentialId:   s.CredentialId,
+		PublicKey:      s.PublicKey,
+		Transports:     s.Transports,
+		Aaguid:         s.Aaguid,
+		BackupEligible: s.BackupEligible,
+		BackupState:    s.BackupState,
+		UserVerified:   s.UserVerified,
+		FriendlyName:   s.FriendlyName,
 	})
 	if err != nil {
 		return nil, err
@@ -94,10 +94,10 @@ type PasskeyLoginStrategy struct {
 	Auth AuthServiceClientIface
 
 	// Outputs from the WebAuthn ceremony (passed through):
-	CredentialId     []byte
-	ClientDataJSON   []byte
+	CredentialId      []byte
+	ClientDataJSON    []byte
 	AuthenticatorData []byte
-	Signature        []byte
+	Signature         []byte
 }
 
 // InvalidPasskeyError is returned when the gRPC backend rejects the
