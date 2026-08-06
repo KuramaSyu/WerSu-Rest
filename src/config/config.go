@@ -11,6 +11,9 @@ import (
 // Config holds application configuration
 type Config struct {
 	DiscordOAuthConfig *oauth2.Config
+	GoogleOAuthConfig  *oauth2.Config
+	WebAuthnRPID       string
+	WebAuthnRPName     string
 	SessionSecret      string
 	FrontendURL        string
 	GRPCServerAddress  string
@@ -55,6 +58,18 @@ func Load() *Config {
 	// Optional: only used by the status probe. Not required for the app
 	// to start.
 	DatabaseDSN := os.Getenv("DATABASE_DSN")
+
+	// Google OAuth (optional; only loaded when both env vars are set)
+	googleClientID := os.Getenv("GOOGLE_CLIENT_ID")
+	googleClientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
+	googleRedirectURL := os.Getenv("GOOGLE_REDIRECT_URI")
+
+	// WebAuthn relying party. RPID is the registrable domain
+	// (e.g. "iwillfind.it"). RP_NAME is shown to the user in the
+	// authenticator prompt. The browser's origin is verified against
+	// the RP ID by the strategy layer.
+	webAuthnRPID := os.Getenv("WEBAUTHN_RP_ID")
+	webAuthnRPName := os.Getenv("WEBAUTHN_RP_NAME")
 
 	// Validate required configuration
 
@@ -125,8 +140,29 @@ func Load() *Config {
 		},
 	}
 
+	// Google OAuth is optional. When the env vars are unset, the
+	// GoogleStrategy won't be wired up and the /api/auth/google/* routes
+	// return 503. The same shape applies to passkey support: without
+	// WEBAUTHN_RP_ID, the passkey endpoints return 503.
+	var googleOAuthConfig *oauth2.Config
+	if googleClientID != "" && googleClientSecret != "" {
+		googleOAuthConfig = &oauth2.Config{
+			ClientID:     googleClientID,
+			ClientSecret: googleClientSecret,
+			RedirectURL:  googleRedirectURL,
+			Scopes:       []string{"openid", "email", "profile"},
+			Endpoint: oauth2.Endpoint{
+				AuthURL:  "https://accounts.google.com/o/oauth2/v2/auth",
+				TokenURL: "https://oauth2.googleapis.com/token",
+			},
+		}
+	}
+
 	AppConfig = &Config{
 		DiscordOAuthConfig: discordOAuthConfig,
+		GoogleOAuthConfig:  googleOAuthConfig,
+		WebAuthnRPID:       webAuthnRPID,
+		WebAuthnRPName:     webAuthnRPName,
 		SessionSecret:      sessionSecret,
 		FrontendURL:        frontendURL,
 		GRPCServerAddress:  grpcServerAddress,
@@ -151,6 +187,19 @@ func PrintConfig(cfg *Config) {
 	log.Println("  ClientID:      ", cfg.DiscordOAuthConfig.ClientID) // Consider masking in production
 	log.Println("  RedirectURL:   ", cfg.DiscordOAuthConfig.RedirectURL)
 	log.Println("  Scopes:        ", cfg.DiscordOAuthConfig.Scopes)
+	if cfg.GoogleOAuthConfig != nil {
+		log.Println("Google OAuth Config:")
+		log.Println("  ClientID:      ", cfg.GoogleOAuthConfig.ClientID)
+		log.Println("  RedirectURL:   ", cfg.GoogleOAuthConfig.RedirectURL)
+	} else {
+		log.Println("Google OAuth:    (not configured)")
+	}
+	if cfg.WebAuthnRPID != "" {
+		log.Println("WebAuthn RP ID:  ", cfg.WebAuthnRPID)
+		log.Println("WebAuthn RP Name:", cfg.WebAuthnRPName)
+	} else {
+		log.Println("WebAuthn:        (not configured)")
+	}
 	log.Println("Session Secret:  ", maskSensitiveValue(cfg.SessionSecret))
 	log.Println("JWT Secret:      ", maskSensitiveValue(cfg.JwtSecret)) // Assuming JWT secret is same as session secret
 	log.Println("Frontend URL:    ", cfg.FrontendURL)
