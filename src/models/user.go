@@ -40,6 +40,7 @@ func (s *User) ParseJS() JsUser {
 	}
 }
 
+// JSUser is User, but with string instead of Snowflake for DiscordId
 type JsUser struct {
 	ID            string `json:"id,omitempty"`
 	DiscordId     string `json:"discord_id"`

@@ -149,9 +149,7 @@ func SetupRouter(
 		auth.POST("/login", authController.PostLogin)
 		auth.POST("/signup", authController.PostSignup)
 
-		// Passkey ceremony endpoints. These are stubbed on the gRPC
-		// backend until the `VerifyPasskey` RPC is implemented; the
-		// REST controller returns 501 in the meantime.
+		// Passkey endpoints
 		auth.POST("/passkey/register/begin", authController.PostPasskeyRegisterBegin)
 		auth.POST("/passkey/register/finish", authController.PostPasskeyRegisterFinish)
 		auth.POST("/passkey/login/begin", authController.PostPasskeyLoginBegin)

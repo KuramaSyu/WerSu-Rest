@@ -3,6 +3,8 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strconv"
 
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
 )
@@ -40,11 +42,6 @@ func (s *DiscordStrategy) Login(ctx context.Context) (*proto.UserAuth, error) {
 		return nil, errors.New("auth service not configured")
 	}
 
-	// 1. Look up existing user by DiscordId via the credential
-	// lookup RPC. Going through FindCredentialByProviderRequest
-	// (rather than GetUserAuthRequest) means the gRPC service is the
-	// single source of truth for "this provider id maps to that
-	// user".
 	did := s.DiscordId
 	resp, err := s.Auth.FindCredentialByProvider(ctx, &proto.FindCredentialByProviderRequest{
 		Kind:       proto.CredentialKind_CREDENTIAL_KIND_DISCORD,
@@ -57,17 +54,6 @@ func (s *DiscordStrategy) Login(ctx context.Context) (*proto.UserAuth, error) {
 		return nil, err
 	}
 
-	// 2. Create a new user. The auth.proto CreateUserAuth always
-	// wants a password-less row when invoked without a credential
-	// payload (the password is intentionally a separate credential).
-	// We pass an empty password_hash so the gRPC service layer
-	// creates a user with no password credential.
-	// Provide a placeholder email when Discord doesn't share one --
-	// the auth schema requires email to be unique, and Discord's
-	// optional `email` scope must be granted for the value to be
-	// populated. We use a deterministic placeholder so the unique
-	// constraint is satisfied without leaking the user's real state.
-	// The placeholder is replaced when the user links a password.
 	email := s.Email
 	if email == "" {
 		email = discordPlaceholderEmail(s.DiscordId)
@@ -82,7 +68,10 @@ func (s *DiscordStrategy) Login(ctx context.Context) (*proto.UserAuth, error) {
 	if err != nil {
 		if isAlreadyExists(err) {
 			// Race: another concurrent callback already created
-			// the user. Re-fetch by DiscordId.
+			// the user. Re-fetch by DiscordId and surface an error
+			// if the credential still isn't there -- that means
+			// the email row exists but no Discord link was ever
+			// inserted, so we can't hand the user back.
 			r, err := s.Auth.FindCredentialByProvider(ctx, &proto.FindCredentialByProviderRequest{
 				Kind:       proto.CredentialKind_CREDENTIAL_KIND_DISCORD,
 				Identifier: &proto.FindCredentialByProviderRequest_DiscordId{DiscordId: did},
@@ -90,11 +79,30 @@ func (s *DiscordStrategy) Login(ctx context.Context) (*proto.UserAuth, error) {
 			if err != nil {
 				return nil, err
 			}
+			if r.GetUser() == nil {
+				return nil, fmt.Errorf("discord credential %d not linked after race", did)
+			}
 			return r.GetUser(), nil
 		}
 		return nil, err
 	}
-	return createResp.GetUser(), nil
+
+	// `CreateUserAuth` creates the user row only -- the Discord
+	// credential lives in a separate row and must be linked via
+	// `LinkCredential`. Without this call, the next login lookup
+	// returns NotFound and we fall into the AlreadyExists branch
+	// with nothing to return.
+	user := createResp.GetUser()
+	if _, err := s.Auth.LinkCredential(ctx, &proto.LinkCredentialRequest{
+		UserId:      user.GetId(),
+		RequesterId: user.GetId(),
+		Kind:        proto.CredentialKind_CREDENTIAL_KIND_DISCORD,
+		Payload:     &proto.LinkCredentialRequest_DiscordId{DiscordId: strconv.FormatInt(did, 10)},
+	}); err != nil {
+		return nil, fmt.Errorf("link discord credential: %w", err)
+	}
+
+	return user, nil
 }
 
 // discordPlaceholderEmail is a deterministic unique email for users

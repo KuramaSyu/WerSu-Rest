@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
 )
@@ -63,7 +64,9 @@ func (s *GoogleStrategy) Login(ctx context.Context) (*proto.UserAuth, error) {
 	if err != nil {
 		if isAlreadyExists(err) {
 			// Race: another concurrent callback already created
-			// the user. Re-fetch by GoogleId.
+			// the user. Re-fetch by GoogleId and surface an error
+			// if the credential still isn't there -- same shape
+			// as the Discord path: orphan email, no link.
 			r, err := s.Auth.FindCredentialByProvider(ctx, &proto.FindCredentialByProviderRequest{
 				Kind:       proto.CredentialKind_CREDENTIAL_KIND_GOOGLE,
 				Identifier: &proto.FindCredentialByProviderRequest_GoogleId{GoogleId: gid},
@@ -71,19 +74,38 @@ func (s *GoogleStrategy) Login(ctx context.Context) (*proto.UserAuth, error) {
 			if err != nil {
 				return nil, err
 			}
+			if r.GetUser() == nil {
+				return nil, fmt.Errorf("google credential %q not linked after race", gid)
+			}
 			return r.GetUser(), nil
 		}
 		return nil, err
 	}
 
-	// 3. Mark the email as verified on the just-created user. This
+	user := createResp.GetUser()
+
+	// `CreateUserAuth` creates the user row only -- the Google
+	// credential lives in a separate row and must be linked via
+	// `LinkCredential`. Without this call, the next login lookup
+	// returns NotFound and we fall into the AlreadyExists branch
+	// with nothing to return.
+	if _, err := s.Auth.LinkCredential(ctx, &proto.LinkCredentialRequest{
+		UserId:      user.GetId(),
+		RequesterId: user.GetId(),
+		Kind:        proto.CredentialKind_CREDENTIAL_KIND_GOOGLE,
+		Payload:     &proto.LinkCredentialRequest_GoogleId{GoogleId: gid},
+	}); err != nil {
+		return nil, fmt.Errorf("link google credential: %w", err)
+	}
+
+	// Mark the email as verified on the just-created user. This
 	// is a separate UpdateUserAuth call so that RejectUser-by-id
 	// stays the simple "found by provider id" path.
 	if s.EmailVerified && s.Email != "" {
 		now := nowTimestamp()
 		_, err = s.Auth.UpdateUserAuth(ctx, &proto.UpdateUserAuthRequest{
-			UserId:      createResp.GetUser().GetId(),
-			RequesterId: createResp.GetUser().GetId(),
+			UserId:      user.GetId(),
+			RequesterId: user.GetId(),
 			EmailVerifiedChange: &proto.UpdateUserAuthRequest_EmailVerifiedAtSet{
 				EmailVerifiedAtSet: now,
 			},
@@ -96,5 +118,5 @@ func (s *GoogleStrategy) Login(ctx context.Context) (*proto.UserAuth, error) {
 		}
 	}
 
-	return createResp.GetUser(), nil
+	return user, nil
 }

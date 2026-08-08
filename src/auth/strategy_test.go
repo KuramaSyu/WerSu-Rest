@@ -79,6 +79,7 @@ func TestDiscordStrategyLoginExistingUser(t *testing.T) {
 
 func TestDiscordStrategyLoginCreatesUser(t *testing.T) {
 	var created *proto.CreateUserAuthRequest
+	var linked *proto.LinkCredentialRequest
 	fake := &FakeAuthClient{
 		OnFindCredentialByProv: func(*proto.FindCredentialByProviderRequest) (*proto.FindCredentialByProviderResponse, error) {
 			return nil, notFoundErr()
@@ -87,6 +88,12 @@ func TestDiscordStrategyLoginCreatesUser(t *testing.T) {
 			created = in
 			return &proto.CreateUserAuthResponse{
 				User: &proto.UserAuth{Id: "new-u", Email: in.Email},
+			}, nil
+		},
+		OnLinkCredential: func(in *proto.LinkCredentialRequest) (*proto.LinkCredentialResponse, error) {
+			linked = in
+			return &proto.LinkCredentialResponse{
+				Credential: &proto.Credential{Id: "cred-1", UserId: "new-u", Kind: proto.CredentialKind_CREDENTIAL_KIND_DISCORD},
 			}, nil
 		},
 	}
@@ -113,6 +120,18 @@ func TestDiscordStrategyLoginCreatesUser(t *testing.T) {
 	if created.PasswordHash != "" {
 		t.Errorf("created password_hash = %q, want empty (no password for Discord users)", created.PasswordHash)
 	}
+	if linked == nil {
+		t.Fatal("LinkCredential was not called -- second login will hit NOT_FOUND again")
+	}
+	if linked.GetKind() != proto.CredentialKind_CREDENTIAL_KIND_DISCORD {
+		t.Errorf("link kind = %v, want DISCORD", linked.GetKind())
+	}
+	if linked.GetDiscordId() != "99999" {
+		t.Errorf("link discord_id = %q, want 99999", linked.GetDiscordId())
+	}
+	if linked.GetUserId() != "new-u" || linked.GetRequesterId() != "new-u" {
+		t.Errorf("link user/requester = (%q,%q), want (new-u,new-u)", linked.GetUserId(), linked.GetRequesterId())
+	}
 }
 
 func TestDiscordStrategyLoginPlaceholderEmail(t *testing.T) {
@@ -127,6 +146,9 @@ func TestDiscordStrategyLoginPlaceholderEmail(t *testing.T) {
 		OnCreateUserAuth: func(in *proto.CreateUserAuthRequest) (*proto.CreateUserAuthResponse, error) {
 			created = in
 			return &proto.CreateUserAuthResponse{User: &proto.UserAuth{Id: "u"}}, nil
+		},
+		OnLinkCredential: func(*proto.LinkCredentialRequest) (*proto.LinkCredentialResponse, error) {
+			return &proto.LinkCredentialResponse{}, nil
 		},
 	}
 
@@ -191,6 +213,52 @@ func TestDiscordStrategyLoginNilAuth(t *testing.T) {
 	}
 }
 
+func TestDiscordStrategyLoginLinkCredentialFails(t *testing.T) {
+	// The DiscordId is the only stable handle; if we fail to
+	// write it, the strategy must surface the error rather than
+	// silently handing back a user that no future login can find.
+	linkErr := errors.New("link boom")
+	fake := &FakeAuthClient{
+		OnFindCredentialByProv: func(*proto.FindCredentialByProviderRequest) (*proto.FindCredentialByProviderResponse, error) {
+			return nil, notFoundErr()
+		},
+		OnCreateUserAuth: func(in *proto.CreateUserAuthRequest) (*proto.CreateUserAuthResponse, error) {
+			return &proto.CreateUserAuthResponse{User: &proto.UserAuth{Id: "u-x", Email: in.Email}}, nil
+		},
+		OnLinkCredential: func(*proto.LinkCredentialRequest) (*proto.LinkCredentialResponse, error) {
+			return nil, linkErr
+		},
+	}
+	s := &DiscordStrategy{Auth: fake, DiscordId: 7, Username: "x", Email: "x@example.com"}
+	_, err := s.Login(context.Background())
+	if !errors.Is(err, linkErr) {
+		t.Fatalf("err = %v, want wrap of %v", err, linkErr)
+	}
+}
+
+func TestDiscordStrategyLoginRaceRefetchMissingCredential(t *testing.T) {
+	// AlreadyExists on CreateUserAuth + NotFound on the refetch
+	// means we found an orphan email row but no Discord link.
+	// The strategy must NOT return (nil, nil) -- that becomes a
+	// 500 downstream when the controller tries to mint a JWT.
+	fake := &FakeAuthClient{
+		OnFindCredentialByProv: func(*proto.FindCredentialByProviderRequest) (*proto.FindCredentialByProviderResponse, error) {
+			return nil, notFoundErr()
+		},
+		OnCreateUserAuth: func(*proto.CreateUserAuthRequest) (*proto.CreateUserAuthResponse, error) {
+			return nil, alreadyExistsErr()
+		},
+	}
+	s := &DiscordStrategy{Auth: fake, DiscordId: 1, Email: "orphan@example.com"}
+	got, err := s.Login(context.Background())
+	if err == nil {
+		t.Fatal("expected error on missing credential after race, got nil")
+	}
+	if got != nil {
+		t.Errorf("user = %+v, want nil", got)
+	}
+}
+
 // ---------- GoogleStrategy ----------
 
 func TestGoogleStrategyLoginExistingUser(t *testing.T) {
@@ -227,6 +295,7 @@ func TestGoogleStrategyLoginExistingUser(t *testing.T) {
 func TestGoogleStrategyLoginCreatesUserAndMarksVerified(t *testing.T) {
 	var created *proto.CreateUserAuthRequest
 	var updated *proto.UpdateUserAuthRequest
+	var linked *proto.LinkCredentialRequest
 	fake := &FakeAuthClient{
 		OnFindCredentialByProv: func(*proto.FindCredentialByProviderRequest) (*proto.FindCredentialByProviderResponse, error) {
 			return nil, notFoundErr()
@@ -235,6 +304,12 @@ func TestGoogleStrategyLoginCreatesUserAndMarksVerified(t *testing.T) {
 			created = in
 			return &proto.CreateUserAuthResponse{
 				User: &proto.UserAuth{Id: "new-g", Email: in.Email},
+			}, nil
+		},
+		OnLinkCredential: func(in *proto.LinkCredentialRequest) (*proto.LinkCredentialResponse, error) {
+			linked = in
+			return &proto.LinkCredentialResponse{
+				Credential: &proto.Credential{Id: "cred-g", UserId: "new-g", Kind: proto.CredentialKind_CREDENTIAL_KIND_GOOGLE},
 			}, nil
 		},
 		OnUpdateUserAuth: func(in *proto.UpdateUserAuthRequest) (*proto.UpdateUserAuthResponse, error) {
@@ -253,6 +328,15 @@ func TestGoogleStrategyLoginCreatesUserAndMarksVerified(t *testing.T) {
 	}
 	if created == nil {
 		t.Fatal("CreateUserAuth was not called")
+	}
+	if linked == nil {
+		t.Fatal("LinkCredential was not called -- second login will hit NOT_FOUND again")
+	}
+	if linked.GetKind() != proto.CredentialKind_CREDENTIAL_KIND_GOOGLE {
+		t.Errorf("link kind = %v, want GOOGLE", linked.GetKind())
+	}
+	if linked.GetGoogleId() != "sub-1" {
+		t.Errorf("link google_id = %q, want sub-1", linked.GetGoogleId())
 	}
 	if updated == nil {
 		t.Fatal("UpdateUserAuth was not called")
@@ -275,6 +359,9 @@ func TestGoogleStrategyLoginVerifiedFalseNoUpdate(t *testing.T) {
 		OnCreateUserAuth: func(in *proto.CreateUserAuthRequest) (*proto.CreateUserAuthResponse, error) {
 			return &proto.CreateUserAuthResponse{User: &proto.UserAuth{Id: "new-g", Email: in.Email}}, nil
 		},
+		OnLinkCredential: func(*proto.LinkCredentialRequest) (*proto.LinkCredentialResponse, error) {
+			return &proto.LinkCredentialResponse{}, nil
+		},
 		OnUpdateUserAuth: func(*proto.UpdateUserAuthRequest) (*proto.UpdateUserAuthResponse, error) {
 			t.Fatal("UpdateUserAuth should not be called when EmailVerified is false")
 			return nil, nil
@@ -284,6 +371,45 @@ func TestGoogleStrategyLoginVerifiedFalseNoUpdate(t *testing.T) {
 	s := &GoogleStrategy{Auth: fake, GoogleId: "sub-2", Email: "real@example.com", EmailVerified: false}
 	if _, err := s.Login(context.Background()); err != nil {
 		t.Fatalf("Login: %v", err)
+	}
+}
+
+func TestGoogleStrategyLoginLinkCredentialFails(t *testing.T) {
+	linkErr := errors.New("link boom")
+	fake := &FakeAuthClient{
+		OnFindCredentialByProv: func(*proto.FindCredentialByProviderRequest) (*proto.FindCredentialByProviderResponse, error) {
+			return nil, notFoundErr()
+		},
+		OnCreateUserAuth: func(in *proto.CreateUserAuthRequest) (*proto.CreateUserAuthResponse, error) {
+			return &proto.CreateUserAuthResponse{User: &proto.UserAuth{Id: "u-x", Email: in.Email}}, nil
+		},
+		OnLinkCredential: func(*proto.LinkCredentialRequest) (*proto.LinkCredentialResponse, error) {
+			return nil, linkErr
+		},
+	}
+	s := &GoogleStrategy{Auth: fake, GoogleId: "sub-x", Email: "x@example.com", EmailVerified: true}
+	_, err := s.Login(context.Background())
+	if !errors.Is(err, linkErr) {
+		t.Fatalf("err = %v, want wrap of %v", err, linkErr)
+	}
+}
+
+func TestGoogleStrategyLoginRaceRefetchMissingCredential(t *testing.T) {
+	fake := &FakeAuthClient{
+		OnFindCredentialByProv: func(*proto.FindCredentialByProviderRequest) (*proto.FindCredentialByProviderResponse, error) {
+			return nil, notFoundErr()
+		},
+		OnCreateUserAuth: func(*proto.CreateUserAuthRequest) (*proto.CreateUserAuthResponse, error) {
+			return nil, alreadyExistsErr()
+		},
+	}
+	s := &GoogleStrategy{Auth: fake, GoogleId: "sub-orphan", Email: "orphan@example.com"}
+	got, err := s.Login(context.Background())
+	if err == nil {
+		t.Fatal("expected error on missing credential after race, got nil")
+	}
+	if got != nil {
+		t.Errorf("user = %+v, want nil", got)
 	}
 }
 
