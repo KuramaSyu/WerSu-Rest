@@ -86,6 +86,7 @@ func main() {
 	shareingGrpcClient := proto.NewSharingServiceClient(grpcConn)
 	activityGrpcClient := proto.NewActivityStatisticsServiceClient(grpcConn)
 	migrationsGrpcClient := proto.NewThirdpartyMigrationsServiceClient(grpcConn)
+	roleGrpcClient := proto.NewRoleServiceClient(grpcConn)
 
 	// Initialize RSET controllers.
 	//
@@ -110,6 +111,7 @@ func main() {
 	sharingController := controllers.NewSharingController(&shareingGrpcClient)
 	activityController := controllers.NewActivityController(&activityGrpcClient)
 	migrationController := controllers.NewThirdpartyMigrationController(&migrationsGrpcClient)
+	roleController := controllers.NewRoleController(&roleGrpcClient)
 	statusController := controllers.NewStatusController(appConfig, &userGrpcClient, s3Client)
 
 	// Setup routes
@@ -126,6 +128,7 @@ func main() {
 		sharingController,
 		activityController,
 		migrationController,
+		roleController,
 		statusController,
 	)
 

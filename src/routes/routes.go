@@ -22,6 +22,7 @@ func SetupRouter(
 	sharingController *controllers.SharingController,
 	activityController *controllers.ActivityController,
 	migrationController *controllers.ThirdpartyMigrationController,
+	roleController *controllers.RoleController,
 	statusController *controllers.StatusController,
 ) {
 
@@ -125,6 +126,28 @@ func SetupRouter(
 				"/import_bookstack_book",
 				migrationController.ImportBookstackBook,
 			)
+		}
+
+		// role / RBAC routes
+		roles := api.Group("/roles")
+		{
+			roles.POST("", roleController.CreateRole)
+			roles.GET("", roleController.GetRoles)
+			roles.PATCH("", roleController.UpdateRole)
+			roles.DELETE("", roleController.DeleteRole)
+
+			role := roles.Group("/:id")
+			{
+				role.GET("", roleController.GetRole)
+			}
+
+			// membership edges: a single role, multiple users
+			roles.POST("/members", roleController.AddUserToRole)
+			roles.DELETE("/members", roleController.RemoveUserFromRole)
+			roles.GET("/members", roleController.GetUsersForRole)
+
+			// reverse lookup: every role a given user belongs to
+			roles.GET("/by-user", roleController.GetRolesForUser)
 		}
 
 		// route for swagger API docs

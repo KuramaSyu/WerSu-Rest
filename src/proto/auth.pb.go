@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v6.33.1
-// source: auth.proto
+// source: src/proto/auth.proto
 
 package proto
 
@@ -62,11 +62,11 @@ func (x CredentialKind) String() string {
 }
 
 func (CredentialKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_auth_proto_enumTypes[0].Descriptor()
+	return file_src_proto_auth_proto_enumTypes[0].Descriptor()
 }
 
 func (CredentialKind) Type() protoreflect.EnumType {
-	return &file_auth_proto_enumTypes[0]
+	return &file_src_proto_auth_proto_enumTypes[0]
 }
 
 func (x CredentialKind) Number() protoreflect.EnumNumber {
@@ -75,15 +75,10 @@ func (x CredentialKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CredentialKind.Descriptor instead.
 func (CredentialKind) EnumDescriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{0}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{0}
 }
 
 // A user as exposed to the auth layer.
-//
-// Deliberately narrower than the public `User` message in
-// `user.proto`. Auth consumers do not need Discord profile fields
-// or avatar -- add them here only when an auth endpoint actually
-// needs them.
 type UserAuth struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -104,7 +99,7 @@ type UserAuth struct {
 
 func (x *UserAuth) Reset() {
 	*x = UserAuth{}
-	mi := &file_auth_proto_msgTypes[0]
+	mi := &file_src_proto_auth_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -116,7 +111,7 @@ func (x *UserAuth) String() string {
 func (*UserAuth) ProtoMessage() {}
 
 func (x *UserAuth) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[0]
+	mi := &file_src_proto_auth_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -129,7 +124,7 @@ func (x *UserAuth) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserAuth.ProtoReflect.Descriptor instead.
 func (*UserAuth) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{0}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *UserAuth) GetId() string {
@@ -204,7 +199,7 @@ type Credential struct {
 
 func (x *Credential) Reset() {
 	*x = Credential{}
-	mi := &file_auth_proto_msgTypes[1]
+	mi := &file_src_proto_auth_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -216,7 +211,7 @@ func (x *Credential) String() string {
 func (*Credential) ProtoMessage() {}
 
 func (x *Credential) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[1]
+	mi := &file_src_proto_auth_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -229,7 +224,7 @@ func (x *Credential) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Credential.ProtoReflect.Descriptor instead.
 func (*Credential) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{1}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *Credential) GetId() string {
@@ -371,7 +366,7 @@ type Passkey struct {
 
 func (x *Passkey) Reset() {
 	*x = Passkey{}
-	mi := &file_auth_proto_msgTypes[2]
+	mi := &file_src_proto_auth_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -383,7 +378,7 @@ func (x *Passkey) String() string {
 func (*Passkey) ProtoMessage() {}
 
 func (x *Passkey) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[2]
+	mi := &file_src_proto_auth_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -396,7 +391,7 @@ func (x *Passkey) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Passkey.ProtoReflect.Descriptor instead.
 func (*Passkey) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{2}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Passkey) GetId() string {
@@ -497,9 +492,10 @@ func (x *Passkey) GetRevokedAt() *timestamppb.Timestamp {
 	return nil
 }
 
-// Resolve a user by one of the login identifiers. Exactly one of
-// `user_id`, `email`, or `discord_id` must be supplied. Returns
-// NOT_FOUND if no user matches.
+// Lookup a user by id/email/discord id
+// Often used by frontend: useUser() hook resolves to this.
+// REST takes user id from session, and checks against this endpoint
+// if information is correct.
 type GetUserAuthRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Identifier:
@@ -514,7 +510,7 @@ type GetUserAuthRequest struct {
 
 func (x *GetUserAuthRequest) Reset() {
 	*x = GetUserAuthRequest{}
-	mi := &file_auth_proto_msgTypes[3]
+	mi := &file_src_proto_auth_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -526,7 +522,7 @@ func (x *GetUserAuthRequest) String() string {
 func (*GetUserAuthRequest) ProtoMessage() {}
 
 func (x *GetUserAuthRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[3]
+	mi := &file_src_proto_auth_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -539,7 +535,7 @@ func (x *GetUserAuthRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserAuthRequest.ProtoReflect.Descriptor instead.
 func (*GetUserAuthRequest) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{3}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetUserAuthRequest) GetIdentifier() isGetUserAuthRequest_Identifier {
@@ -607,7 +603,7 @@ type GetUserAuthResponse struct {
 
 func (x *GetUserAuthResponse) Reset() {
 	*x = GetUserAuthResponse{}
-	mi := &file_auth_proto_msgTypes[4]
+	mi := &file_src_proto_auth_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -619,7 +615,7 @@ func (x *GetUserAuthResponse) String() string {
 func (*GetUserAuthResponse) ProtoMessage() {}
 
 func (x *GetUserAuthResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[4]
+	mi := &file_src_proto_auth_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -632,7 +628,7 @@ func (x *GetUserAuthResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserAuthResponse.ProtoReflect.Descriptor instead.
 func (*GetUserAuthResponse) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{4}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GetUserAuthResponse) GetUser() *UserAuth {
@@ -642,12 +638,8 @@ func (x *GetUserAuthResponse) GetUser() *UserAuth {
 	return nil
 }
 
-// Create a brand-new user (email + password signup). Returns
-// ALREADY_EXISTS if a user with the email already exists. The
-// service layer also creates the credential row in the same
-// transaction. The first credential is the password; additional
-// credentials (Discord, passkeys) are added later via the
-// `LinkCredential` rpc.
+// Create a user (email + password signup). Returns
+// ALREADY_EXISTS if a user with the email already exists.
 type CreateUserAuthRequest struct {
 	state        protoimpl.MessageState `protogen:"open.v1"`
 	Email        string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
@@ -663,7 +655,7 @@ type CreateUserAuthRequest struct {
 
 func (x *CreateUserAuthRequest) Reset() {
 	*x = CreateUserAuthRequest{}
-	mi := &file_auth_proto_msgTypes[5]
+	mi := &file_src_proto_auth_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -675,7 +667,7 @@ func (x *CreateUserAuthRequest) String() string {
 func (*CreateUserAuthRequest) ProtoMessage() {}
 
 func (x *CreateUserAuthRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[5]
+	mi := &file_src_proto_auth_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -688,7 +680,7 @@ func (x *CreateUserAuthRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateUserAuthRequest.ProtoReflect.Descriptor instead.
 func (*CreateUserAuthRequest) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{5}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CreateUserAuthRequest) GetEmail() string {
@@ -728,7 +720,7 @@ type CreateUserAuthResponse struct {
 
 func (x *CreateUserAuthResponse) Reset() {
 	*x = CreateUserAuthResponse{}
-	mi := &file_auth_proto_msgTypes[6]
+	mi := &file_src_proto_auth_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -740,7 +732,7 @@ func (x *CreateUserAuthResponse) String() string {
 func (*CreateUserAuthResponse) ProtoMessage() {}
 
 func (x *CreateUserAuthResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[6]
+	mi := &file_src_proto_auth_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -753,7 +745,7 @@ func (x *CreateUserAuthResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateUserAuthResponse.ProtoReflect.Descriptor instead.
 func (*CreateUserAuthResponse) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{6}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *CreateUserAuthResponse) GetUser() *UserAuth {
@@ -767,15 +759,11 @@ func (x *CreateUserAuthResponse) GetUser() *UserAuth {
 // tri-state: omitted (leave unchanged), `_set` populated (write the
 // value), or `_clear` populated (set the column to NULL). Used for
 // username/email changes and `email_verified_at`.
-//
-// `requester_id` is the actor. The service layer requires
-// `requester_id == user_id` (or an admin role on a future
-// extension) before any write. REST forwards the JWT's
-// `user_id` claim here.
 type UpdateUserAuthRequest struct {
-	state       protoimpl.MessageState `protogen:"open.v1"`
-	UserId      string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	RequesterId string                 `protobuf:"bytes,2,opt,name=requester_id,json=requesterId,proto3" json:"requester_id,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	UserId string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// the actor on which we will check permissions
+	RequesterId string `protobuf:"bytes,2,opt,name=requester_id,json=requesterId,proto3" json:"requester_id,omitempty"`
 	// Types that are valid to be assigned to UsernameChange:
 	//
 	//	*UpdateUserAuthRequest_UsernameSet
@@ -802,7 +790,7 @@ type UpdateUserAuthRequest struct {
 
 func (x *UpdateUserAuthRequest) Reset() {
 	*x = UpdateUserAuthRequest{}
-	mi := &file_auth_proto_msgTypes[7]
+	mi := &file_src_proto_auth_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -814,7 +802,7 @@ func (x *UpdateUserAuthRequest) String() string {
 func (*UpdateUserAuthRequest) ProtoMessage() {}
 
 func (x *UpdateUserAuthRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[7]
+	mi := &file_src_proto_auth_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -827,7 +815,7 @@ func (x *UpdateUserAuthRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateUserAuthRequest.ProtoReflect.Descriptor instead.
 func (*UpdateUserAuthRequest) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{7}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *UpdateUserAuthRequest) GetUserId() string {
@@ -1017,7 +1005,7 @@ type UpdateUserAuthResponse struct {
 
 func (x *UpdateUserAuthResponse) Reset() {
 	*x = UpdateUserAuthResponse{}
-	mi := &file_auth_proto_msgTypes[8]
+	mi := &file_src_proto_auth_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1029,7 +1017,7 @@ func (x *UpdateUserAuthResponse) String() string {
 func (*UpdateUserAuthResponse) ProtoMessage() {}
 
 func (x *UpdateUserAuthResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[8]
+	mi := &file_src_proto_auth_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1042,7 +1030,7 @@ func (x *UpdateUserAuthResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateUserAuthResponse.ProtoReflect.Descriptor instead.
 func (*UpdateUserAuthResponse) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{8}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *UpdateUserAuthResponse) GetUser() *UserAuth {
@@ -1052,11 +1040,7 @@ func (x *UpdateUserAuthResponse) GetUser() *UserAuth {
 	return nil
 }
 
-// Look up a credential of one kind. Used by REST to find the
-// Discord/Google link during an OAuth callback and the password
-// row during `/auth/login`. Returns NOT_FOUND if the credential
-// doesn't exist (treated as a generic "invalid email or password"
-// by the login endpoint).
+// Search a user by email/discord id/google id
 type FindCredentialByProviderRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Identifier:
@@ -1072,7 +1056,7 @@ type FindCredentialByProviderRequest struct {
 
 func (x *FindCredentialByProviderRequest) Reset() {
 	*x = FindCredentialByProviderRequest{}
-	mi := &file_auth_proto_msgTypes[9]
+	mi := &file_src_proto_auth_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1084,7 +1068,7 @@ func (x *FindCredentialByProviderRequest) String() string {
 func (*FindCredentialByProviderRequest) ProtoMessage() {}
 
 func (x *FindCredentialByProviderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[9]
+	mi := &file_src_proto_auth_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1097,7 +1081,7 @@ func (x *FindCredentialByProviderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FindCredentialByProviderRequest.ProtoReflect.Descriptor instead.
 func (*FindCredentialByProviderRequest) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{9}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *FindCredentialByProviderRequest) GetIdentifier() isFindCredentialByProviderRequest_Identifier {
@@ -1173,7 +1157,7 @@ type FindCredentialByProviderResponse struct {
 
 func (x *FindCredentialByProviderResponse) Reset() {
 	*x = FindCredentialByProviderResponse{}
-	mi := &file_auth_proto_msgTypes[10]
+	mi := &file_src_proto_auth_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1185,7 +1169,7 @@ func (x *FindCredentialByProviderResponse) String() string {
 func (*FindCredentialByProviderResponse) ProtoMessage() {}
 
 func (x *FindCredentialByProviderResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[10]
+	mi := &file_src_proto_auth_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1198,7 +1182,7 @@ func (x *FindCredentialByProviderResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FindCredentialByProviderResponse.ProtoReflect.Descriptor instead.
 func (*FindCredentialByProviderResponse) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{10}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *FindCredentialByProviderResponse) GetCredential() *Credential {
@@ -1227,7 +1211,7 @@ type FindPasskeyRequest struct {
 
 func (x *FindPasskeyRequest) Reset() {
 	*x = FindPasskeyRequest{}
-	mi := &file_auth_proto_msgTypes[11]
+	mi := &file_src_proto_auth_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1239,7 +1223,7 @@ func (x *FindPasskeyRequest) String() string {
 func (*FindPasskeyRequest) ProtoMessage() {}
 
 func (x *FindPasskeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[11]
+	mi := &file_src_proto_auth_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1252,7 +1236,7 @@ func (x *FindPasskeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FindPasskeyRequest.ProtoReflect.Descriptor instead.
 func (*FindPasskeyRequest) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{11}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *FindPasskeyRequest) GetCredentialId() []byte {
@@ -1271,7 +1255,7 @@ type FindPasskeyResponse struct {
 
 func (x *FindPasskeyResponse) Reset() {
 	*x = FindPasskeyResponse{}
-	mi := &file_auth_proto_msgTypes[12]
+	mi := &file_src_proto_auth_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1283,7 +1267,7 @@ func (x *FindPasskeyResponse) String() string {
 func (*FindPasskeyResponse) ProtoMessage() {}
 
 func (x *FindPasskeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[12]
+	mi := &file_src_proto_auth_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1296,7 +1280,7 @@ func (x *FindPasskeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FindPasskeyResponse.ProtoReflect.Descriptor instead.
 func (*FindPasskeyResponse) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{12}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *FindPasskeyResponse) GetPasskey() *Passkey {
@@ -1318,7 +1302,7 @@ type ListPasskeysRequest struct {
 
 func (x *ListPasskeysRequest) Reset() {
 	*x = ListPasskeysRequest{}
-	mi := &file_auth_proto_msgTypes[13]
+	mi := &file_src_proto_auth_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1330,7 +1314,7 @@ func (x *ListPasskeysRequest) String() string {
 func (*ListPasskeysRequest) ProtoMessage() {}
 
 func (x *ListPasskeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[13]
+	mi := &file_src_proto_auth_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1343,7 +1327,7 @@ func (x *ListPasskeysRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPasskeysRequest.ProtoReflect.Descriptor instead.
 func (*ListPasskeysRequest) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{13}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ListPasskeysRequest) GetUserId() string {
@@ -1369,7 +1353,7 @@ type ListPasskeysResponse struct {
 
 func (x *ListPasskeysResponse) Reset() {
 	*x = ListPasskeysResponse{}
-	mi := &file_auth_proto_msgTypes[14]
+	mi := &file_src_proto_auth_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1381,7 +1365,7 @@ func (x *ListPasskeysResponse) String() string {
 func (*ListPasskeysResponse) ProtoMessage() {}
 
 func (x *ListPasskeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[14]
+	mi := &file_src_proto_auth_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1394,7 +1378,7 @@ func (x *ListPasskeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPasskeysResponse.ProtoReflect.Descriptor instead.
 func (*ListPasskeysResponse) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{14}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ListPasskeysResponse) GetPasskeys() []*Passkey {
@@ -1418,7 +1402,7 @@ type UpdatePasskeyCounterRequest struct {
 
 func (x *UpdatePasskeyCounterRequest) Reset() {
 	*x = UpdatePasskeyCounterRequest{}
-	mi := &file_auth_proto_msgTypes[15]
+	mi := &file_src_proto_auth_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1430,7 +1414,7 @@ func (x *UpdatePasskeyCounterRequest) String() string {
 func (*UpdatePasskeyCounterRequest) ProtoMessage() {}
 
 func (x *UpdatePasskeyCounterRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[15]
+	mi := &file_src_proto_auth_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1443,7 +1427,7 @@ func (x *UpdatePasskeyCounterRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatePasskeyCounterRequest.ProtoReflect.Descriptor instead.
 func (*UpdatePasskeyCounterRequest) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{15}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *UpdatePasskeyCounterRequest) GetPasskeyId() string {
@@ -1469,7 +1453,7 @@ type UpdatePasskeyCounterResponse struct {
 
 func (x *UpdatePasskeyCounterResponse) Reset() {
 	*x = UpdatePasskeyCounterResponse{}
-	mi := &file_auth_proto_msgTypes[16]
+	mi := &file_src_proto_auth_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1481,7 +1465,7 @@ func (x *UpdatePasskeyCounterResponse) String() string {
 func (*UpdatePasskeyCounterResponse) ProtoMessage() {}
 
 func (x *UpdatePasskeyCounterResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[16]
+	mi := &file_src_proto_auth_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1494,7 +1478,7 @@ func (x *UpdatePasskeyCounterResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatePasskeyCounterResponse.ProtoReflect.Descriptor instead.
 func (*UpdatePasskeyCounterResponse) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{16}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *UpdatePasskeyCounterResponse) GetPasskey() *Passkey {
@@ -1509,29 +1493,26 @@ func (x *UpdatePasskeyCounterResponse) GetPasskey() *Passkey {
 // `public_key` is the COSE-encoded public key extracted from the
 // attestation authData. The service layer is responsible for
 // storing both in their native byte form -- they are not reshaped.
-//
-// `requester_id` is the actor. The service layer requires
-// `requester_id == user_id` before writing -- a passkey is
-// always attached to the currently authenticated user.
 type RegisterPasskeyRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	UserId         string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	RequesterId    string                 `protobuf:"bytes,2,opt,name=requester_id,json=requesterId,proto3" json:"requester_id,omitempty"`
-	CredentialId   []byte                 `protobuf:"bytes,3,opt,name=credential_id,json=credentialId,proto3" json:"credential_id,omitempty"`
-	PublicKey      []byte                 `protobuf:"bytes,4,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
-	Transports     []string               `protobuf:"bytes,5,rep,name=transports,proto3" json:"transports,omitempty"`
-	Aaguid         []byte                 `protobuf:"bytes,6,opt,name=aaguid,proto3" json:"aaguid,omitempty"`
-	BackupEligible bool                   `protobuf:"varint,7,opt,name=backup_eligible,json=backupEligible,proto3" json:"backup_eligible,omitempty"`
-	BackupState    bool                   `protobuf:"varint,8,opt,name=backup_state,json=backupState,proto3" json:"backup_state,omitempty"`
-	UserVerified   bool                   `protobuf:"varint,9,opt,name=user_verified,json=userVerified,proto3" json:"user_verified,omitempty"`
-	FriendlyName   string                 `protobuf:"bytes,10,opt,name=friendly_name,json=friendlyName,proto3" json:"friendly_name,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	UserId string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// actor on which we will check permissions
+	RequesterId    string   `protobuf:"bytes,2,opt,name=requester_id,json=requesterId,proto3" json:"requester_id,omitempty"`
+	CredentialId   []byte   `protobuf:"bytes,3,opt,name=credential_id,json=credentialId,proto3" json:"credential_id,omitempty"`
+	PublicKey      []byte   `protobuf:"bytes,4,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	Transports     []string `protobuf:"bytes,5,rep,name=transports,proto3" json:"transports,omitempty"`
+	Aaguid         []byte   `protobuf:"bytes,6,opt,name=aaguid,proto3" json:"aaguid,omitempty"`
+	BackupEligible bool     `protobuf:"varint,7,opt,name=backup_eligible,json=backupEligible,proto3" json:"backup_eligible,omitempty"`
+	BackupState    bool     `protobuf:"varint,8,opt,name=backup_state,json=backupState,proto3" json:"backup_state,omitempty"`
+	UserVerified   bool     `protobuf:"varint,9,opt,name=user_verified,json=userVerified,proto3" json:"user_verified,omitempty"`
+	FriendlyName   string   `protobuf:"bytes,10,opt,name=friendly_name,json=friendlyName,proto3" json:"friendly_name,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
 func (x *RegisterPasskeyRequest) Reset() {
 	*x = RegisterPasskeyRequest{}
-	mi := &file_auth_proto_msgTypes[17]
+	mi := &file_src_proto_auth_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1543,7 +1524,7 @@ func (x *RegisterPasskeyRequest) String() string {
 func (*RegisterPasskeyRequest) ProtoMessage() {}
 
 func (x *RegisterPasskeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[17]
+	mi := &file_src_proto_auth_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1556,7 +1537,7 @@ func (x *RegisterPasskeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterPasskeyRequest.ProtoReflect.Descriptor instead.
 func (*RegisterPasskeyRequest) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{17}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *RegisterPasskeyRequest) GetUserId() string {
@@ -1638,7 +1619,7 @@ type RegisterPasskeyResponse struct {
 
 func (x *RegisterPasskeyResponse) Reset() {
 	*x = RegisterPasskeyResponse{}
-	mi := &file_auth_proto_msgTypes[18]
+	mi := &file_src_proto_auth_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1650,7 +1631,7 @@ func (x *RegisterPasskeyResponse) String() string {
 func (*RegisterPasskeyResponse) ProtoMessage() {}
 
 func (x *RegisterPasskeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[18]
+	mi := &file_src_proto_auth_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1663,7 +1644,7 @@ func (x *RegisterPasskeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterPasskeyResponse.ProtoReflect.Descriptor instead.
 func (*RegisterPasskeyResponse) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{18}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *RegisterPasskeyResponse) GetPasskey() *Passkey {
@@ -1684,7 +1665,7 @@ type RevokePasskeyRequest struct {
 
 func (x *RevokePasskeyRequest) Reset() {
 	*x = RevokePasskeyRequest{}
-	mi := &file_auth_proto_msgTypes[19]
+	mi := &file_src_proto_auth_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1696,7 +1677,7 @@ func (x *RevokePasskeyRequest) String() string {
 func (*RevokePasskeyRequest) ProtoMessage() {}
 
 func (x *RevokePasskeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[19]
+	mi := &file_src_proto_auth_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1709,7 +1690,7 @@ func (x *RevokePasskeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokePasskeyRequest.ProtoReflect.Descriptor instead.
 func (*RevokePasskeyRequest) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{19}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *RevokePasskeyRequest) GetPasskeyId() string {
@@ -1733,26 +1714,14 @@ func (x *RevokePasskeyRequest) GetRequesterId() string {
 	return ""
 }
 
-// Attach a new credential to an existing user. Used by:
-//   - Discord/Google login adding a password/passkey to the account
-//     they just made from the OAuth callback.
-//   - Password login adding a Discord/Google link from settings.
-//   - Password login adding a passkey, where REST has already
-//     verified the attestation and is just persisting the result.
+// Account Linking: Attach a new credential to an existing user (Passkey
+// Discord OAuth, Google OAuth, or password)
 //
 // `kind` selects which payload field is populated. Exactly one of
 // `discord_id`, `password_hash`, `passkey_id`, or `google_id` must
 // be set. Returns ALREADY_EXISTS if the user already has a
 // credential of that kind (with the exception of passkey, which
 // can have many).
-//
-// `requester_id` is the actor. The service layer requires
-// `requester_id == user_id` (or an admin role on a future
-// extension) before any write. The OAuth callback flow has a
-// subtle wrinkle: REST is calling on behalf of a not-yet-JWT
-// holder -- the OAuth `state` parameter holds the user identity
-// for the duration of the ceremony, and `requester_id` is
-// validated against that.
 type LinkCredentialRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	UserId      string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
@@ -1771,7 +1740,7 @@ type LinkCredentialRequest struct {
 
 func (x *LinkCredentialRequest) Reset() {
 	*x = LinkCredentialRequest{}
-	mi := &file_auth_proto_msgTypes[20]
+	mi := &file_src_proto_auth_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1783,7 +1752,7 @@ func (x *LinkCredentialRequest) String() string {
 func (*LinkCredentialRequest) ProtoMessage() {}
 
 func (x *LinkCredentialRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[20]
+	mi := &file_src_proto_auth_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1796,7 +1765,7 @@ func (x *LinkCredentialRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LinkCredentialRequest.ProtoReflect.Descriptor instead.
 func (*LinkCredentialRequest) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{20}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *LinkCredentialRequest) GetUserId() string {
@@ -1900,7 +1869,7 @@ type LinkCredentialResponse struct {
 
 func (x *LinkCredentialResponse) Reset() {
 	*x = LinkCredentialResponse{}
-	mi := &file_auth_proto_msgTypes[21]
+	mi := &file_src_proto_auth_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1912,7 +1881,7 @@ func (x *LinkCredentialResponse) String() string {
 func (*LinkCredentialResponse) ProtoMessage() {}
 
 func (x *LinkCredentialResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[21]
+	mi := &file_src_proto_auth_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1925,7 +1894,7 @@ func (x *LinkCredentialResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LinkCredentialResponse.ProtoReflect.Descriptor instead.
 func (*LinkCredentialResponse) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{21}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *LinkCredentialResponse) GetCredential() *Credential {
@@ -1935,25 +1904,20 @@ func (x *LinkCredentialResponse) GetCredential() *Credential {
 	return nil
 }
 
-// Unlink a credential. For password and Discord/Google the
-// service layer rejects the call if the user would be left with
-// zero credentials (no way to log back in). Passkeys may always
-// be revoked.
-//
-// `requester_id` is the actor. The service layer requires
-// `requester_id == user_id` before any write.
+// Unlink a credential. Removing the last credential should raise
 type UnlinkCredentialRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	CredentialId  string                 `protobuf:"bytes,1,opt,name=credential_id,json=credentialId,proto3" json:"credential_id,omitempty"`
-	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	RequesterId   string                 `protobuf:"bytes,3,opt,name=requester_id,json=requesterId,proto3" json:"requester_id,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	CredentialId string                 `protobuf:"bytes,1,opt,name=credential_id,json=credentialId,proto3" json:"credential_id,omitempty"`
+	UserId       string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// the actor on which we will check permissions
+	RequesterId   string `protobuf:"bytes,3,opt,name=requester_id,json=requesterId,proto3" json:"requester_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UnlinkCredentialRequest) Reset() {
 	*x = UnlinkCredentialRequest{}
-	mi := &file_auth_proto_msgTypes[22]
+	mi := &file_src_proto_auth_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1965,7 +1929,7 @@ func (x *UnlinkCredentialRequest) String() string {
 func (*UnlinkCredentialRequest) ProtoMessage() {}
 
 func (x *UnlinkCredentialRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[22]
+	mi := &file_src_proto_auth_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1978,7 +1942,7 @@ func (x *UnlinkCredentialRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnlinkCredentialRequest.ProtoReflect.Descriptor instead.
 func (*UnlinkCredentialRequest) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{22}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *UnlinkCredentialRequest) GetCredentialId() string {
@@ -2002,9 +1966,7 @@ func (x *UnlinkCredentialRequest) GetRequesterId() string {
 	return ""
 }
 
-// Summary of every credential linked to a user, used by the
-// settings page to show "Discord: linked, Password: set, N
-// passkeys". Avoids three separate round trips from REST.
+// Summary of every credential linked to a user (Google, Discord, Passkey, Password)
 type ListLinkedCredentialsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
@@ -2014,7 +1976,7 @@ type ListLinkedCredentialsRequest struct {
 
 func (x *ListLinkedCredentialsRequest) Reset() {
 	*x = ListLinkedCredentialsRequest{}
-	mi := &file_auth_proto_msgTypes[23]
+	mi := &file_src_proto_auth_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2026,7 +1988,7 @@ func (x *ListLinkedCredentialsRequest) String() string {
 func (*ListLinkedCredentialsRequest) ProtoMessage() {}
 
 func (x *ListLinkedCredentialsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[23]
+	mi := &file_src_proto_auth_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2039,7 +2001,7 @@ func (x *ListLinkedCredentialsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListLinkedCredentialsRequest.ProtoReflect.Descriptor instead.
 func (*ListLinkedCredentialsRequest) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{23}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ListLinkedCredentialsRequest) GetUserId() string {
@@ -2059,7 +2021,7 @@ type ListLinkedCredentialsResponse struct {
 
 func (x *ListLinkedCredentialsResponse) Reset() {
 	*x = ListLinkedCredentialsResponse{}
-	mi := &file_auth_proto_msgTypes[24]
+	mi := &file_src_proto_auth_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2071,7 +2033,7 @@ func (x *ListLinkedCredentialsResponse) String() string {
 func (*ListLinkedCredentialsResponse) ProtoMessage() {}
 
 func (x *ListLinkedCredentialsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[24]
+	mi := &file_src_proto_auth_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2084,7 +2046,7 @@ func (x *ListLinkedCredentialsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListLinkedCredentialsResponse.ProtoReflect.Descriptor instead.
 func (*ListLinkedCredentialsResponse) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{24}
+	return file_src_proto_auth_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ListLinkedCredentialsResponse) GetCredentials() []*Credential {
@@ -2101,12 +2063,11 @@ func (x *ListLinkedCredentialsResponse) GetPasskeys() []*Passkey {
 	return nil
 }
 
-var File_auth_proto protoreflect.FileDescriptor
+var File_src_proto_auth_proto protoreflect.FileDescriptor
 
-const file_auth_proto_rawDesc = "" +
+const file_src_proto_auth_proto_rawDesc = "" +
 	"\n" +
-	"\n" +
-	"auth.proto\x12\x05proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8b\x02\n" +
+	"\x14src/proto/auth.proto\x12\x05proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8b\x02\n" +
 	"\bUserAuth\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1a\n" +
@@ -2287,20 +2248,20 @@ const file_auth_proto_rawDesc = "" +
 	"\x15ListLinkedCredentials\x12#.proto.ListLinkedCredentialsRequest\x1a$.proto.ListLinkedCredentialsResponseB1Z/github.com/KuramaSyu/Wersu-Rest/src/proto;protob\x06proto3"
 
 var (
-	file_auth_proto_rawDescOnce sync.Once
-	file_auth_proto_rawDescData []byte
+	file_src_proto_auth_proto_rawDescOnce sync.Once
+	file_src_proto_auth_proto_rawDescData []byte
 )
 
-func file_auth_proto_rawDescGZIP() []byte {
-	file_auth_proto_rawDescOnce.Do(func() {
-		file_auth_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_auth_proto_rawDesc), len(file_auth_proto_rawDesc)))
+func file_src_proto_auth_proto_rawDescGZIP() []byte {
+	file_src_proto_auth_proto_rawDescOnce.Do(func() {
+		file_src_proto_auth_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_src_proto_auth_proto_rawDesc), len(file_src_proto_auth_proto_rawDesc)))
 	})
-	return file_auth_proto_rawDescData
+	return file_src_proto_auth_proto_rawDescData
 }
 
-var file_auth_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
-var file_auth_proto_goTypes = []any{
+var file_src_proto_auth_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_src_proto_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_src_proto_auth_proto_goTypes = []any{
 	(CredentialKind)(0),                      // 0: proto.CredentialKind
 	(*UserAuth)(nil),                         // 1: proto.UserAuth
 	(*Credential)(nil),                       // 2: proto.Credential
@@ -2330,7 +2291,7 @@ var file_auth_proto_goTypes = []any{
 	(*timestamppb.Timestamp)(nil),            // 26: google.protobuf.Timestamp
 	(*emptypb.Empty)(nil),                    // 27: google.protobuf.Empty
 }
-var file_auth_proto_depIdxs = []int32{
+var file_src_proto_auth_proto_depIdxs = []int32{
 	26, // 0: proto.UserAuth.email_verified_at:type_name -> google.protobuf.Timestamp
 	26, // 1: proto.UserAuth.created_at:type_name -> google.protobuf.Timestamp
 	0,  // 2: proto.Credential.kind:type_name -> proto.CredentialKind
@@ -2389,23 +2350,23 @@ var file_auth_proto_depIdxs = []int32{
 	0,  // [0:27] is the sub-list for field type_name
 }
 
-func init() { file_auth_proto_init() }
-func file_auth_proto_init() {
-	if File_auth_proto != nil {
+func init() { file_src_proto_auth_proto_init() }
+func file_src_proto_auth_proto_init() {
+	if File_src_proto_auth_proto != nil {
 		return
 	}
-	file_auth_proto_msgTypes[1].OneofWrappers = []any{
+	file_src_proto_auth_proto_msgTypes[1].OneofWrappers = []any{
 		(*Credential_DiscordId)(nil),
 		(*Credential_PasswordHash)(nil),
 		(*Credential_PasskeyId)(nil),
 		(*Credential_GoogleId)(nil),
 	}
-	file_auth_proto_msgTypes[3].OneofWrappers = []any{
+	file_src_proto_auth_proto_msgTypes[3].OneofWrappers = []any{
 		(*GetUserAuthRequest_UserId)(nil),
 		(*GetUserAuthRequest_Email)(nil),
 		(*GetUserAuthRequest_DiscordId)(nil),
 	}
-	file_auth_proto_msgTypes[7].OneofWrappers = []any{
+	file_src_proto_auth_proto_msgTypes[7].OneofWrappers = []any{
 		(*UpdateUserAuthRequest_UsernameSet)(nil),
 		(*UpdateUserAuthRequest_UsernameClear)(nil),
 		(*UpdateUserAuthRequest_EmailSet)(nil),
@@ -2415,12 +2376,12 @@ func file_auth_proto_init() {
 		(*UpdateUserAuthRequest_AvatarUrlSet)(nil),
 		(*UpdateUserAuthRequest_AvatarUrlClear)(nil),
 	}
-	file_auth_proto_msgTypes[9].OneofWrappers = []any{
+	file_src_proto_auth_proto_msgTypes[9].OneofWrappers = []any{
 		(*FindCredentialByProviderRequest_DiscordId)(nil),
 		(*FindCredentialByProviderRequest_Email)(nil),
 		(*FindCredentialByProviderRequest_GoogleId)(nil),
 	}
-	file_auth_proto_msgTypes[20].OneofWrappers = []any{
+	file_src_proto_auth_proto_msgTypes[20].OneofWrappers = []any{
 		(*LinkCredentialRequest_DiscordId)(nil),
 		(*LinkCredentialRequest_PasswordHash)(nil),
 		(*LinkCredentialRequest_PasskeyId)(nil),
@@ -2430,18 +2391,18 @@ func file_auth_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_auth_proto_rawDesc), len(file_auth_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_src_proto_auth_proto_rawDesc), len(file_src_proto_auth_proto_rawDesc)),
 			NumEnums:      1,
 			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_auth_proto_goTypes,
-		DependencyIndexes: file_auth_proto_depIdxs,
-		EnumInfos:         file_auth_proto_enumTypes,
-		MessageInfos:      file_auth_proto_msgTypes,
+		GoTypes:           file_src_proto_auth_proto_goTypes,
+		DependencyIndexes: file_src_proto_auth_proto_depIdxs,
+		EnumInfos:         file_src_proto_auth_proto_enumTypes,
+		MessageInfos:      file_src_proto_auth_proto_msgTypes,
 	}.Build()
-	File_auth_proto = out.File
-	file_auth_proto_goTypes = nil
-	file_auth_proto_depIdxs = nil
+	File_src_proto_auth_proto = out.File
+	file_src_proto_auth_proto_goTypes = nil
+	file_src_proto_auth_proto_depIdxs = nil
 }
