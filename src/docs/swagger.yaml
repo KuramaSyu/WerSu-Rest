@@ -24,6 +24,18 @@ definitions:
       role_id:
         type: string
     type: object
+  controllers.AddUserToRoleBody:
+    properties:
+      role_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4ca
+        type: string
+      subject_user_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        type: string
+    required:
+    - role_id
+    - subject_user_id
+    type: object
   controllers.AttachmentLinkBody:
     properties:
       attachment_key:
@@ -75,6 +87,28 @@ definitions:
       pages_imported:
         type: integer
     type: object
+  controllers.CheckResult:
+    properties:
+      address:
+        description: |-
+          Address that was probed (host:port) for the service-level checks, or
+          the host portion for DNS-level checks.
+        type: string
+      detail:
+        description: |-
+          Detail is an optional human-readable note for the response (e.g.
+          the gRPC status name, the number of buckets returned, ...).
+        type: string
+      error:
+        type: string
+      latency_ms:
+        description: |-
+          LatencyMs measures how long the probe took. Zero if the probe was
+          skipped (e.g. DNS already failed).
+        type: integer
+      reachable:
+        type: boolean
+    type: object
   controllers.CreateDirectoryBody:
     properties:
       description:
@@ -115,6 +149,17 @@ definitions:
     - object_id
     - object_type
     - relationship
+    type: object
+  controllers.CreateRoleBody:
+    properties:
+      description:
+        example: All engineers
+        type: string
+      name:
+        example: engineering
+        type: string
+    required:
+    - name
     type: object
   controllers.CreateShareRequestBody:
     properties:
@@ -158,6 +203,14 @@ definitions:
     - object_id
     - object_type
     - relationship
+    type: object
+  controllers.DeleteRoleBody:
+    properties:
+      id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4ca
+        type: string
+    required:
+    - id
     type: object
   controllers.DeleteSharesBody:
     properties:
@@ -370,6 +423,42 @@ definitions:
           $ref: '#/definitions/controllers.MinimalTag'
         type: array
     type: object
+  controllers.PasskeyCeremonyBeginReply:
+    properties:
+      options:
+        additionalProperties: {}
+        type: object
+      session_key:
+        type: string
+    type: object
+  controllers.PasskeyCeremonyFinishReply:
+    properties:
+      credential_id:
+        type: string
+    type: object
+  controllers.PasskeyCeremonyFinishRequest:
+    properties:
+      authenticator_data:
+        items:
+          type: integer
+        type: array
+      client_data_json:
+        items:
+          type: integer
+        type: array
+      credential_id:
+        items:
+          type: integer
+        type: array
+      friendly_name:
+        type: string
+      session_key:
+        type: string
+      signature:
+        items:
+          type: integer
+        type: array
+    type: object
   controllers.PatchAttachmentMetadataRequest:
     properties:
       content_type:
@@ -532,6 +621,18 @@ definitions:
     - content
     - title
     type: object
+  controllers.RemoveUserFromRoleBody:
+    properties:
+      role_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4ca
+        type: string
+      subject_user_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        type: string
+    required:
+    - role_id
+    - subject_user_id
+    type: object
   controllers.ReplacePermissionsBody:
     properties:
       object_id:
@@ -551,6 +652,67 @@ definitions:
     - object_id
     - object_type
     - relationships
+    type: object
+  controllers.RoleReply:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  controllers.ServiceStatus:
+    properties:
+      address:
+        type: string
+      detail:
+        type: string
+      dns:
+        $ref: '#/definitions/controllers.CheckResult'
+      error:
+        description: |-
+          Error is a convenience field that mirrors the first non-empty error
+          from DNS or Service, so monitoring can read the top-level state
+          without traversing the nested checks.
+        type: string
+      reachable:
+        type: boolean
+      service:
+        $ref: '#/definitions/controllers.CheckResult'
+    type: object
+  controllers.StatusResponse:
+    properties:
+      checked_at:
+        type: string
+      garage:
+        $ref: '#/definitions/controllers.ServiceStatus'
+      imgproxy:
+        $ref: '#/definitions/controllers.ServiceStatus'
+      overall_ok:
+        type: boolean
+      postgres:
+        $ref: '#/definitions/controllers.ServiceStatus'
+      spicedb:
+        $ref: '#/definitions/controllers.ServiceStatus'
+      wersu:
+        $ref: '#/definitions/controllers.ServiceStatus'
+    type: object
+  controllers.UpdateRoleBody:
+    properties:
+      description:
+        example: All engineers
+        type: string
+      id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4ca
+        type: string
+      name:
+        example: engineering
+        type: string
+    required:
+    - id
     type: object
   controllers.UpdateShareBody:
     properties:
@@ -580,6 +742,35 @@ definitions:
     - id
     - note_id
     - permission
+    type: object
+  controllers.UserRoleMembershipReply:
+    properties:
+      granted_at:
+        type: string
+      role_id:
+        type: string
+      user_id:
+        type: string
+    type: object
+  models.JsUserAuth:
+    properties:
+      avatar_url:
+        description: |-
+          AvatarURL is the absolute URL to the user's avatar. Empty
+          string (the protobuf zero-value) renders as JSON null, so
+          the frontend sees `avatar_url: null` when no provider has
+          resolved an avatar.
+        type: string
+      email:
+        type: string
+      email_verified_at:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      username:
+        type: string
     type: object
   proto.DeleteAttachmentResponse:
     properties:
@@ -749,6 +940,270 @@ paths:
       summary: Update attachment metadata
       tags:
       - attachments
+  /auth/link/passkey/begin:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Starts a WebAuthn registration ceremony for the currently
+        authenticated user. The challenge is keyed against the
+        user's session so it cannot be replayed against a
+        different account.
+
+        The server returns ceremony options
+        (`PublicKeyCredentialCreationOptions`) that the browser
+        uses to invoke the platform authenticator.
+
+        Returns 503 if passkey support is not configured.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: WebAuthn registration options
+          schema:
+            $ref: '#/definitions/controllers.PasskeyCeremonyBeginReply'
+        "401":
+          description: Unauthorized - User is not authenticated via session
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable - Passkey support not configured
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Begin linking a passkey to the authenticated account
+      tags:
+      - Authentication
+  /auth/link/passkey/finish:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Completes a WebAuthn registration ceremony started by
+        `/auth/link/passkey/begin`, attaching the verified passkey
+        to the currently authenticated user via
+        `AuthService.RegisterPasskey`.
+
+        The browser posts the attestation response
+        (`credential_id`, `client_data_json`, `authenticator_data`,
+        `signature`) and the `session_key` from the matching /begin.
+        The server verifies the challenge, origin, RP ID, and
+        attestation signature, then persists the credential via
+        `AuthService.RegisterPasskey` with the authenticated user
+        as both `user_id` and `requester_id`.
+      parameters:
+      - description: WebAuthn attestation response
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.PasskeyCeremonyFinishRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Passkey linked to account
+          schema:
+            $ref: '#/definitions/controllers.PasskeyCeremonyFinishReply'
+        "400":
+          description: Bad Request - Invalid request body or malformed attestation
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized - User is not authenticated, or challenge mismatch
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable - Passkey support not configured
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Finish linking a passkey to the authenticated account
+      tags:
+      - Authentication
+  /auth/passkey/login/begin:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Starts a WebAuthn assertion (login) ceremony.
+
+        The server generates a random challenge and returns the
+        ceremony options (`PublicKeyCredentialRequestOptions`) for
+        the browser. The challenge is stored server-side and must
+        be presented to the matching `/finish` endpoint for
+        verification. The flow is discoverable (no user identity
+        required up front) -- the browser's authenticator selects
+        which passkey to use and the User Handle is supplied with
+        the assertion.
+
+        Returns 503 if passkey support is not configured.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: WebAuthn assertion options
+          schema:
+            $ref: '#/definitions/controllers.PasskeyCeremonyBeginReply'
+        "503":
+          description: Service Unavailable - Passkey support not configured
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Begin a passkey login ceremony
+      tags:
+      - Authentication
+  /auth/passkey/login/finish:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Completes a WebAuthn assertion (login) ceremony started by
+        `/auth/passkey/login/begin`.
+
+        The browser posts the assertion (`credential_id`,
+        `client_data_json`, `authenticator_data`, `signature`) and
+        the `session_key` from the matching /begin. The server
+        resolves the user from the User Handle, verifies the
+        signature against the stored public key, bumps the sign
+        counter via `AuthService.UpdatePasskeyCounter`, and logs
+        the user in.
+      parameters:
+      - description: WebAuthn assertion response
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.PasskeyCeremonyFinishRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful - session cookie set
+          schema:
+            $ref: '#/definitions/models.JsUserAuth'
+        "400":
+          description: Bad Request - Invalid request body or expired ceremony
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized - Challenge mismatch, invalid signature, or unknown
+            credential
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable - Passkey support not configured
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Finish a passkey login ceremony
+      tags:
+      - Authentication
+  /auth/passkey/register/begin:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Starts a WebAuthn registration ceremony for a new passkey.
+
+        The server generates a random challenge and returns the
+        ceremony options (`PublicKeyCredentialCreationOptions`) that
+        the browser uses to invoke the platform authenticator. The
+        challenge is stored server-side and must be presented to
+        the matching `/finish` endpoint for verification.
+
+        Returns 503 if passkey support is not configured
+        (`WEBAUTHN_RP_ID` unset).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: WebAuthn registration options
+          schema:
+            $ref: '#/definitions/controllers.PasskeyCeremonyBeginReply'
+        "400":
+          description: Bad Request - Invalid request body
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable - Passkey support not configured
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Begin a passkey registration ceremony
+      tags:
+      - Authentication
+  /auth/passkey/register/finish:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Completes a WebAuthn registration ceremony started by
+        `/auth/passkey/register/begin`.
+
+        The browser posts the attestation response
+        (`credential_id`, `client_data_json`, `authenticator_data`,
+        `signature`) and the `session_key` from the matching /begin.
+        The server verifies the challenge, origin, RP ID, and
+        attestation signature, then persists the credential via
+        `AuthService.RegisterPasskey`. The User Handle supplied at
+        /begin must already exist (see PostPasskeyRegisterBegin).
+      parameters:
+      - description: WebAuthn attestation response
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.PasskeyCeremonyFinishRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Passkey registered
+          schema:
+            $ref: '#/definitions/controllers.PasskeyCeremonyFinishReply'
+        "400":
+          description: Bad Request - Invalid request body or expired ceremony
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized - Challenge mismatch or invalid attestation
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable - Passkey support not configured
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Finish a passkey registration ceremony
+      tags:
+      - Authentication
   /auth/public-access-token:
     post:
       consumes:
@@ -1711,6 +2166,356 @@ paths:
       summary: Replace all permissions for an object
       tags:
       - permissions
+  /roles:
+    delete:
+      consumes:
+      - application/json
+      description: |-
+        Deletes a role via gRPC service.  Caller must hold
+        `manage` on the role.  Membership edges become dangling
+        references in SpiceDB (they silently evaluate to nothing);
+        cleanup of those is the caller's responsibility.
+      parameters:
+      - description: Delete role request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.DeleteRoleBody'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete role
+      tags:
+      - roles
+    get:
+      consumes:
+      - application/json
+      description: Fetch roles matching an optional filter via gRPC service
+      parameters:
+      - description: Filter by exact role name
+        in: query
+        name: name
+        type: string
+      - description: Filter to roles this user is a member of
+        in: query
+        name: member_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/controllers.RoleReply'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List roles
+      tags:
+      - roles
+    patch:
+      consumes:
+      - application/json
+      description: |-
+        Updates a role's metadata via gRPC service.  Caller must
+        hold `manage` on the role.
+      parameters:
+      - description: Update role request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateRoleBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.RoleReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update role
+      tags:
+      - roles
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Creates a role via gRPC service.  Caller must be in the
+        super-admin env-var list on the gRPC backend.
+      parameters:
+      - description: Create role request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreateRoleBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.RoleReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create role
+      tags:
+      - roles
+  /roles/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Fetch a single role by ID via gRPC service
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.RoleReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get role by ID
+      tags:
+      - roles
+  /roles/by-user:
+    get:
+      consumes:
+      - application/json
+      description: Lists every role the given user is a member of.
+      parameters:
+      - description: Subject user ID
+        in: query
+        name: subject_user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/controllers.RoleReply'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List roles for a user
+      tags:
+      - roles
+  /roles/members:
+    delete:
+      consumes:
+      - application/json
+      description: |-
+        Removes a user from a role's membership.  Caller must
+        hold `manage` on the role.
+      parameters:
+      - description: Remove user from role request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.RemoveUserFromRoleBody'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Remove user from role
+      tags:
+      - roles
+    get:
+      consumes:
+      - application/json
+      description: Lists every user that is a member of the given role.
+      parameters:
+      - description: Role ID
+        in: query
+        name: role_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/controllers.UserRoleMembershipReply'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List users for a role
+      tags:
+      - roles
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Adds a user as a member of a role.  Caller must hold
+        `manage` on the role.
+      parameters:
+      - description: Add user to role request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.AddUserToRoleBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.UserRoleMembershipReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Add user to role
+      tags:
+      - roles
   /shares:
     delete:
       consumes:
@@ -1917,6 +2722,24 @@ paths:
       summary: Get shares by IDs
       tags:
       - shares
+  /status:
+    get:
+      description: |-
+        Reports DNS reachability and service-level reachability for
+        Garage (S3), SpiceDB (gRPC), imgproxy (HTTP /health), the
+        WerSu gRPC backend, and Postgres (when DATABASE_DSN is set).
+        The response is always returned with HTTP 200; inspect the
+        `overall_ok` and per-service `reachable` flags for health.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.StatusResponse'
+      summary: Service reachability status
+      tags:
+      - Status
 securityDefinitions:
   CookieAuth:
     in: cookie

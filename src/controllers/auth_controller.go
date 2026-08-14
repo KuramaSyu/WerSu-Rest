@@ -8,6 +8,8 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
+	"time"
 
 	"github.com/KuramaSyu/WerSu-Rest/src/auth"
 	"github.com/KuramaSyu/WerSu-Rest/src/config"
@@ -16,6 +18,8 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/go-webauthn/webauthn/webauthn"
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -44,17 +48,35 @@ type AuthController struct {
 	shareService *proto.SharingServiceClient
 	JWTSecret    string
 	Hasher       auth.PasswordHasher
+
+	// webauthn runs the WebAuthn ceremony. Nil when RP ID is unset
+	// (the six passkey endpoints then return 503).
+	webauthn *webauthn.WebAuthn
+
+	// ceremonyStore holds SessionData between /begin and /finish.
+	ceremonyStore sync.Map
 }
 
-// NewAuthController creates a new auth controller.
+const passkeyCeremonyTTL = 5 * time.Minute
+
+type ceremonyEntry struct {
+	data    webauthn.SessionData
+	expires time.Time
+}
+
+// NewAuthController wires the controller. When rpID is empty the
+// WebAuthn instance is left nil and the passkey endpoints return 503.
 func NewAuthController(
 	discordOAuthConfig *oauth2.Config,
 	googleOAuthConfig *oauth2.Config,
 	authService auth.AuthServiceClientIface,
 	shareService *proto.SharingServiceClient,
 	jwtSecret string,
+	rpID string,
+	rpName string,
+	rpOrigins []string,
 ) *AuthController {
-	return &AuthController{
+	ac := &AuthController{
 		OAuthConfig:  discordOAuthConfig,
 		GoogleOAuth:  googleOAuthConfig,
 		authService:  authService,
@@ -62,6 +84,67 @@ func NewAuthController(
 		JWTSecret:    jwtSecret,
 		Hasher:       auth.Argon2Hasher{},
 	}
+	if rpID != "" {
+		w, err := webauthn.New(&webauthn.Config{
+			RPID:          rpID,
+			RPDisplayName: rpName,
+			RPOrigins:     rpOrigins,
+		})
+		if err != nil {
+			log.Printf("passkey: failed to build webauthn.Config: %v", err)
+		} else {
+			ac.webauthn = w
+			go ac.cleanupCeremonies()
+		}
+	}
+	return ac
+}
+
+// cleanupCeremonies evicts expired entries on a 1-minute ticker.
+// sync.Map cannot delete-by-age, so the loop scans.
+func (ac *AuthController) cleanupCeremonies() {
+	t := time.NewTicker(time.Minute)
+	defer t.Stop()
+	for range t.C {
+		now := time.Now()
+		ac.ceremonyStore.Range(func(k, v any) bool {
+			e, ok := v.(ceremonyEntry)
+			if !ok || now.After(e.expires) {
+				ac.ceremonyStore.Delete(k)
+			}
+			return true
+		})
+	}
+}
+
+// putCeremony stores SessionData under a random key.
+func (ac *AuthController) putCeremony(sd webauthn.SessionData) (string, error) {
+	var nonce [16]byte
+	if _, err := rand.Read(nonce[:]); err != nil {
+		return "", err
+	}
+	key := base64.RawURLEncoding.EncodeToString(nonce[:])
+	ac.ceremonyStore.Store(key, ceremonyEntry{data: sd, expires: time.Now().Add(passkeyCeremonyTTL)})
+	return key, nil
+}
+
+// takeCeremony loads and deletes; ok=false means unknown or expired.
+func (ac *AuthController) takeCeremony(key string) (webauthn.SessionData, bool) {
+	v, ok := ac.ceremonyStore.LoadAndDelete(key)
+	if !ok {
+		return webauthn.SessionData{}, false
+	}
+	e, ok := v.(ceremonyEntry)
+	if !ok || time.Now().After(e.expires) {
+		return webauthn.SessionData{}, false
+	}
+	return e.data, true
+}
+
+// webauthnConfigured reports whether the controller has a usable
+// webauthn instance; callers map false -> 503.
+func (ac *AuthController) webauthnConfigured() bool {
+	return ac != nil && ac.webauthn != nil
 }
 
 // ------------ Login / signup requests -------------
@@ -79,7 +162,8 @@ type PasswordSignupRequest struct {
 
 // LoginRequest is the unified entry point for non-OAuth login flows.
 // OAuth flows keep their dedicated routes (Discord at /auth/discord/*
-// and Google at /auth/google/*); this is for password and passkey.
+// and Google at /auth/google/*); passkey login goes through the
+// /auth/passkey/login/{begin,finish} endpoints, not here.
 type LoginRequest struct {
 	Kind auth.Kind `json:"kind"`
 
@@ -87,13 +171,6 @@ type LoginRequest struct {
 	Email    string `json:"email,omitempty"`
 	Password string `json:"password,omitempty"`
 	Username string `json:"username,omitempty"` // signup only
-
-	// Passkey fields (verified by the controller via the WebAuthn
-	// ceremony; the strategy just persists the result).
-	CredentialId      []byte `json:"credential_id,omitempty"`
-	ClientDataJSON    []byte `json:"client_data_json,omitempty"`
-	AuthenticatorData []byte `json:"authenticator_data,omitempty"`
-	Signature         []byte `json:"signature,omitempty"`
 }
 
 // SignupRequest is the dedicated entry point for password signup.
@@ -372,14 +449,6 @@ func (ac *AuthController) PostLogin(c *gin.Context) {
 			Password: req.Password,
 			Signup:   false,
 		}
-	case auth.KindPasskeyKind:
-		strategy = &auth.PasskeyLoginStrategy{
-			Auth:              ac.authService,
-			CredentialId:      req.CredentialId,
-			ClientDataJSON:    req.ClientDataJSON,
-			AuthenticatorData: req.AuthenticatorData,
-			Signature:         req.Signature,
-		}
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Login kind requires its own route: " + string(kind)})
 		return
@@ -388,10 +457,6 @@ func (ac *AuthController) PostLogin(c *gin.Context) {
 	user, err := strategy.Login(c.Request.Context())
 	if err != nil {
 		if err == auth.InvalidCredentialsError {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-			return
-		}
-		if err == auth.InvalidPasskeyError {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
@@ -552,24 +617,304 @@ func (ac *AuthController) GoogleCallback(c *gin.Context) {
 //      response, and call AuthService.RegisterPasskey or update
 //      the sign counter.
 
-// PostPasskeyRegisterBegin: 501 Not Implemented.
+// PasskeyCeremonyBeginRequest kicks off a WebAuthn ceremony on the
+// server. The body is optional.
+//
+// For the registration flow the caller MUST supply a UserId of an
+// already-existing user -- passkey-only signup (no password) is not
+// supported yet; the frontend should mint a password user via
+// /auth/signup first, then attach a passkey via /auth/link/passkey.
+// The login flow ignores the body entirely.
+type PasskeyCeremonyBeginRequest struct {
+	UserId string `json:"user_id,omitempty"`
+}
+
+// PasskeyCeremonyBeginReply is the response to a `/begin` endpoint.
+// It carries the WebAuthn ceremony payload plus a server-generated
+// `SessionKey` that the browser must echo back on the matching
+// `/finish` call so the controller can look up the stored
+// `SessionData` (challenge, allowed credentials, user handle).
+type PasskeyCeremonyBeginReply struct {
+	SessionKey string         `json:"session_key"`
+	Options    map[string]any `json:"options"`
+}
+
+// PasskeyCeremonyFinishRequest is the body posted to the `/finish`
+// endpoints. The browser includes:
+//   - `session_key` from the matching /begin response,
+//   - the raw attestation (registration) or assertion (login)
+//     bytes the authenticator returned,
+//   - for registration, an optional human-readable friendly_name
+//     for the new passkey.
+type PasskeyCeremonyFinishRequest struct {
+	SessionKey        string `json:"session_key"`
+	CredentialId      []byte `json:"credential_id"`
+	ClientDataJSON    []byte `json:"client_data_json"`
+	AuthenticatorData []byte `json:"authenticator_data"`
+	Signature         []byte `json:"signature"`
+	FriendlyName      string `json:"friendly_name,omitempty"`
+}
+
+// PasskeyCeremonyFinishReply is the success body returned by the
+// `/finish` endpoints after a verified ceremony. The login variant
+// returns the user via the session cookie + 200 with the parsed
+// UserAuth body (kept consistent with `loginUser`).
+type PasskeyCeremonyFinishReply struct {
+	CredentialId string `json:"credential_id"`
+}
+
+// PostPasskeyRegisterBegin godoc
+// @Summary      Begin a passkey registration ceremony
+// @Description  Starts a WebAuthn registration ceremony for a new passkey.
+// @Description
+// @Description  The server generates a random challenge and returns the
+// @Description  ceremony options (`PublicKeyCredentialCreationOptions`) that
+// @Description  the browser uses to invoke the platform authenticator. The
+// @Description  challenge is stored server-side and must be presented to
+// @Description  the matching `/finish` endpoint for verification.
+// @Description
+// @Description  Returns 503 if passkey support is not configured
+// @Description  (`WEBAUTHN_RP_ID` unset).
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  PasskeyCeremonyBeginReply  "WebAuthn registration options"
+// @Failure      400  {object}  map[string]string          "Bad Request - Invalid request body"
+// @Failure      503  {object}  map[string]string          "Service Unavailable - Passkey support not configured"
+// @Router       /auth/passkey/register/begin [post]
 func (ac *AuthController) PostPasskeyRegisterBegin(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "passkey register begin requires WebAuthn ceremony store; not yet implemented"})
+	if !ac.webauthnConfigured() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "passkey support is not configured (WEBAUTHN_RP_ID unset)"})
+		return
+	}
+	var req PasskeyCeremonyBeginRequest
+	_ = c.ShouldBindJSON(&req) // body is optional
+	user := &proto.UserAuth{Id: req.UserId}
+	wu := auth.NewWebAuthnUser(user, nil)
+
+	options, sessionData, err := ac.webauthn.BeginRegistration(wu)
+	if err != nil {
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("begin registration: %w", err))
+		return
+	}
+	key, err := ac.putCeremony(*sessionData)
+	if err != nil {
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("store ceremony: %w", err))
+		return
+	}
+	c.JSON(http.StatusOK, PasskeyCeremonyBeginReply{
+		SessionKey: key,
+		Options:    ceremonyOptionsJSON(options.Response),
+	})
 }
 
-// PostPasskeyRegisterFinish: 501 Not Implemented.
+// PostPasskeyRegisterFinish godoc
+// @Summary      Finish a passkey registration ceremony
+// @Description  Completes a WebAuthn registration ceremony started by
+// @Description  `/auth/passkey/register/begin`.
+// @Description
+// @Description  The browser posts the attestation response
+// @Description  (`credential_id`, `client_data_json`, `authenticator_data`,
+// @Description  `signature`) and the `session_key` from the matching /begin.
+// @Description  The server verifies the challenge, origin, RP ID, and
+// @Description  attestation signature, then persists the credential via
+// @Description  `AuthService.RegisterPasskey`. The User Handle supplied at
+// @Description  /begin must already exist (see PostPasskeyRegisterBegin).
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Param        payload  body      PasskeyCeremonyFinishRequest  true  "WebAuthn attestation response"
+// @Success      200      {object}  PasskeyCeremonyFinishReply   "Passkey registered"
+// @Failure      400      {object}  map[string]string            "Bad Request - Invalid request body or expired ceremony"
+// @Failure      401      {object}  map[string]string            "Unauthorized - Challenge mismatch or invalid attestation"
+// @Failure      503      {object}  map[string]string            "Service Unavailable - Passkey support not configured"
+// @Router       /auth/passkey/register/finish [post]
 func (ac *AuthController) PostPasskeyRegisterFinish(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "passkey register finish requires WebAuthn ceremony store; not yet implemented"})
+	if !ac.webauthnConfigured() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "passkey support is not configured (WEBAUTHN_RP_ID unset)"})
+		return
+	}
+	var req PasskeyCeremonyFinishRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	sessionData, ok := ac.takeCeremony(req.SessionKey)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ceremony expired or unknown"})
+		return
+	}
+	userId := string(sessionData.UserID)
+	if userId == "" || userId == "anonymous" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ceremony did not include a user id; use /auth/signup + /auth/link/passkey/{begin,finish} for first-time users"})
+		return
+	}
+	wu, err := auth.LoadPasskeyUser(c.Request.Context(), ac.authService, userId)
+	if err != nil {
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("load user: %w", err))
+		return
+	}
+	cred, err := ac.webauthn.FinishRegistration(wu, sessionData, c.Request)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": fmt.Sprintf("registration failed: %v", err)})
+		return
+	}
+	if _, err := ac.authService.RegisterPasskey(c.Request.Context(), &proto.RegisterPasskeyRequest{
+		UserId:         userId,
+		RequesterId:    userId,
+		CredentialId:   cred.ID,
+		PublicKey:      cred.PublicKey,
+		Transports:     authTransports(cred.Transport),
+		Aaguid:         cred.Authenticator.AAGUID,
+		BackupEligible: cred.Flags.BackupEligible,
+		BackupState:    cred.Flags.BackupState,
+		UserVerified:   cred.Flags.UserVerified,
+		FriendlyName:   req.FriendlyName,
+	}); err != nil {
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("register passkey: %w", err))
+		return
+	}
+	c.JSON(http.StatusOK, PasskeyCeremonyFinishReply{
+		CredentialId: base64.RawURLEncoding.EncodeToString(cred.ID),
+	})
 }
 
-// PostPasskeyLoginBegin: 501 Not Implemented.
+// PostPasskeyLoginBegin godoc
+// @Summary      Begin a passkey login ceremony
+// @Description  Starts a WebAuthn assertion (login) ceremony.
+// @Description
+// @Description  The server generates a random challenge and returns the
+// @Description  ceremony options (`PublicKeyCredentialRequestOptions`) for
+// @Description  the browser. The challenge is stored server-side and must
+// @Description  be presented to the matching `/finish` endpoint for
+// @Description  verification. The flow is discoverable (no user identity
+// @Description  required up front) -- the browser's authenticator selects
+// @Description  which passkey to use and the User Handle is supplied with
+// @Description  the assertion.
+// @Description
+// @Description  Returns 503 if passkey support is not configured.
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  PasskeyCeremonyBeginReply  "WebAuthn assertion options"
+// @Failure      503  {object}  map[string]string          "Service Unavailable - Passkey support not configured"
+// @Router       /auth/passkey/login/begin [post]
 func (ac *AuthController) PostPasskeyLoginBegin(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "passkey login begin requires WebAuthn ceremony store; not yet implemented"})
+	if !ac.webauthnConfigured() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "passkey support is not configured (WEBAUTHN_RP_ID unset)"})
+		return
+	}
+	options, sessionData, err := ac.webauthn.BeginDiscoverableLogin()
+	if err != nil {
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("begin login: %w", err))
+		return
+	}
+	key, err := ac.putCeremony(*sessionData)
+	if err != nil {
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("store ceremony: %w", err))
+		return
+	}
+	c.JSON(http.StatusOK, PasskeyCeremonyBeginReply{
+		SessionKey: key,
+		Options:    ceremonyOptionsJSON(options.Response),
+	})
 }
 
-// PostPasskeyLoginFinish: 501 Not Implemented.
+// PostPasskeyLoginFinish godoc
+// @Summary      Finish a passkey login ceremony
+// @Description  Completes a WebAuthn assertion (login) ceremony started by
+// @Description  `/auth/passkey/login/begin`.
+// @Description
+// @Description  The browser posts the assertion (`credential_id`,
+// @Description  `client_data_json`, `authenticator_data`, `signature`) and
+// @Description  the `session_key` from the matching /begin. The server
+// @Description  resolves the user from the User Handle, verifies the
+// @Description  signature against the stored public key, bumps the sign
+// @Description  counter via `AuthService.UpdatePasskeyCounter`, and logs
+// @Description  the user in.
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Param        payload  body      PasskeyCeremonyFinishRequest  true  "WebAuthn assertion response"
+// @Success      200      {object}  models.JsUserAuth            "Login successful - session cookie set"
+// @Failure      400      {object}  map[string]string            "Bad Request - Invalid request body or expired ceremony"
+// @Failure      401      {object}  map[string]string            "Unauthorized - Challenge mismatch, invalid signature, or unknown credential"
+// @Failure      503      {object}  map[string]string            "Service Unavailable - Passkey support not configured"
+// @Router       /auth/passkey/login/finish [post]
 func (ac *AuthController) PostPasskeyLoginFinish(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "passkey login finish requires WebAuthn ceremony store; not yet implemented"})
+	if !ac.webauthnConfigured() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "passkey support is not configured (WEBAUTHN_RP_ID unset)"})
+		return
+	}
+	var req PasskeyCeremonyFinishRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	sessionData, ok := ac.takeCeremony(req.SessionKey)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ceremony expired or unknown"})
+		return
+	}
+	var matched *auth.WebAuthnUser
+	handler := func(rawID, userHandle []byte) (webauthn.User, error) {
+		wu, err := auth.WebAuthnUserResolver(c.Request.Context(), ac.authService)(rawID, userHandle)
+		if err != nil {
+			return nil, err
+		}
+		resolved, ok := wu.(*auth.WebAuthnUser)
+		if !ok {
+			return wu, nil
+		}
+		matched = resolved
+		return resolved, nil
+	}
+	_, cred, err := ac.webauthn.FinishPasskeyLogin(handler, sessionData, c.Request)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": fmt.Sprintf("login failed: %v", err)})
+		return
+	}
+	if matched == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "could not resolve passkey owner"})
+		return
+	}
+	rec := matched.FindCredential(cred.ID)
+	if rec == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "matched passkey not in user's credential list"})
+		return
+	}
+	if _, err := ac.authService.UpdatePasskeyCounter(c.Request.Context(), &proto.UpdatePasskeyCounterRequest{
+		PasskeyId:    rec.PasskeyID,
+		NewSignCount: uint64(cred.Authenticator.SignCount),
+	}); err != nil {
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("update counter: %w", err))
+		return
+	}
+	ac.loginUser(c, matched.UserAuth)
+}
+
+// authTransports converts the typed webauthn transport list back to
+// strings for the gRPC `repeated string` field.
+func authTransports(in []protocol.AuthenticatorTransport) []string {
+	out := make([]string, 0, len(in))
+	for _, t := range in {
+		out = append(out, string(t))
+	}
+	return out
+}
+
+// ceremonyOptionsJSON round-trips a webauthn options struct through
+// encoding/json so gin's encoder can serialize it generically.
+func ceremonyOptionsJSON(v any) map[string]any {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil
+	}
+	var out map[string]any
+	if err := json.Unmarshal(b, &out); err != nil {
+		return nil
+	}
+	return out
 }
 
 // ------------ Account linking ------------
@@ -705,14 +1050,133 @@ func (ac *AuthController) PostLinkPassword(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"linked": "password"})
 }
 
-// PostLinkPasskeyBegin: 501 Not Implemented.
+// PostLinkPasskeyBegin godoc
+// @Summary      Begin linking a passkey to the authenticated account
+// @Description  Starts a WebAuthn registration ceremony for the currently
+// @Description  authenticated user. The challenge is keyed against the
+// @Description  user's session so it cannot be replayed against a
+// @Description  different account.
+// @Description
+// @Description  The server returns ceremony options
+// @Description  (`PublicKeyCredentialCreationOptions`) that the browser
+// @Description  uses to invoke the platform authenticator.
+// @Description
+// @Description  Returns 503 if passkey support is not configured.
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Security     CookieAuth
+// @Success      200  {object}  PasskeyCeremonyBeginReply  "WebAuthn registration options"
+// @Failure      401  {object}  map[string]string          "Unauthorized - User is not authenticated via session"
+// @Failure      503  {object}  map[string]string          "Service Unavailable - Passkey support not configured"
+// @Router       /auth/link/passkey/begin [post]
 func (ac *AuthController) PostLinkPasskeyBegin(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "passkey linking requires WebAuthn ceremony store; not yet implemented"})
+	user, _, err := UserFromContext(c)
+	if user == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+	if !ac.webauthnConfigured() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "passkey support is not configured (WEBAUTHN_RP_ID unset)"})
+		return
+	}
+	wu, err := auth.LoadPasskeyUser(c.Request.Context(), ac.authService, user.ID)
+	if err != nil {
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("load user: %w", err))
+		return
+	}
+	// Exclude the user's existing credentials so the picker hides them.
+	creds := webauthn.Credentials(wu.WebAuthnCredentials())
+	options, sessionData, err := ac.webauthn.BeginRegistration(wu,
+		webauthn.WithExclusions(creds.CredentialDescriptors()),
+	)
+	if err != nil {
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("begin registration: %w", err))
+		return
+	}
+	key, err := ac.putCeremony(*sessionData)
+	if err != nil {
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("store ceremony: %w", err))
+		return
+	}
+	c.JSON(http.StatusOK, PasskeyCeremonyBeginReply{
+		SessionKey: key,
+		Options:    ceremonyOptionsJSON(options.Response),
+	})
 }
 
-// PostLinkPasskeyFinish: 501 Not Implemented.
+// PostLinkPasskeyFinish godoc
+// @Summary      Finish linking a passkey to the authenticated account
+// @Description  Completes a WebAuthn registration ceremony started by
+// @Description  `/auth/link/passkey/begin`, attaching the verified passkey
+// @Description  to the currently authenticated user via
+// @Description  `AuthService.RegisterPasskey`.
+// @Description
+// @Description  The browser posts the attestation response
+// @Description  (`credential_id`, `client_data_json`, `authenticator_data`,
+// @Description  `signature`) and the `session_key` from the matching /begin.
+// @Description  The server verifies the challenge, origin, RP ID, and
+// @Description  attestation signature, then persists the credential via
+// @Description  `AuthService.RegisterPasskey` with the authenticated user
+// @Description  as both `user_id` and `requester_id`.
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Security     CookieAuth
+// @Param        payload  body      PasskeyCeremonyFinishRequest  true  "WebAuthn attestation response"
+// @Success      200      {object}  PasskeyCeremonyFinishReply   "Passkey linked to account"
+// @Failure      400      {object}  map[string]string            "Bad Request - Invalid request body or malformed attestation"
+// @Failure      401      {object}  map[string]string            "Unauthorized - User is not authenticated, or challenge mismatch"
+// @Failure      503      {object}  map[string]string            "Service Unavailable - Passkey support not configured"
+// @Router       /auth/link/passkey/finish [post]
 func (ac *AuthController) PostLinkPasskeyFinish(c *gin.Context) {
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "passkey linking requires WebAuthn ceremony store; not yet implemented"})
+	user, _, err := UserFromContext(c)
+	if user == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+	if !ac.webauthnConfigured() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "passkey support is not configured (WEBAUTHN_RP_ID unset)"})
+		return
+	}
+	var req PasskeyCeremonyFinishRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	sessionData, ok := ac.takeCeremony(req.SessionKey)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ceremony expired or unknown"})
+		return
+	}
+	wu, err := auth.LoadPasskeyUser(c.Request.Context(), ac.authService, user.ID)
+	if err != nil {
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("load user: %w", err))
+		return
+	}
+	cred, err := ac.webauthn.FinishRegistration(wu, sessionData, c.Request)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": fmt.Sprintf("registration failed: %v", err)})
+		return
+	}
+	if _, err := ac.authService.RegisterPasskey(c.Request.Context(), &proto.RegisterPasskeyRequest{
+		UserId:         user.ID,
+		RequesterId:    user.ID,
+		CredentialId:   cred.ID,
+		PublicKey:      cred.PublicKey,
+		Transports:     authTransports(cred.Transport),
+		Aaguid:         cred.Authenticator.AAGUID,
+		BackupEligible: cred.Flags.BackupEligible,
+		BackupState:    cred.Flags.BackupState,
+		UserVerified:   cred.Flags.UserVerified,
+		FriendlyName:   req.FriendlyName,
+	}); err != nil {
+		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("register passkey: %w", err))
+		return
+	}
+	c.JSON(http.StatusOK, PasskeyCeremonyFinishReply{
+		CredentialId: base64.RawURLEncoding.EncodeToString(cred.ID),
+	})
 }
 
 // GetLinkedCredentials returns the user's authenticated credentials

@@ -42,6 +42,7 @@ func newAuthTestRouter(t *testing.T, fake auth.AuthServiceClientIface) *gin.Engi
 		fake,
 		nil, // shareService not used
 		"test-jwt-secret",
+		"", "", nil, // WebAuthn not configured -- passkey endpoints return 503
 	)
 	t.Cleanup(func() { _ = ac })
 
@@ -53,6 +54,12 @@ func newAuthTestRouter(t *testing.T, fake auth.AuthServiceClientIface) *gin.Engi
 	authGroup.POST("/link/discord", ac.PostLinkDiscord)
 	authGroup.POST("/link/google", ac.PostLinkGoogle)
 	authGroup.POST("/link/password", ac.PostLinkPassword)
+	authGroup.POST("/passkey/register/begin", ac.PostPasskeyRegisterBegin)
+	authGroup.POST("/passkey/register/finish", ac.PostPasskeyRegisterFinish)
+	authGroup.POST("/passkey/login/begin", ac.PostPasskeyLoginBegin)
+	authGroup.POST("/passkey/login/finish", ac.PostPasskeyLoginFinish)
+	authGroup.POST("/link/passkey/begin", ac.PostLinkPasskeyBegin)
+	authGroup.POST("/link/passkey/finish", ac.PostLinkPasskeyFinish)
 	authGroup.GET("/logout", ac.Logout)
 	return r
 }
@@ -176,36 +183,18 @@ func TestPostLoginPasswordSuccess(t *testing.T) {
 	}
 }
 
-func TestPostLoginPasskeyNotYetImplemented(t *testing.T) {
-	// The gRPC backend doesn't have VerifyPasskey yet. The strategy
-	// returns a clear error and the controller maps it to 500.
-	// The fake has to simulate a successful FindPasskey so the
-	// strategy gets past the lookup and into the not-implemented
-	// branch.
-	fake := &auth.FakeAuthClient{
-		OnFindPasskey: func(in *proto.FindPasskeyRequest) (*proto.FindPasskeyResponse, error) {
-			return &proto.FindPasskeyResponse{
-				Passkey: &proto.Passkey{
-					Id:        "pk-1",
-					UserId:    "u-1",
-					PublicKey: []byte("pk"),
-				},
-			}, nil
-		},
+func TestPostLoginPasskeyKindRejected(t *testing.T) {
+	// Passkey login now goes through /auth/passkey/login/{begin,finish},
+	// not /auth/login. A kind=passkey request to /auth/login should
+	// be rejected with 400 because the unified endpoint no longer
+	// knows how to dispatch it.
+	r := newAuthTestRouter(t, &auth.FakeAuthClient{})
+	w := doRequest(r, http.MethodPost, "/auth/login", LoginRequest{Kind: auth.KindPasskeyKind})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", w.Code)
 	}
-	r := newAuthTestRouter(t, fake)
-	w := doRequest(r, http.MethodPost, "/auth/login", LoginRequest{
-		Kind:              auth.KindPasskeyKind,
-		CredentialId:      []byte("cred"),
-		ClientDataJSON:    []byte("cd"),
-		AuthenticatorData: []byte("ad"),
-		Signature:         []byte("sig"),
-	})
-	if w.Code != http.StatusInternalServerError {
-		t.Fatalf("status = %d, want 500 (passkey not implemented)", w.Code)
-	}
-	if !strings.Contains(w.Body.String(), "VerifyPasskey") {
-		t.Errorf("body = %q, want mention of VerifyPasskey", w.Body.String())
+	if !strings.Contains(w.Body.String(), "its own route") {
+		t.Errorf("body = %q, want 'requires its own route'", w.Body.String())
 	}
 }
 
@@ -645,6 +634,102 @@ func fakeAuth() fakeAuthClient {
 // the interface so it can be passed to NewAuthController.
 func newFakeClient() *auth.FakeAuthClient {
 	return &auth.FakeAuthClient{}
+}
+
+// ---------- Passkey ceremony endpoints ----------
+//
+// The test router wires AuthController with the WebAuthn instance
+// left nil, so the four anonymous endpoints must short-circuit with
+// 503 ("Passkey support is not configured"). The two link endpoints
+// also check the session before the WebAuthn call and surface 401
+// for unauthenticated callers.
+
+func TestPostPasskeyRegisterBeginNotConfigured(t *testing.T) {
+	r := newAuthTestRouter(t, &auth.FakeAuthClient{})
+	w := doRequest(r, http.MethodPost, "/auth/passkey/register/begin", nil)
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "WEBAUTHN_RP_ID") {
+		t.Errorf("body = %q, want 'WEBAUTHN_RP_ID' hint", w.Body.String())
+	}
+}
+
+func TestPostPasskeyRegisterFinishNotConfigured(t *testing.T) {
+	r := newAuthTestRouter(t, &auth.FakeAuthClient{})
+	w := doRequest(r, http.MethodPost, "/auth/passkey/register/finish", PasskeyCeremonyFinishRequest{})
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", w.Code)
+	}
+}
+
+func TestPostPasskeyLoginBeginNotConfigured(t *testing.T) {
+	r := newAuthTestRouter(t, &auth.FakeAuthClient{})
+	w := doRequest(r, http.MethodPost, "/auth/passkey/login/begin", nil)
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", w.Code)
+	}
+}
+
+func TestPostPasskeyLoginFinishNotConfigured(t *testing.T) {
+	r := newAuthTestRouter(t, &auth.FakeAuthClient{})
+	w := doRequest(r, http.MethodPost, "/auth/passkey/login/finish", PasskeyCeremonyFinishRequest{})
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", w.Code)
+	}
+}
+
+func TestPostLinkPasskeyBeginNotLoggedIn(t *testing.T) {
+	// Link endpoints sit behind the session middleware. Without
+	// a session the controller returns 401 before reaching the
+	// WebAuthn gate.
+	r := newAuthTestRouter(t, &auth.FakeAuthClient{})
+	w := doRequest(r, http.MethodPost, "/auth/link/passkey/begin", nil)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", w.Code)
+	}
+}
+
+func TestPostLinkPasskeyFinishNotLoggedIn(t *testing.T) {
+	r := newAuthTestRouter(t, &auth.FakeAuthClient{})
+	w := doRequest(r, http.MethodPost, "/auth/link/passkey/finish", PasskeyCeremonyFinishRequest{})
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", w.Code)
+	}
+}
+
+func TestPostLinkPasskeyBeginLoggedInButNotConfigured(t *testing.T) {
+	// Logged-in caller still hits 503 because the test router
+	// does not configure WebAuthn. The session check passes; the
+	// WebAuthn gate fires next.
+	r := newAuthTestRouter(t, &auth.FakeAuthClient{})
+	rec := httptest.NewRecorder()
+	runWithSession(nil, rec, r, func(c *gin.Context) {
+		s := sessions.Default(c)
+		s.Set("user", models.User{ID: "u-1"})
+		_ = s.Save()
+	})
+	req := httptest.NewRequest(http.MethodPost, "/auth/link/passkey/begin", nil)
+	req.Header.Set("Cookie", rec.Result().Header.Get("Set-Cookie"))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", w.Code)
+	}
+}
+
+func TestPostPasskeyRegisterFinishRequiresExistingUser(t *testing.T) {
+	// /register/finish with no WebAuthn config still surfaces 503.
+	// The "ceremony did not include a user id" 400 branch only
+	// fires once WebAuthn is configured; that path is covered by
+	// the integration tests wired up under test/. Unit tests
+	// stay at the 503 gate.
+	r := newAuthTestRouter(t, &auth.FakeAuthClient{})
+	body, _ := json.Marshal(PasskeyCeremonyFinishRequest{SessionKey: "any"})
+	w := doRequest(r, http.MethodPost, "/auth/passkey/register/finish", body)
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", w.Code)
+	}
 }
 
 // keep `errors` and `status` imports referenced in case the test

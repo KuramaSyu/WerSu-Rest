@@ -623,63 +623,6 @@ func TestPasswordStrategyNilHasher(t *testing.T) {
 	}
 }
 
-// ---------- PasskeyLoginStrategy ----------
-
-func TestPasskeyLoginStrategyMissingFields(t *testing.T) {
-	s := &PasskeyLoginStrategy{Auth: &FakeAuthClient{}}
-	if _, err := s.Login(context.Background()); err == nil {
-		t.Fatal("expected error when ceremony fields are missing")
-	}
-}
-
-func TestPasskeyLoginStrategyNilAuth(t *testing.T) {
-	s := &PasskeyLoginStrategy{
-		Auth:              nil,
-		CredentialId:      []byte("cred"),
-		ClientDataJSON:    []byte("cd"),
-		AuthenticatorData: []byte("ad"),
-		Signature:         []byte("sig"),
-	}
-	if _, err := s.Login(context.Background()); err == nil {
-		t.Fatal("expected error when Auth is nil")
-	}
-}
-
-// ---------- PasskeyRegisterStrategy ----------
-
-func TestPasskeyRegisterStrategyMissingFields(t *testing.T) {
-	s := &PasskeyRegisterStrategy{Auth: &FakeAuthClient{}}
-	if _, err := s.Login(context.Background()); err == nil {
-		t.Fatal("expected error when UserId/RequesterId missing")
-	}
-}
-
-func TestPasskeyRegisterStrategyMissingCredentials(t *testing.T) {
-	s := &PasskeyRegisterStrategy{
-		Auth:         &FakeAuthClient{},
-		UserId:       "u-1",
-		RequesterId:  "u-1",
-		CredentialId: nil,
-		PublicKey:    nil,
-	}
-	if _, err := s.Login(context.Background()); err == nil {
-		t.Fatal("expected error when credential_id/public_key missing")
-	}
-}
-
-func TestPasskeyRegisterStrategyNilAuth(t *testing.T) {
-	s := &PasskeyRegisterStrategy{
-		Auth:         nil,
-		UserId:       "u-1",
-		RequesterId:  "u-1",
-		CredentialId: []byte("c"),
-		PublicKey:    []byte("pk"),
-	}
-	if _, err := s.Login(context.Background()); err == nil {
-		t.Fatal("expected error when Auth is nil")
-	}
-}
-
 // ---------- helpers ----------
 
 // notFoundErr returns a gRPC-style NotFound status error.

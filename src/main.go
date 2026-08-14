@@ -100,6 +100,9 @@ func main() {
 		authGrpcClient,
 		&shareingGrpcClient,
 		appConfig.JwtSecret,
+		appConfig.WebAuthnRPID,
+		appConfig.WebAuthnRPName,
+		[]string{appConfig.FrontendURL},
 	)
 	noteController := controllers.NewNoteController(&noteGrpcClient)
 	noteSearchController := controllers.NewSearchNoteController(&noteGrpcClient)

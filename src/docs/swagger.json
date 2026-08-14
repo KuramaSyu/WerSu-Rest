@@ -250,6 +250,313 @@
                 }
             }
         },
+        "/auth/link/passkey/begin": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Starts a WebAuthn registration ceremony for the currently\nauthenticated user. The challenge is keyed against the\nuser's session so it cannot be replayed against a\ndifferent account.\n\nThe server returns ceremony options\n(`PublicKeyCredentialCreationOptions`) that the browser\nuses to invoke the platform authenticator.\n\nReturns 503 if passkey support is not configured.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Begin linking a passkey to the authenticated account",
+                "responses": {
+                    "200": {
+                        "description": "WebAuthn registration options",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PasskeyCeremonyBeginReply"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - User is not authenticated via session",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable - Passkey support not configured",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/link/passkey/finish": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Completes a WebAuthn registration ceremony started by\n`/auth/link/passkey/begin`, attaching the verified passkey\nto the currently authenticated user via\n`AuthService.RegisterPasskey`.\n\nThe browser posts the attestation response\n(`credential_id`, `client_data_json`, `authenticator_data`,\n`signature`) and the `session_key` from the matching /begin.\nThe server verifies the challenge, origin, RP ID, and\nattestation signature, then persists the credential via\n`AuthService.RegisterPasskey` with the authenticated user\nas both `user_id` and `requester_id`.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Finish linking a passkey to the authenticated account",
+                "parameters": [
+                    {
+                        "description": "WebAuthn attestation response",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PasskeyCeremonyFinishRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Passkey linked to account",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PasskeyCeremonyFinishReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid request body or malformed attestation",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - User is not authenticated, or challenge mismatch",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable - Passkey support not configured",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/passkey/login/begin": {
+            "post": {
+                "description": "Starts a WebAuthn assertion (login) ceremony.\n\nThe server generates a random challenge and returns the\nceremony options (`PublicKeyCredentialRequestOptions`) for\nthe browser. The challenge is stored server-side and must\nbe presented to the matching `/finish` endpoint for\nverification. The flow is discoverable (no user identity\nrequired up front) -- the browser's authenticator selects\nwhich passkey to use and the User Handle is supplied with\nthe assertion.\n\nReturns 503 if passkey support is not configured.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Begin a passkey login ceremony",
+                "responses": {
+                    "200": {
+                        "description": "WebAuthn assertion options",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PasskeyCeremonyBeginReply"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable - Passkey support not configured",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/passkey/login/finish": {
+            "post": {
+                "description": "Completes a WebAuthn assertion (login) ceremony started by\n`/auth/passkey/login/begin`.\n\nThe browser posts the assertion (`credential_id`,\n`client_data_json`, `authenticator_data`, `signature`) and\nthe `session_key` from the matching /begin. The server\nresolves the user from the User Handle, verifies the\nsignature against the stored public key, bumps the sign\ncounter via `AuthService.UpdatePasskeyCounter`, and logs\nthe user in.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Finish a passkey login ceremony",
+                "parameters": [
+                    {
+                        "description": "WebAuthn assertion response",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PasskeyCeremonyFinishRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login successful - session cookie set",
+                        "schema": {
+                            "$ref": "#/definitions/models.JsUserAuth"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid request body or expired ceremony",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Challenge mismatch, invalid signature, or unknown credential",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable - Passkey support not configured",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/passkey/register/begin": {
+            "post": {
+                "description": "Starts a WebAuthn registration ceremony for a new passkey.\n\nThe server generates a random challenge and returns the\nceremony options (`PublicKeyCredentialCreationOptions`) that\nthe browser uses to invoke the platform authenticator. The\nchallenge is stored server-side and must be presented to\nthe matching `/finish` endpoint for verification.\n\nReturns 503 if passkey support is not configured\n(`WEBAUTHN_RP_ID` unset).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Begin a passkey registration ceremony",
+                "responses": {
+                    "200": {
+                        "description": "WebAuthn registration options",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PasskeyCeremonyBeginReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid request body",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable - Passkey support not configured",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/passkey/register/finish": {
+            "post": {
+                "description": "Completes a WebAuthn registration ceremony started by\n`/auth/passkey/register/begin`.\n\nThe browser posts the attestation response\n(`credential_id`, `client_data_json`, `authenticator_data`,\n`signature`) and the `session_key` from the matching /begin.\nThe server verifies the challenge, origin, RP ID, and\nattestation signature, then persists the credential via\n`AuthService.RegisterPasskey`. The User Handle supplied at\n/begin must already exist (see PostPasskeyRegisterBegin).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Finish a passkey registration ceremony",
+                "parameters": [
+                    {
+                        "description": "WebAuthn attestation response",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PasskeyCeremonyFinishRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Passkey registered",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PasskeyCeremonyFinishReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid request body or expired ceremony",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Challenge mismatch or invalid attestation",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable - Passkey support not configured",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/auth/public-access-token": {
             "post": {
                 "description": "Generates a new JWT access token for the user authenticated via a session cookie.",
@@ -1676,6 +1983,518 @@
                 }
             }
         },
+        "/roles": {
+            "get": {
+                "description": "Fetch roles matching an optional filter via gRPC service",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "List roles",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by exact role name",
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter to roles this user is a member of",
+                        "name": "member_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/controllers.RoleReply"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Creates a role via gRPC service.  Caller must be in the\nsuper-admin env-var list on the gRPC backend.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Create role",
+                "parameters": [
+                    {
+                        "description": "Create role request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.CreateRoleBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.RoleReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes a role via gRPC service.  Caller must hold\n`manage` on the role.  Membership edges become dangling\nreferences in SpiceDB (they silently evaluate to nothing);\ncleanup of those is the caller's responsibility.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Delete role",
+                "parameters": [
+                    {
+                        "description": "Delete role request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.DeleteRoleBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Updates a role's metadata via gRPC service.  Caller must\nhold `manage` on the role.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Update role",
+                "parameters": [
+                    {
+                        "description": "Update role request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.UpdateRoleBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.RoleReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/roles/by-user": {
+            "get": {
+                "description": "Lists every role the given user is a member of.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "List roles for a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Subject user ID",
+                        "name": "subject_user_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/controllers.RoleReply"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/roles/members": {
+            "get": {
+                "description": "Lists every user that is a member of the given role.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "List users for a role",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Role ID",
+                        "name": "role_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/controllers.UserRoleMembershipReply"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Adds a user as a member of a role.  Caller must hold\n`manage` on the role.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Add user to role",
+                "parameters": [
+                    {
+                        "description": "Add user to role request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.AddUserToRoleBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.UserRoleMembershipReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Removes a user from a role's membership.  Caller must\nhold `manage` on the role.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Remove user from role",
+                "parameters": [
+                    {
+                        "description": "Remove user from role request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.RemoveUserFromRoleBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/roles/{id}": {
+            "get": {
+                "description": "Fetch a single role by ID via gRPC service",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Get role by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Role ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.RoleReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/shares": {
             "get": {
                 "description": "Public access to a share by ID via gRPC service",
@@ -1987,6 +2806,26 @@
                     }
                 }
             }
+        },
+        "/status": {
+            "get": {
+                "description": "Reports DNS reachability and service-level reachability for\nGarage (S3), SpiceDB (gRPC), imgproxy (HTTP /health), the\nWerSu gRPC backend, and Postgres (when DATABASE_DSN is set).\nThe response is always returned with HTTP 200; inspect the\n`overall_ok` and per-service `reachable` flags for health.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Status"
+                ],
+                "summary": "Service reachability status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.StatusResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -2024,6 +2863,23 @@
                 },
                 "role_id": {
                     "type": "string"
+                }
+            }
+        },
+        "controllers.AddUserToRoleBody": {
+            "type": "object",
+            "required": [
+                "role_id",
+                "subject_user_id"
+            ],
+            "properties": {
+                "role_id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4ca"
+                },
+                "subject_user_id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
                 }
             }
         },
@@ -2105,6 +2961,29 @@
                 }
             }
         },
+        "controllers.CheckResult": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "description": "Address that was probed (host:port) for the service-level checks, or\nthe host portion for DNS-level checks.",
+                    "type": "string"
+                },
+                "detail": {
+                    "description": "Detail is an optional human-readable note for the response (e.g.\nthe gRPC status name, the number of buckets returned, ...).",
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "latency_ms": {
+                    "description": "LatencyMs measures how long the probe took. Zero if the probe was\nskipped (e.g. DNS already failed).",
+                    "type": "integer"
+                },
+                "reachable": {
+                    "type": "boolean"
+                }
+            }
+        },
         "controllers.CreateDirectoryBody": {
             "type": "object",
             "required": [
@@ -2160,6 +3039,22 @@
                 },
                 "relationship": {
                     "$ref": "#/definitions/controllers.PermissionRelationshipRequest"
+                }
+            }
+        },
+        "controllers.CreateRoleBody": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "All engineers"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "engineering"
                 }
             }
         },
@@ -2219,6 +3114,18 @@
                 },
                 "relationship": {
                     "$ref": "#/definitions/controllers.PermissionRelationshipRequest"
+                }
+            }
+        },
+        "controllers.DeleteRoleBody": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4ca"
                 }
             }
         },
@@ -2541,6 +3448,61 @@
                 }
             }
         },
+        "controllers.PasskeyCeremonyBeginReply": {
+            "type": "object",
+            "properties": {
+                "options": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "session_key": {
+                    "type": "string"
+                }
+            }
+        },
+        "controllers.PasskeyCeremonyFinishReply": {
+            "type": "object",
+            "properties": {
+                "credential_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "controllers.PasskeyCeremonyFinishRequest": {
+            "type": "object",
+            "properties": {
+                "authenticator_data": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "client_data_json": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "credential_id": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "friendly_name": {
+                    "type": "string"
+                },
+                "session_key": {
+                    "type": "string"
+                },
+                "signature": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
         "controllers.PatchAttachmentMetadataRequest": {
             "type": "object",
             "required": [
@@ -2776,6 +3738,23 @@
                 }
             }
         },
+        "controllers.RemoveUserFromRoleBody": {
+            "type": "object",
+            "required": [
+                "role_id",
+                "subject_user_id"
+            ],
+            "properties": {
+                "role_id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4ca"
+                },
+                "subject_user_id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                }
+            }
+        },
         "controllers.ReplacePermissionsBody": {
             "type": "object",
             "required": [
@@ -2801,6 +3780,93 @@
                     "items": {
                         "$ref": "#/definitions/controllers.PermissionRelationshipRequest"
                     }
+                }
+            }
+        },
+        "controllers.RoleReply": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "controllers.ServiceStatus": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "detail": {
+                    "type": "string"
+                },
+                "dns": {
+                    "$ref": "#/definitions/controllers.CheckResult"
+                },
+                "error": {
+                    "description": "Error is a convenience field that mirrors the first non-empty error\nfrom DNS or Service, so monitoring can read the top-level state\nwithout traversing the nested checks.",
+                    "type": "string"
+                },
+                "reachable": {
+                    "type": "boolean"
+                },
+                "service": {
+                    "$ref": "#/definitions/controllers.CheckResult"
+                }
+            }
+        },
+        "controllers.StatusResponse": {
+            "type": "object",
+            "properties": {
+                "checked_at": {
+                    "type": "string"
+                },
+                "garage": {
+                    "$ref": "#/definitions/controllers.ServiceStatus"
+                },
+                "imgproxy": {
+                    "$ref": "#/definitions/controllers.ServiceStatus"
+                },
+                "overall_ok": {
+                    "type": "boolean"
+                },
+                "postgres": {
+                    "$ref": "#/definitions/controllers.ServiceStatus"
+                },
+                "spicedb": {
+                    "$ref": "#/definitions/controllers.ServiceStatus"
+                },
+                "wersu": {
+                    "$ref": "#/definitions/controllers.ServiceStatus"
+                }
+            }
+        },
+        "controllers.UpdateRoleBody": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "All engineers"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4ca"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "engineering"
                 }
             }
         },
@@ -2840,6 +3906,44 @@
                         "SHARE_PERMISSION_WRITE"
                     ],
                     "example": "SHARE_PERMISSION_READ"
+                }
+            }
+        },
+        "controllers.UserRoleMembershipReply": {
+            "type": "object",
+            "properties": {
+                "granted_at": {
+                    "type": "string"
+                },
+                "role_id": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.JsUserAuth": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "description": "AvatarURL is the absolute URL to the user's avatar. Empty\nstring (the protobuf zero-value) renders as JSON null, so\nthe frontend sees `avatar_url: null` when no provider has\nresolved an avatar.",
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "email_verified_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         },
