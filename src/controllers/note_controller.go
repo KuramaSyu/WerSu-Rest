@@ -30,6 +30,7 @@ type NoteReply struct {
 	DirectoryIds  []string                      `json:"directory_ids,omitempty"`
 	TagIds        []string                      `json:"tag_ids,omitempty"`
 	AttachmentIds []string                      `json:"attachment_ids,omitempty"`
+	ShelfIds      []string                      `json:"shelf_ids,omitempty"`
 }
 
 // PermissionSubjectReply represents the subject side of a permission tuple in REST responses.
@@ -85,6 +86,11 @@ func PermissionRelationshipReplyFromProto(relationship *proto.PermissionRelation
 type PostNoteRequest struct {
 	Title   string `json:"title" binding:"required" example:"My Note Title"`
 	Content string `json:"content" binding:"required" example:"This is the content of my note."`
+	// Either ShelfId or DirectoryIds must be provided; the gRPC server
+	// resolves rules against the shelf and auto-selects a directory when
+	// only ShelfId is set.
+	ShelfId      string   `json:"shelf_id,omitempty" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
+	DirectoryIds []string `json:"directory_ids,omitempty" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 }
 
 // PatchNoteRequest mirrors the gRPC AlterNoteRequest for the REST API.
@@ -124,6 +130,7 @@ func NoteReplyFromProto(note *proto.Note) NoteReply {
 		DirectoryIds:  note.GetDirectoryIds(),
 		TagIds:        note.GetTagIds(),
 		AttachmentIds: note.GetAttachmentIds(),
+		ShelfIds:      note.GetShelfIds(),
 	}
 }
 
@@ -208,10 +215,12 @@ func (uc *NoteController) PostNote(c *gin.Context) {
 
 	// gRPC service call
 	grpcPostNoteRequest := proto.PostNoteRequest{
-		Title:    postNoteRequest.Title,
-		Content:  &postNoteRequest.Content,
-		AuthorId: user.ID,
-		UserId:   user.ID,
+		Title:        postNoteRequest.Title,
+		Content:      &postNoteRequest.Content,
+		AuthorId:     user.ID,
+		UserId:       user.ID,
+		ShelfId:      postNoteRequest.ShelfId,
+		DirectoryIds: postNoteRequest.DirectoryIds,
 	}
 	note, err := (*uc.NoteService).PostNote(c, &grpcPostNoteRequest)
 	if err != nil {

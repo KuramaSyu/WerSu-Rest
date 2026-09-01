@@ -29,6 +29,7 @@ type DirectoryReply struct {
 	Relationships []PermissionRelationshipReply `json:"relationships"`
 	ChildDirIds   []string                      `json:"child_dir_ids,omitempty"`
 	ChildNoteIds  []string                      `json:"child_note_ids,omitempty"`
+	ShelfIds      []string                      `json:"shelf_ids,omitempty"`
 }
 
 type GetDirectoriesQuery struct {
@@ -38,6 +39,7 @@ type GetDirectoriesQuery struct {
 	IncludeParents    bool    `form:"include_parents"`
 	IncludeChildDirs  bool    `form:"include_child_dirs"`
 	IncludeChildNotes bool    `form:"include_child_notes"`
+	IncludeShelves    bool    `form:"include_shelves"`
 }
 
 // GetDirectoryQuery controls which related entities the server embeds in
@@ -46,6 +48,7 @@ type GetDirectoryQuery struct {
 	IncludeParents    bool `form:"include_parents"`
 	IncludeChildDirs  bool `form:"include_child_dirs"`
 	IncludeChildNotes bool `form:"include_child_notes"`
+	IncludeShelves    bool `form:"include_shelves"`
 }
 
 type GetNotesOfDirectoryQuery struct {
@@ -67,8 +70,15 @@ type CreateDirectoryBody struct {
 	Description *string  `json:"description,omitempty" example:"Shared notes for engineering team"`
 	ImageUrl    *string  `json:"image_url,omitempty" example:"https://cdn.example.com/engineering.png"`
 	ParentIds   []string `json:"parent_ids,omitempty" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
+	ShelfIds    []string `json:"shelf_ids,omitempty" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 }
 
+// PatchDirectoryBody mirrors the gRPC AlterDirectoryRequest for REST.
+//
+// Repeated fields (parent_ids, shelf_ids) are pointers so we can distinguish
+// "field omitted" (leave unchanged) from "field set to empty slice" (clear).
+// The proto layer uses the same distinction via `oneof` wrappers; see
+// `AlterDirectoryRequest_ParentIds` / `AlterDirectoryRequest_ShelfIds`.
 type PatchDirectoryBody struct {
 	Id          string   `json:"id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 	Name        *string  `json:"name,omitempty" example:"engineering"`
@@ -76,6 +86,7 @@ type PatchDirectoryBody struct {
 	Description *string  `json:"description,omitempty" example:"Shared notes for engineering team"`
 	ImageUrl    *string  `json:"image_url,omitempty" example:"https://cdn.example.com/engineering.png"`
 	ParentIds   []string `json:"parent_ids,omitempty" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
+	ShelfIds    []string `json:"shelf_ids,omitempty" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 }
 
 func directoryReplyFromProto(directory *proto.Directory) DirectoryReply {
@@ -94,6 +105,7 @@ func directoryReplyFromProto(directory *proto.Directory) DirectoryReply {
 		Relationships: relationships,
 		ChildDirIds:   directory.GetChildDirIds(),
 		ChildNoteIds:  directory.GetChildNoteIds(),
+		ShelfIds:      directory.GetShelfIds(),
 	}
 }
 
@@ -107,6 +119,7 @@ func directoryReplyFromProto(directory *proto.Directory) DirectoryReply {
 // @Param include_parents query bool false "Include parent directories in the response"
 // @Param include_child_dirs query bool false "Include child directory IDs in the response"
 // @Param include_child_notes query bool false "Include child note IDs in the response"
+// @Param include_shelves query bool false "Include shelf IDs the directory sits on in the response"
 // @Success 200 {object} DirectoryReply
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
@@ -136,6 +149,7 @@ func (dc *DirectoryController) GetDirectory(c *gin.Context) {
 		IncludeParents:    query.IncludeParents,
 		IncludeChildDirs:  query.IncludeChildDirs,
 		IncludeChildNotes: query.IncludeChildNotes,
+		IncludeShelves:    query.IncludeShelves,
 	})
 	if err != nil {
 		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch directory via gRPC service: %w", err))
@@ -157,6 +171,7 @@ func (dc *DirectoryController) GetDirectory(c *gin.Context) {
 // @Param include_parents query bool false "Include parent directory IDs in each response"
 // @Param include_child_dirs query bool false "Include child directory IDs in each response"
 // @Param include_child_notes query bool false "Include child note IDs in each response"
+// @Param include_shelves query bool false "Include shelf IDs the directory sits on in each response"
 // @Success 200 {object} []DirectoryReply
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
@@ -182,6 +197,7 @@ func (dc *DirectoryController) GetDirectories(c *gin.Context) {
 		IncludeParents:    query.IncludeParents,
 		IncludeChildDirs:  query.IncludeChildDirs,
 		IncludeChildNotes: query.IncludeChildNotes,
+		IncludeShelves:    query.IncludeShelves,
 	})
 	if err != nil {
 		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch directories via gRPC service: %w", err))
@@ -291,6 +307,7 @@ func (dc *DirectoryController) CreateDirectory(c *gin.Context) {
 		Description: body.Description,
 		ImageUrl:    body.ImageUrl,
 		ParentIds:   body.ParentIds,
+		ShelfIds:    body.ShelfIds,
 		UserId:      user.ID,
 	})
 	if err != nil {
@@ -325,15 +342,29 @@ func (dc *DirectoryController) PatchDirectory(c *gin.Context) {
 		return
 	}
 
-	directory, err := (*dc.DirectoryService).PatchDirectory(c, &proto.AlterDirectoryRequest{
+	// Build the gRPC request. Repeated fields are wrapped in the oneof
+	// only when the JSON body actually provided the key -- even an empty
+	// array is forwarded as "set to empty", while omission means "leave
+	// unchanged".
+	alterReq := &proto.AlterDirectoryRequest{
 		Id:          body.Id,
 		Name:        body.Name,
 		DisplayName: body.DisplayName,
 		Description: body.Description,
 		ImageUrl:    body.ImageUrl,
-		ParentIds:   body.ParentIds,
 		UserId:      user.ID,
-	})
+	}
+	if body.ParentIds != nil {
+		alterReq.ParentIdsChange = &proto.AlterDirectoryRequest_ParentIds{
+			ParentIds: &proto.IdsOrUndefined{Ids: body.ParentIds},
+		}
+	}
+	if body.ShelfIds != nil {
+		alterReq.ShelfIdsChange = &proto.AlterDirectoryRequest_ShelfIds{
+			ShelfIds: &proto.IdsOrUndefined{Ids: body.ShelfIds},
+		}
+	}
+	directory, err := (*dc.DirectoryService).PatchDirectory(c, alterReq)
 	if err != nil {
 		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to patch directory via gRPC service: %w", err))
 		return
