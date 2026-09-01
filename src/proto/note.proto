@@ -4,11 +4,13 @@ import "google/protobuf/timestamp.proto";
 package proto;
 option go_package = "github.com/KuramaSyu/Wersu-Rest/src/proto;proto";
 
+
 // Request for getting a note by id
 message GetNoteRequest {
     string id = 1;
     string user_id = 2;
 }
+
 
 message GetSearchNotesRequest {
     enum SearchType {
@@ -76,10 +78,13 @@ message Note {
     repeated PermissionRelationship permissions = 7;
     repeated string directory_ids = 8;
     repeated string tag_ids = 9;
-    
+
     // used for permission checking
-    string user_id = 10; 
+    string user_id = 10;
     repeated string attachment_ids = 11;
+
+    // sehlves where this note is in. currently maybe empty
+    repeated string shelf_ids = 12;
 }
 
 message NoteResponse {
@@ -92,7 +97,7 @@ message NoteEmbedding {
     repeated float embedding = 2;
 }
 
-// Request to add a note
+// Request to add a note. Either shelf_id or directory_ids must be provided. 
 message PostNoteRequest {
     string title = 1;
     optional string content = 2;
@@ -100,6 +105,14 @@ message PostNoteRequest {
 
     // the id of the user making the request - used for permission checking
     string user_id = 4;
+
+    // shelf used to resolve rules, so that the correct 
+    // directory is autoselected
+    string shelf_id = 5;
+
+    // Explicit parent directories instead of relying on rules
+    // over shelf_id
+    repeated string directory_ids = 6;
 }
 
 // Request to delete a note
@@ -144,6 +157,11 @@ message Directory {
     repeated PermissionRelationship relationships = 7;
     repeated string child_dir_ids = 8;
     repeated string child_note_ids = 9;
+    // ids of every shelf this book (directory) sits on.
+    // Populated when the caller opts in via
+    // ``include_shelves`` on ``GetDirectoryRequest`` /
+    // ``GetDirectoriesRequest``; empty otherwise.
+    repeated string shelf_ids = 10;
 }
 
 message GetDirectoryRequest {
@@ -152,6 +170,7 @@ message GetDirectoryRequest {
     bool include_parents = 3;
     bool include_child_dirs = 4;
     bool include_child_notes = 5;
+    bool include_shelves = 6;
 }
 
 // list all directory contents of a given directory <parent_id>
@@ -164,6 +183,7 @@ message GetDirectoriesRequest {
     bool include_parents = 5;
     bool include_child_dirs = 6;
     bool include_child_notes = 7;
+    bool include_shelves = 8;
 }
 
 message CreateDirectoryRequest {
@@ -171,10 +191,18 @@ message CreateDirectoryRequest {
     optional string display_name = 2;
     optional string description = 3;
     optional string image_url = 4;
+
+    // contains directory parents
     repeated string parent_ids = 5;
+
+    // contains shelf parents. we separate it,
+    // to prevent extra db calls, just to tell them apart
+    repeated string shelf_ids = 7;
+
     // the user_id of the user making the request, used for permission checking
     // its also the author of the directory
     string user_id = 6;
+
 }
 
 // any ommited fields will be left unchanged 
@@ -185,7 +213,19 @@ message AlterDirectoryRequest {
     optional string display_name = 3;
     optional string description = 4;
     optional string image_url = 5;
-    repeated string parent_ids = 6;
+
+    // oneof is used, to set an array to null
+
+    // directory parents
+    oneof parent_ids_change {
+        IdsOrUndefined parent_ids = 6;
+    }
+
+    // shelf parents
+    oneof shelf_ids_change {
+        IdsOrUndefined shelf_ids = 8;
+    }
+
     string user_id = 7;
 }
 
@@ -207,6 +247,7 @@ enum PermissionObjectType {
     PERMISSION_OBJECT_TYPE_DIRECTORY = 2;
     PERMISSION_OBJECT_TYPE_USER = 3;
     PERMISSION_OBJECT_TYPE_ATTACHMENT = 4;
+    PERMISSION_OBJECT_TYPE_ROLE = 5;
 }
 
 message PermissionSubject {
