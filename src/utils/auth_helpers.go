@@ -1,4 +1,4 @@
-package controllers
+package utils
 
 import (
 	"errors"
@@ -160,8 +160,8 @@ func UnpackJWT(token string, secret string) (*jwt.RegisteredClaims, int, error) 
 //   - When `status` is http.StatusInternalServerError and `err` (or any error
 //     it wraps) carries a gRPC status code of PermissionDenied, the response
 //     is automatically upgraded to http.StatusForbidden (403). This propagates
-//     "no permission" cleanly to REST clients without each handler having to
-//     inspect the error itself.
+//     "no permission" cleanly to REST clients without each handler having
+//     to inspect the error itself.
 //   - For any other status (e.g. 400, 401) the response is written unchanged,
 //     so the gRPC upgrades only kick in for genuine 500 paths.
 func SetGinError(c *gin.Context, status int, err error) {

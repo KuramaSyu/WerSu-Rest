@@ -122,7 +122,7 @@ func TestPostLoginPasswordMissingFields(t *testing.T) {
 func TestPostLoginPasswordInvalidCredentials(t *testing.T) {
 	// The strategy's signin path returns InvalidCredentialsError
 	// specifically when the user isn't found. Any other gRPC
-	// error propagates and `SetGinError` decides the HTTP status.
+	// error propagates and utils.SetGinError` decides the HTTP status.
 	// For a NotFound the controller returns 401; for any other
 	// gRPC code, it falls through to 500 (or an upgrade if the
 	// code matches Unavailable/DeadlineExceeded/etc).
