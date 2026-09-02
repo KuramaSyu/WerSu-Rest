@@ -86,12 +86,12 @@ func setupRoleRouter(client proto.RoleServiceClient) *gin.Engine {
 	{
 		roles.POST("", controller.CreateRole)
 		roles.GET("", controller.GetRoles)
-		roles.PATCH("", controller.UpdateRole)
-		roles.DELETE("", controller.DeleteRole)
 
 		role := roles.Group("/:id")
 		{
 			role.GET("", controller.GetRole)
+			role.PATCH("", controller.UpdateRole)
+			role.DELETE("", controller.DeleteRole)
 		}
 
 		roles.POST("/members", controller.AddUserToRole)
@@ -274,18 +274,17 @@ func TestGetRolesStreamsRoles(t *testing.T) {
 }
 
 func TestDeleteRoleReturns204OnSuccess(t *testing.T) {
+	roleID := "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
 	client := &mockRoleServiceClient{}
 	client.deleteRole = func(ctx context.Context, in *proto.DeleteRoleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-		if in.GetUserId() != "user-1" || in.GetId() != "role-1" {
+		if in.GetUserId() != "user-1" || in.GetId() != roleID {
 			t.Fatalf("unexpected request: %+v", in)
 		}
 		return &emptypb.Empty{}, nil
 	}
 
 	router := setupRoleRouter(client)
-	body, _ := json.Marshal(map[string]any{"id": "role-1"})
-	request := httptest.NewRequest(http.MethodDelete, "/api/roles", bytes.NewReader(body))
-	request.Header.Set("Content-Type", "application/json")
+	request := httptest.NewRequest(http.MethodDelete, "/api/roles/"+roleID, nil)
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)
 

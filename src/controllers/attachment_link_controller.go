@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
+	"github.com/KuramaSyu/WerSu-Rest/src/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -32,15 +33,15 @@ type AttachmentLinkBody struct {
 // @Success 204
 // @Router /attachment-links [post]
 func (alc *AttachmentLinkController) PostAttachmentLink(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var body AttachmentLinkBody
 	if err := c.ShouldBindJSON(&body); err != nil {
-		SetGinError(c, http.StatusBadRequest, err)
+		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
 	}
 
@@ -54,7 +55,7 @@ func (alc *AttachmentLinkController) PostAttachmentLink(c *gin.Context) {
 	)
 
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, err)
+		utils.SetGinError(c, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -68,15 +69,15 @@ func (alc *AttachmentLinkController) PostAttachmentLink(c *gin.Context) {
 // @Success 204
 // @Router /attachment-links [delete]
 func (alc *AttachmentLinkController) DeleteAttachmentLink(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var body AttachmentLinkBody
 	if err := c.ShouldBindJSON(&body); err != nil {
-		SetGinError(c, http.StatusBadRequest, err)
+		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
 	}
 
@@ -90,7 +91,7 @@ func (alc *AttachmentLinkController) DeleteAttachmentLink(c *gin.Context) {
 	)
 
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, err)
+		utils.SetGinError(c, http.StatusInternalServerError, err)
 		return
 	}
 

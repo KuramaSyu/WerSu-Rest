@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
+	"github.com/KuramaSyu/WerSu-Rest/src/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -86,28 +87,28 @@ func bookstackBookImportReplyFromProto(
 // @Security CookieAuth
 // @Router /migrations/import_bookstack_book [post]
 func (mc *ThirdpartyMigrationController) ImportBookstackBook(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	file, err := c.FormFile("file")
 	if err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing 'file' multipart field: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing 'file' multipart field: %w", err))
 		return
 	}
 
 	fileReader, err := file.Open()
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to open uploaded file: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to open uploaded file: %w", err))
 		return
 	}
 	defer fileReader.Close()
 
 	stream, err := (*mc.MigrationsService).BookstackBookImport(c)
 	if err != nil {
-		SetGinError(c, http.StatusBadGateway, fmt.Errorf("failed to open bookstack import stream: %w", err))
+		utils.SetGinError(c, http.StatusBadGateway, fmt.Errorf("failed to open bookstack import stream: %w", err))
 		return
 	}
 
@@ -128,7 +129,7 @@ func (mc *ThirdpartyMigrationController) ImportBookstackBook(c *gin.Context) {
 			}
 
 			if sendErr := stream.Send(chunk); sendErr != nil {
-				SetGinError(c, http.StatusBadGateway, fmt.Errorf("failed to send zip chunk: %w", sendErr))
+				utils.SetGinError(c, http.StatusBadGateway, fmt.Errorf("failed to send zip chunk: %w", sendErr))
 				return
 			}
 		}
@@ -137,14 +138,14 @@ func (mc *ThirdpartyMigrationController) ImportBookstackBook(c *gin.Context) {
 			break
 		}
 		if readErr != nil {
-			SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to read uploaded file: %w", readErr))
+			utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to read uploaded file: %w", readErr))
 			return
 		}
 	}
 
 	resp, err := stream.CloseAndRecv()
 	if err != nil {
-		SetGinError(c, http.StatusBadGateway, fmt.Errorf("bookstack import failed: %w", err))
+		utils.SetGinError(c, http.StatusBadGateway, fmt.Errorf("bookstack import failed: %w", err))
 		return
 	}
 

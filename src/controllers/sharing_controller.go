@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
+	"github.com/KuramaSyu/WerSu-Rest/src/utils"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -33,10 +34,10 @@ func NewSharingController(sharingService *proto.SharingServiceClient) *SharingCo
 // wrapped error preserves the underlying gRPC message.
 func setShareGRPCError(c *gin.Context, err error, op string) {
 	if grpcErr, ok := status.FromError(err); ok && grpcErr.Code() == codes.NotFound {
-		SetGinError(c, http.StatusNotFound, fmt.Errorf("%s: %w", op, err))
+		utils.SetGinError(c, http.StatusNotFound, fmt.Errorf("%s: %w", op, err))
 		return
 	}
-	SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to %s via gRPC service: %w", op, err))
+	utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to %s via gRPC service: %w", op, err))
 }
 
 // NoteShareReply is the REST representation of a share returned to clients.
@@ -313,15 +314,15 @@ func updateShareProtoFromBody(body UpdateShareBody, permission proto.SharePermis
 // @Failure 500 {object} map[string]string
 // @Router /shares/{id} [get]
 func (sc *SharingController) GetShareById(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	id := c.Param("id")
 	if id == "" {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing share ID"))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing share ID"))
 		return
 	}
 
@@ -330,17 +331,17 @@ func (sc *SharingController) GetShareById(c *gin.Context) {
 		ShareIds: []string{id},
 	})
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch share via gRPC service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch share via gRPC service: %w", err))
 		return
 	}
 
 	share, err := stream.Recv()
 	if err == io.EOF {
-		SetGinError(c, http.StatusNotFound, fmt.Errorf("share not found"))
+		utils.SetGinError(c, http.StatusNotFound, fmt.Errorf("share not found"))
 		return
 	}
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to stream share via gRPC service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to stream share via gRPC service: %w", err))
 		return
 	}
 
@@ -359,15 +360,15 @@ func (sc *SharingController) GetShareById(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /shares/by-id [get]
 func (sc *SharingController) GetSharesById(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	shareIDs := c.QueryArray("share_ids")
 	if len(shareIDs) == 0 {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing share IDs"))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing share IDs"))
 		return
 	}
 
@@ -387,7 +388,7 @@ func (sc *SharingController) GetSharesById(c *gin.Context) {
 			break
 		}
 		if err != nil {
-			SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to stream shares via gRPC service: %w", err))
+			utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to stream shares via gRPC service: %w", err))
 			return
 		}
 
@@ -413,21 +414,21 @@ func (sc *SharingController) GetSharesById(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /shares [get]
 func (sc *SharingController) GetShares(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var query GetSharesQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
 		return
 	}
 
 	filter, err := shareFilterFromQuery(query)
 	if err != nil {
-		SetGinError(c, http.StatusBadRequest, err)
+		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
 	}
 
@@ -447,7 +448,7 @@ func (sc *SharingController) GetShares(c *gin.Context) {
 			break
 		}
 		if err != nil {
-			SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to stream shares via gRPC service: %w", err))
+			utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to stream shares via gRPC service: %w", err))
 			return
 		}
 
@@ -469,21 +470,21 @@ func (sc *SharingController) GetShares(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /shares [post]
 func (sc *SharingController) CreateShare(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var body CreateShareRequestBody
 	if err := c.ShouldBindJSON(&body); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
 		return
 	}
 
 	permission, err := permissionFromString(body.Permission)
 	if err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid permission: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid permission: %w", err))
 		return
 	}
 
@@ -515,21 +516,21 @@ func (sc *SharingController) CreateShare(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /shares [patch]
 func (sc *SharingController) UpdateShare(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var body UpdateShareBody
 	if err := c.ShouldBindJSON(&body); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
 		return
 	}
 
 	permission, err := permissionFromString(body.Permission)
 	if err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid permission: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid permission: %w", err))
 		return
 	}
 
@@ -559,20 +560,20 @@ func (sc *SharingController) UpdateShare(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /shares [delete]
 func (sc *SharingController) DeleteShares(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var body DeleteSharesBody
 	if err := c.ShouldBindJSON(&body); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
 		return
 	}
 
 	if len(body.ShareIds) == 0 {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing share IDs"))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing share IDs"))
 		return
 	}
 
@@ -581,7 +582,7 @@ func (sc *SharingController) DeleteShares(c *gin.Context) {
 		ShareIds: body.ShareIds,
 	})
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to delete shares via gRPC service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to delete shares via gRPC service: %w", err))
 		return
 	}
 
@@ -604,7 +605,7 @@ func (sc *SharingController) AccessShare(c *gin.Context) {
 
 	var query GetPublicShareQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
 		return
 	}
 

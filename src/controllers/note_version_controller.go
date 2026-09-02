@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
+	"github.com/KuramaSyu/WerSu-Rest/src/utils"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -100,21 +101,21 @@ func noteVersionContentReplyFromProto(content *proto.NoteVersionContent) NoteVer
 // @Failure 400 {object} map[string]string
 // @Router /notes/{note_id}/versions [get]
 func (uc *NoteVersionController) ListNoteVersions(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	noteId := c.Params.ByName("note_id")
 	if noteId == "" {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing note ID"))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing note ID"))
 		return
 	}
 
 	var query GetNoteVersionsQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
 		return
 	}
 
@@ -127,7 +128,7 @@ func (uc *NoteVersionController) ListNoteVersions(c *gin.Context) {
 
 	stream, err := (*uc.NoteVersionService).GetNoteVersions(c, &grpcRequest)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch note versions via gRPC service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch note versions via gRPC service: %w", err))
 		return
 	}
 
@@ -155,22 +156,22 @@ func (uc *NoteVersionController) ListNoteVersions(c *gin.Context) {
 // @Failure 400 {object} map[string]string
 // @Router /notes/{note_id}/versions/{version_index} [get]
 func (uc *NoteVersionController) GetNoteVersionContent(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	noteId := c.Params.ByName("note_id")
 	if noteId == "" {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing note ID"))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing note ID"))
 		return
 	}
 
 	versionIndexParam := c.Params.ByName("version_index")
 	versionIndex, err := strconv.ParseInt(versionIndexParam, 10, 64)
 	if err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid version index"))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid version index"))
 		return
 	}
 
@@ -182,7 +183,7 @@ func (uc *NoteVersionController) GetNoteVersionContent(c *gin.Context) {
 
 	content, err := (*uc.NoteVersionService).GetNoteVersionContent(c, &grpcRequest)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch note version content via gRPC service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch note version content via gRPC service: %w", err))
 		return
 	}
 
@@ -201,22 +202,22 @@ func (uc *NoteVersionController) GetNoteVersionContent(c *gin.Context) {
 // @Failure 400 {object} map[string]string
 // @Router /notes/{note_id}/versions/{version_index}/restore [post]
 func (uc *NoteVersionController) RestoreNoteVersion(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	noteId := c.Params.ByName("note_id")
 	if noteId == "" {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing note ID"))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing note ID"))
 		return
 	}
 
 	versionIndexParam := c.Params.ByName("version_index")
 	versionIndex, err := strconv.ParseInt(versionIndexParam, 10, 64)
 	if err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid version index"))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid version index"))
 		return
 	}
 
@@ -228,7 +229,7 @@ func (uc *NoteVersionController) RestoreNoteVersion(c *gin.Context) {
 
 	note, err := (*uc.NoteVersionService).RestoreNoteVersion(c, &grpcRequest)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to restore note version via gRPC service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to restore note version via gRPC service: %w", err))
 		return
 	}
 
@@ -253,15 +254,15 @@ func (uc *NoteVersionController) RestoreNoteVersion(c *gin.Context) {
 // @Router /directories/activity [get]
 // @Router /directories/{id}/activity [get]
 func (uc *NoteVersionController) GetDirectoryActivity(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var query GetDirectoryActivityQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
 		return
 	}
 
@@ -288,10 +289,10 @@ func (uc *NoteVersionController) GetDirectoryActivity(c *gin.Context) {
 	stream, err := (*uc.NoteVersionService).GetDirectoryActivity(c, &grpcRequest)
 	if err != nil {
 		if status.Code(err) == codes.PermissionDenied {
-			SetGinError(c, http.StatusForbidden, fmt.Errorf("permission denied: %w", err))
+			utils.SetGinError(c, http.StatusForbidden, fmt.Errorf("permission denied: %w", err))
 			return
 		}
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch directory activity via gRPC service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch directory activity via gRPC service: %w", err))
 		return
 	}
 

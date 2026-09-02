@@ -16,6 +16,7 @@ import (
 	"github.com/KuramaSyu/WerSu-Rest/src/models"
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
 
+	"github.com/KuramaSyu/WerSu-Rest/src/utils"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/go-webauthn/webauthn/protocol"
@@ -193,7 +194,7 @@ func (ac *AuthController) loginUser(c *gin.Context, user *proto.UserAuth) {
 	})
 	if err := session.Save(); err != nil {
 		log.Printf("failed to save session: %v", err)
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to save session: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to save session: %w", err))
 		return
 	}
 	c.JSON(http.StatusOK, user.ParseJS())
@@ -286,7 +287,7 @@ func (ac *AuthController) Callback(c *gin.Context) {
 	authUser, err := strategy.Login(c.Request.Context())
 	if err != nil {
 		log.Printf("Discord strategy login failed: %v", err)
-		SetGinError(c, http.StatusServiceUnavailable, fmt.Errorf("gRPC service is unavailable: %w", err))
+		utils.SetGinError(c, http.StatusServiceUnavailable, fmt.Errorf("gRPC service is unavailable: %w", err))
 		return
 	}
 
@@ -317,7 +318,7 @@ func (ac *AuthController) Callback(c *gin.Context) {
 // service. The session cookie carries the user id; the auth service
 // returns the canonical UserAuth payload.
 func (ac *AuthController) GetUser(c *gin.Context) {
-	user, _, err := UserFromContext(c)
+	user, _, err := utils.UserFromContext(c)
 	if user == nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not logged in"})
 		return
@@ -327,7 +328,7 @@ func (ac *AuthController) GetUser(c *gin.Context) {
 		Identifier: &proto.GetUserAuthRequest_UserId{UserId: user.ID},
 	})
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch user via auth service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch user via auth service: %w", err))
 		return
 	}
 	c.JSON(http.StatusOK, resp.GetUser().ParseJS())
@@ -356,12 +357,12 @@ func (ac *AuthController) Logout(c *gin.Context) {
 // @Failure      500  {object}  map[string]string               "Internal Server Error - Failed to generate JWT or other server-side issue"
 // @Router       /auth/token [get]
 func (ac *AuthController) GetAccessToken(c *gin.Context) {
-	user, status, err := UserFromContext(c)
+	user, status, err := utils.UserFromContext(c)
 	if user == nil {
-		SetGinError(c, status, err)
+		utils.SetGinError(c, status, err)
 		return
 	}
-	token, err := GenerateJWT(user.ID, ac.JWTSecret, nil)
+	token, err := utils.GenerateJWT(user.ID, ac.JWTSecret, nil)
 	if err != nil {
 		log.Printf("Failed to generate JWT: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate access token"})
@@ -401,7 +402,7 @@ func (ac *AuthController) GetPublicAccessToken(c *gin.Context) {
 	}
 	userId := resp.AccessAs
 
-	token, err := GenerateJWT(userId, ac.JWTSecret, unwrapNullableDatetime(resp.OnlineUntil))
+	token, err := utils.GenerateJWT(userId, ac.JWTSecret, unwrapNullableDatetime(resp.OnlineUntil))
 	if err != nil {
 		log.Printf("Failed to generate JWT: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate access token"})
@@ -460,7 +461,7 @@ func (ac *AuthController) PostLogin(c *gin.Context) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
-		SetGinError(c, http.StatusInternalServerError, err)
+		utils.SetGinError(c, http.StatusInternalServerError, err)
 		return
 	}
 	ac.loginUser(c, user)
@@ -502,7 +503,7 @@ func (ac *AuthController) PostSignup(c *gin.Context) {
 			c.JSON(http.StatusConflict, gin.H{"error": "email already in use"})
 			return
 		}
-		SetGinError(c, http.StatusInternalServerError, err)
+		utils.SetGinError(c, http.StatusInternalServerError, err)
 		return
 	}
 	ac.loginUser(c, user)
@@ -557,13 +558,13 @@ func (ac *AuthController) GoogleCallback(c *gin.Context) {
 
 	token, err := ac.GoogleOAuth.Exchange(c, code)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("google code exchange failed: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("google code exchange failed: %w", err))
 		return
 	}
 	client := ac.GoogleOAuth.Client(c, token)
 	resp, err := client.Get("https://openidconnect.googleapis.com/v1/userinfo")
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("google userinfo fetch failed: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("google userinfo fetch failed: %w", err))
 		return
 	}
 	defer resp.Body.Close()
@@ -576,7 +577,7 @@ func (ac *AuthController) GoogleCallback(c *gin.Context) {
 		Picture       string `json:"picture"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&gu); err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("google userinfo parse: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("google userinfo parse: %w", err))
 		return
 	}
 
@@ -591,7 +592,7 @@ func (ac *AuthController) GoogleCallback(c *gin.Context) {
 	}
 	user, err := strategy.Login(c.Request.Context())
 	if err != nil {
-		SetGinError(c, http.StatusServiceUnavailable, fmt.Errorf("google strategy login failed: %w", err))
+		utils.SetGinError(c, http.StatusServiceUnavailable, fmt.Errorf("google strategy login failed: %w", err))
 		return
 	}
 	ac.loginUser(c, user)
@@ -694,12 +695,12 @@ func (ac *AuthController) PostPasskeyRegisterBegin(c *gin.Context) {
 
 	options, sessionData, err := ac.webauthn.BeginRegistration(wu)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("begin registration: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("begin registration: %w", err))
 		return
 	}
 	key, err := ac.putCeremony(*sessionData)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("store ceremony: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("store ceremony: %w", err))
 		return
 	}
 	c.JSON(http.StatusOK, PasskeyCeremonyBeginReply{
@@ -751,7 +752,7 @@ func (ac *AuthController) PostPasskeyRegisterFinish(c *gin.Context) {
 	}
 	wu, err := auth.LoadPasskeyUser(c.Request.Context(), ac.authService, userId)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("load user: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("load user: %w", err))
 		return
 	}
 	cred, err := ac.webauthn.FinishRegistration(wu, sessionData, c.Request)
@@ -771,7 +772,7 @@ func (ac *AuthController) PostPasskeyRegisterFinish(c *gin.Context) {
 		UserVerified:   cred.Flags.UserVerified,
 		FriendlyName:   req.FriendlyName,
 	}); err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("register passkey: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("register passkey: %w", err))
 		return
 	}
 	c.JSON(http.StatusOK, PasskeyCeremonyFinishReply{
@@ -806,12 +807,12 @@ func (ac *AuthController) PostPasskeyLoginBegin(c *gin.Context) {
 	}
 	options, sessionData, err := ac.webauthn.BeginDiscoverableLogin()
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("begin login: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("begin login: %w", err))
 		return
 	}
 	key, err := ac.putCeremony(*sessionData)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("store ceremony: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("store ceremony: %w", err))
 		return
 	}
 	c.JSON(http.StatusOK, PasskeyCeremonyBeginReply{
@@ -887,7 +888,7 @@ func (ac *AuthController) PostPasskeyLoginFinish(c *gin.Context) {
 		PasskeyId:    rec.PasskeyID,
 		NewSignCount: uint64(cred.Authenticator.SignCount),
 	}); err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("update counter: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("update counter: %w", err))
 		return
 	}
 	ac.loginUser(c, matched.UserAuth)
@@ -934,7 +935,7 @@ type LinkPasswordRequest struct {
 // &username=... &avatar=...). The controller passes the values to
 // the gRPC backend via AuthService.LinkCredential.
 func (ac *AuthController) PostLinkDiscord(c *gin.Context) {
-	user, _, err := UserFromContext(c)
+	user, _, err := utils.UserFromContext(c)
 	if user == nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
@@ -956,7 +957,7 @@ func (ac *AuthController) PostLinkDiscord(c *gin.Context) {
 		Kind:        proto.CredentialKind_CREDENTIAL_KIND_DISCORD,
 		Payload:     &proto.LinkCredentialRequest_DiscordId{DiscordId: discordId},
 	}); err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("link discord failed: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("link discord failed: %w", err))
 		return
 	}
 
@@ -982,7 +983,7 @@ func (ac *AuthController) PostLinkDiscord(c *gin.Context) {
 
 // PostLinkGoogle: link a google_id to the authenticated user.
 func (ac *AuthController) PostLinkGoogle(c *gin.Context) {
-	user, _, err := UserFromContext(c)
+	user, _, err := utils.UserFromContext(c)
 	if user == nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
@@ -999,7 +1000,7 @@ func (ac *AuthController) PostLinkGoogle(c *gin.Context) {
 		Kind:        proto.CredentialKind_CREDENTIAL_KIND_GOOGLE,
 		Payload:     &proto.LinkCredentialRequest_GoogleId{GoogleId: googleId},
 	}); err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("link google failed: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("link google failed: %w", err))
 		return
 	}
 
@@ -1022,7 +1023,7 @@ func (ac *AuthController) PostLinkGoogle(c *gin.Context) {
 
 // PostLinkPassword: link a password to the authenticated user.
 func (ac *AuthController) PostLinkPassword(c *gin.Context) {
-	user, _, err := UserFromContext(c)
+	user, _, err := utils.UserFromContext(c)
 	if user == nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
@@ -1034,7 +1035,7 @@ func (ac *AuthController) PostLinkPassword(c *gin.Context) {
 	}
 	hash, err := ac.Hasher.Hash(req.Password)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, err)
+		utils.SetGinError(c, http.StatusInternalServerError, err)
 		return
 	}
 	_, err = ac.authService.LinkCredential(c, &proto.LinkCredentialRequest{
@@ -1044,7 +1045,7 @@ func (ac *AuthController) PostLinkPassword(c *gin.Context) {
 		Payload:     &proto.LinkCredentialRequest_PasswordHash{PasswordHash: hash},
 	})
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("link password failed: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("link password failed: %w", err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"linked": "password"})
@@ -1071,7 +1072,7 @@ func (ac *AuthController) PostLinkPassword(c *gin.Context) {
 // @Failure      503  {object}  map[string]string          "Service Unavailable - Passkey support not configured"
 // @Router       /auth/link/passkey/begin [post]
 func (ac *AuthController) PostLinkPasskeyBegin(c *gin.Context) {
-	user, _, err := UserFromContext(c)
+	user, _, err := utils.UserFromContext(c)
 	if user == nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
@@ -1082,7 +1083,7 @@ func (ac *AuthController) PostLinkPasskeyBegin(c *gin.Context) {
 	}
 	wu, err := auth.LoadPasskeyUser(c.Request.Context(), ac.authService, user.ID)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("load user: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("load user: %w", err))
 		return
 	}
 	// Exclude the user's existing credentials so the picker hides them.
@@ -1091,12 +1092,12 @@ func (ac *AuthController) PostLinkPasskeyBegin(c *gin.Context) {
 		webauthn.WithExclusions(creds.CredentialDescriptors()),
 	)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("begin registration: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("begin registration: %w", err))
 		return
 	}
 	key, err := ac.putCeremony(*sessionData)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("store ceremony: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("store ceremony: %w", err))
 		return
 	}
 	c.JSON(http.StatusOK, PasskeyCeremonyBeginReply{
@@ -1130,7 +1131,7 @@ func (ac *AuthController) PostLinkPasskeyBegin(c *gin.Context) {
 // @Failure      503      {object}  map[string]string            "Service Unavailable - Passkey support not configured"
 // @Router       /auth/link/passkey/finish [post]
 func (ac *AuthController) PostLinkPasskeyFinish(c *gin.Context) {
-	user, _, err := UserFromContext(c)
+	user, _, err := utils.UserFromContext(c)
 	if user == nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
@@ -1151,7 +1152,7 @@ func (ac *AuthController) PostLinkPasskeyFinish(c *gin.Context) {
 	}
 	wu, err := auth.LoadPasskeyUser(c.Request.Context(), ac.authService, user.ID)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("load user: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("load user: %w", err))
 		return
 	}
 	cred, err := ac.webauthn.FinishRegistration(wu, sessionData, c.Request)
@@ -1171,7 +1172,7 @@ func (ac *AuthController) PostLinkPasskeyFinish(c *gin.Context) {
 		UserVerified:   cred.Flags.UserVerified,
 		FriendlyName:   req.FriendlyName,
 	}); err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("register passkey: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("register passkey: %w", err))
 		return
 	}
 	c.JSON(http.StatusOK, PasskeyCeremonyFinishReply{
@@ -1182,7 +1183,7 @@ func (ac *AuthController) PostLinkPasskeyFinish(c *gin.Context) {
 // GetLinkedCredentials returns the user's authenticated credentials
 // summary (discord? password? N passkeys).
 func (ac *AuthController) GetLinkedCredentials(c *gin.Context) {
-	user, _, err := UserFromContext(c)
+	user, _, err := utils.UserFromContext(c)
 	if user == nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
@@ -1191,7 +1192,7 @@ func (ac *AuthController) GetLinkedCredentials(c *gin.Context) {
 		UserId: user.ID,
 	})
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("list linked credentials failed: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("list linked credentials failed: %w", err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{

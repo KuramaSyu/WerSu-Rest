@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
+	"github.com/KuramaSyu/WerSu-Rest/src/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -179,16 +180,16 @@ func NotesReplyFromProto(reply *proto.NotesReply) NotesReply {
 // @Router /notes/search [get]
 func (uc *SearchNotesController) GetNotes(c *gin.Context) {
 	// get user from session
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	// read query parameters
 	var getSearchNotesRequest GetSearchNotesRequest
 	if err := c.ShouldBindQuery(&getSearchNotesRequest); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
 		return
 	}
 
@@ -202,7 +203,7 @@ func (uc *SearchNotesController) GetNotes(c *gin.Context) {
 	}
 	reply, err := (*uc.NoteService).SearchNotes(c, &grpcSearchNotesRequest)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to search notes via gRPC service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to search notes via gRPC service: %w", err))
 		return
 	}
 

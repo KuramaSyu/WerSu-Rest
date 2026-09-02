@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/KuramaSyu/WerSu-Rest/src/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -65,7 +66,7 @@ func NewOpeninaryController(baseURL string, apiKey string) *OpeninaryController 
 // Handle forwards the incoming request to the configured Openinary upstream.
 func (oc *OpeninaryController) Handle(c *gin.Context) {
 	if oc == nil || oc.proxy == nil || oc.baseURL == nil {
-		SetGinError(c, http.StatusServiceUnavailable, fmt.Errorf("openinary proxy is not configured"))
+		utils.SetGinError(c, http.StatusServiceUnavailable, fmt.Errorf("openinary proxy is not configured"))
 		return
 	}
 

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
+	"github.com/KuramaSyu/WerSu-Rest/src/utils"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -199,15 +200,15 @@ func activityFilterFromQuery(query GetActivityHistoryQuery, actions []string) (*
 // @Failure 500 {object} map[string]string
 // @Router /history [get]
 func (ac *ActivityController) GetActivityHistory(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var query GetActivityHistoryQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
 		return
 	}
 
@@ -222,7 +223,7 @@ func (ac *ActivityController) GetActivityHistory(c *gin.Context) {
 
 	filter, err := activityFilterFromQuery(query, actions)
 	if err != nil {
-		SetGinError(c, http.StatusBadRequest, err)
+		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
 	}
 
@@ -237,7 +238,7 @@ func (ac *ActivityController) GetActivityHistory(c *gin.Context) {
 	case ActivityModeMostUsed:
 		algorithm, err := parseMostUsedAlgorithm(query.Algorithm)
 		if err != nil {
-			SetGinError(c, http.StatusBadRequest, err)
+			utils.SetGinError(c, http.StatusBadRequest, err)
 			return
 		}
 		scores, err := ac.streamMostUsed(c, user.ID, filter, algorithm, query.Limit)
@@ -247,7 +248,7 @@ func (ac *ActivityController) GetActivityHistory(c *gin.Context) {
 		}
 		c.JSON(http.StatusOK, scores)
 	default:
-		SetGinError(c, http.StatusBadRequest,
+		utils.SetGinError(c, http.StatusBadRequest,
 			fmt.Errorf("invalid mode %q, expected one of history, most_used", string(mode)))
 	}
 }
@@ -309,11 +310,11 @@ func (ac *ActivityController) streamMostUsed(c *gin.Context, userID string, filt
 
 // setActivityGRPCError maps a gRPC error from the activity service to a REST
 // response. PermissionDenied becomes 403; everything else becomes 500 (and is
-// subject to the transport-level 503 upgrade applied by SetGinError).
+// subject to the transport-level 503 upgrade applied byutils.SetGinError).
 func setActivityGRPCError(c *gin.Context, err error, op string) {
 	if status.Code(err) == codes.PermissionDenied {
-		SetGinError(c, http.StatusForbidden, fmt.Errorf("%s: %w", op, err))
+		utils.SetGinError(c, http.StatusForbidden, fmt.Errorf("%s: %w", op, err))
 		return
 	}
-	SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to %s via gRPC service: %w", op, err))
+	utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to %s via gRPC service: %w", op, err))
 }

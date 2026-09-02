@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
+	"github.com/KuramaSyu/WerSu-Rest/src/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -219,21 +220,21 @@ func permissionsReplyFromProto(response *proto.PermissionsResponse) PermissionsR
 // @Failure 500 {object} map[string]string
 // @Router /permissions [get]
 func (pc *PermissionController) GetPermissions(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var query GetPermissionsQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
 		return
 	}
 
 	objectType, err := parsePermissionObjectType(query.ObjectType)
 	if err != nil {
-		SetGinError(c, http.StatusBadRequest, err)
+		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
 	}
 
@@ -243,7 +244,7 @@ func (pc *PermissionController) GetPermissions(c *gin.Context) {
 		UserId:     user.ID,
 	})
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to get permissions via gRPC service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to get permissions via gRPC service: %w", err))
 		return
 	}
 
@@ -262,27 +263,27 @@ func (pc *PermissionController) GetPermissions(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /permissions [post]
 func (pc *PermissionController) CreatePermission(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var body CreatePermissionBody
 	if err := c.ShouldBindJSON(&body); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
 		return
 	}
 
 	objectType, err := parsePermissionObjectType(body.ObjectType)
 	if err != nil {
-		SetGinError(c, http.StatusBadRequest, err)
+		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
 	}
 
 	relationship, err := permissionRelationshipRequestToProto(body.Relationship)
 	if err != nil {
-		SetGinError(c, http.StatusBadRequest, err)
+		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
 	}
 
@@ -293,7 +294,7 @@ func (pc *PermissionController) CreatePermission(c *gin.Context) {
 		UserId:       user.ID,
 	})
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to create permission via gRPC service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to create permission via gRPC service: %w", err))
 		return
 	}
 
@@ -312,27 +313,27 @@ func (pc *PermissionController) CreatePermission(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /permissions [delete]
 func (pc *PermissionController) DeletePermission(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var body DeletePermissionBody
 	if err := c.ShouldBindJSON(&body); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
 		return
 	}
 
 	objectType, err := parsePermissionObjectType(body.ObjectType)
 	if err != nil {
-		SetGinError(c, http.StatusBadRequest, err)
+		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
 	}
 
 	relationship, err := permissionRelationshipRequestToProto(body.Relationship)
 	if err != nil {
-		SetGinError(c, http.StatusBadRequest, err)
+		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
 	}
 
@@ -343,7 +344,7 @@ func (pc *PermissionController) DeletePermission(c *gin.Context) {
 		UserId:       user.ID,
 	})
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to delete permission via gRPC service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to delete permission via gRPC service: %w", err))
 		return
 	}
 
@@ -362,21 +363,21 @@ func (pc *PermissionController) DeletePermission(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /permissions [put]
 func (pc *PermissionController) ReplacePermissions(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var body ReplacePermissionsBody
 	if err := c.ShouldBindJSON(&body); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
 		return
 	}
 
 	objectType, err := parsePermissionObjectType(body.ObjectType)
 	if err != nil {
-		SetGinError(c, http.StatusBadRequest, err)
+		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
 	}
 
@@ -384,7 +385,7 @@ func (pc *PermissionController) ReplacePermissions(c *gin.Context) {
 	for _, relationshipBody := range body.Relationships {
 		relationship, err := permissionRelationshipRequestToProto(relationshipBody)
 		if err != nil {
-			SetGinError(c, http.StatusBadRequest, err)
+			utils.SetGinError(c, http.StatusBadRequest, err)
 			return
 		}
 		relationships = append(relationships, relationship)
@@ -397,7 +398,7 @@ func (pc *PermissionController) ReplacePermissions(c *gin.Context) {
 		UserId:        user.ID,
 	})
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to replace permissions via gRPC service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to replace permissions via gRPC service: %w", err))
 		return
 	}
 

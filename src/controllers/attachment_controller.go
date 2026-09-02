@@ -13,18 +13,17 @@ import (
 	"github.com/KuramaSyu/WerSu-Rest/src/config"
 	"github.com/KuramaSyu/WerSu-Rest/src/models"
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
+	"github.com/KuramaSyu/WerSu-Rest/src/utils"
 	"github.com/authzed/authzed-go/v1"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-
-	. "github.com/KuramaSyu/WerSu-Rest/src/utils"
 )
 
 // looksLikeJWT returns true if the given string has the shape of an HS256
 // JWT: three non-empty dot-separated base64url segments. It is intentionally
 // cheap (no signature verification) so it can be used as a routing hint
-// before calling UnpackAttachmentJWT.
+// before callingutils.UnpackAttachmentJWT.
 func looksLikeJWT(s string) bool {
 	parts := strings.Split(s, ".")
 	return len(parts) == 3 && parts[0] != "" && parts[1] != "" && parts[2] != ""
@@ -129,34 +128,34 @@ func attachmentMetadataReplyFromProto(
 // @Success 200 {object} AttachmentMetadataReply
 // @Router /attachments [post]
 func (ac *AttachmentController) PostAttachment(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	file, err := c.FormFile("file")
 	if err != nil {
-		SetGinError(c, http.StatusBadRequest, err)
+		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
 	}
 
 	contentType := file.Header.Get("Content-Type")
 	if contentType == "" {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing Content-Type in file header"))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing Content-Type in file header"))
 		return
 	}
 
 	fileReader, err := file.Open()
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("Failed to open uploaded file: %s", err.Error()))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("Failed to open uploaded file: %s", err.Error()))
 		return
 	}
 	defer fileReader.Close()
 
 	key, err := ac.PutToS3(fileReader)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("Failed to PUT file: %s", err.Error()))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("Failed to PUT file: %s", err.Error()))
 		return
 	}
 
@@ -170,7 +169,7 @@ func (ac *AttachmentController) PostAttachment(c *gin.Context) {
 		},
 	)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, err)
+		utils.SetGinError(c, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -188,9 +187,9 @@ func (ac *AttachmentController) PostAttachment(c *gin.Context) {
 // @Success 200 {object} AttachmentMetadataReply
 // @Router /attachments/metadata [patch]
 func (ac *AttachmentController) PatchAttachmentMetadata(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
@@ -199,15 +198,15 @@ func (ac *AttachmentController) PatchAttachmentMetadata(c *gin.Context) {
 
 	var params PatchAttachmentMetadataRequest
 	if err := c.ShouldBindQuery(&params); err != nil {
-		SetGinError(c, http.StatusBadRequest, err)
+		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
 	}
 	key, err := url.QueryUnescape(params.Key)
 	if err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid attachment key: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid attachment key: %w", err))
 		return
 	} else if params.Key == "" {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("parameter key can't be empty"))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("parameter key can't be empty"))
 		return
 	}
 	request.Key = key
@@ -215,10 +214,10 @@ func (ac *AttachmentController) PatchAttachmentMetadata(c *gin.Context) {
 	if params.Filename != nil {
 		filename, err := url.QueryUnescape(*params.Filename)
 		if err != nil {
-			SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid attachment filename: %w", err))
+			utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid attachment filename: %w", err))
 			return
 		} else if params.Key == "" {
-			SetGinError(c, http.StatusBadRequest, fmt.Errorf("parameter filename can't be empty"))
+			utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("parameter filename can't be empty"))
 			return
 		}
 		request.Filename = filename
@@ -232,7 +231,7 @@ func (ac *AttachmentController) PatchAttachmentMetadata(c *gin.Context) {
 		c, request,
 	)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, err)
+		utils.SetGinError(c, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -249,15 +248,15 @@ func (ac *AttachmentController) PatchAttachmentMetadata(c *gin.Context) {
 // @Success 200 {file} binary
 // @Router /attachments/{key} [get]
 func (ac *AttachmentController) GetAttachment(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	key := c.Query("key")
 	if key == "" {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing attachment key"))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing attachment key"))
 		return
 	}
 
@@ -270,7 +269,7 @@ func (ac *AttachmentController) GetAttachment(c *gin.Context) {
 		},
 	)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, err)
+		utils.SetGinError(c, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -281,7 +280,7 @@ func (ac *AttachmentController) GetAttachment(c *gin.Context) {
 		Key:    &key,
 	})
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("Failed to get file from S3: %s", err.Error()))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("Failed to get file from S3: %s", err.Error()))
 		return
 	}
 
@@ -289,7 +288,7 @@ func (ac *AttachmentController) GetAttachment(c *gin.Context) {
 	defer object.Body.Close()
 	content, err := io.ReadAll(object.Body)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("Failed to read file content: %s", err.Error()))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("Failed to read file content: %s", err.Error()))
 		return
 	}
 
@@ -315,28 +314,28 @@ func (ac *AttachmentController) GetAttachment(c *gin.Context) {
 // @Success 200 {file} binary
 // @Router /attachments [get]
 func (ac *AttachmentController) GetImage(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var params GetAttachmentRequest
 	if err := c.ShouldBindQuery(&params); err != nil {
-		SetGinError(c, http.StatusBadRequest, err)
+		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
 	}
 	params.Key, err = url.QueryUnescape(params.Key)
 	if err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid attachment key: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid attachment key: %w", err))
 		return
 	}
 
 	// a public user who asked
 	if looksLikeJWT(params.Key) {
-		claims, code, err := UnpackAttachmentJWT(params.Key, config.AppConfig.JwtSecret)
+		claims, code, err := utils.UnpackAttachmentJWT(params.Key, config.AppConfig.JwtSecret)
 		if err != nil {
-			SetGinError(c, code, fmt.Errorf("attachment JWT: %w", err))
+			utils.SetGinError(c, code, fmt.Errorf("attachment JWT: %w", err))
 			return
 		}
 		user = &models.User{ID: claims.Subject}
@@ -344,14 +343,14 @@ func (ac *AttachmentController) GetImage(c *gin.Context) {
 	} else {
 		// JWTs in this case also grent permission, hence only here a check
 		// check if user has permission to view this attachment
-		hasPermission, err := HasPermission(ac.authClient, "attachment", params.Key, "view", "user", user.ID)
+		hasPermission, err := utils.HasPermission(ac.authClient, "attachment", params.Key, "view", "user", user.ID)
 		if err != nil {
 			log.Printf("Error while fetching permission on attachment %s: %s", params.Key, err.Error())
-			SetGinError(c, http.StatusInternalServerError, fmt.Errorf("Error while fetching permission: %s", err.Error()))
+			utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("Error while fetching permission: %s", err.Error()))
 			return
 		} else if !hasPermission {
 			log.Printf("User %s does not have permission to view attachment %s", user.ID, params.Key)
-			SetGinError(c, http.StatusForbidden, fmt.Errorf("user does not have permission to view this attachment"))
+			utils.SetGinError(c, http.StatusForbidden, fmt.Errorf("user does not have permission to view this attachment"))
 			return
 		}
 	}
@@ -368,7 +367,7 @@ func (ac *AttachmentController) GetImage(c *gin.Context) {
 	// )
 	resp, err := http.Get(url)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, err)
+		utils.SetGinError(c, http.StatusInternalServerError, err)
 		return
 	}
 	defer resp.Body.Close()
@@ -386,7 +385,7 @@ func (ac *AttachmentController) GetImage(c *gin.Context) {
 	// copy image content to response body
 	_, err = io.Copy(c.Writer, resp.Body)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, err)
+		utils.SetGinError(c, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -399,23 +398,23 @@ func (ac *AttachmentController) GetImage(c *gin.Context) {
 // @Success 200 {object} AttachmentMetadataReply
 // @Router /attachments/{key}/metadata [get]
 func (ac *AttachmentController) GetAttachmentMetadata(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var params GetAttachmentMetadataRequest
 	if err := c.ShouldBindQuery(&params); err != nil {
-		SetGinError(c, http.StatusBadRequest, err)
+		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
 	}
 	params.Key, err = url.QueryUnescape(params.Key)
 	if err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid attachment key: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid attachment key: %w", err))
 		return
 	} else if params.Key == "" {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("parameter key can't be empty"))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("parameter key can't be empty"))
 		return
 	}
 
@@ -427,7 +426,7 @@ func (ac *AttachmentController) GetAttachmentMetadata(c *gin.Context) {
 		},
 	)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, err)
+		utils.SetGinError(c, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -444,23 +443,23 @@ func (ac *AttachmentController) GetAttachmentMetadata(c *gin.Context) {
 // @Success 200 {object} proto.DeleteAttachmentResponse
 // @Router /attachments/{key} [delete]
 func (ac *AttachmentController) DeleteAttachment(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var params DeleteAttachmentMetadataRequest
 	if err := c.ShouldBindQuery(&params); err != nil {
-		SetGinError(c, http.StatusBadRequest, err)
+		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
 	}
 	params.Key, err = url.QueryUnescape(params.Key)
 	if err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid attachment key: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid attachment key: %w", err))
 		return
 	} else if params.Key == "" {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("parameter key can't be empty"))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("parameter key can't be empty"))
 		return
 	}
 
@@ -474,7 +473,7 @@ func (ac *AttachmentController) DeleteAttachment(c *gin.Context) {
 		},
 	)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, err)
+		utils.SetGinError(c, http.StatusInternalServerError, err)
 		return
 	}
 

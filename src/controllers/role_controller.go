@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
+	"github.com/KuramaSyu/WerSu-Rest/src/utils"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -35,14 +36,14 @@ func setRoleGRPCError(c *gin.Context, err error, op string) {
 	if grpcErr, ok := status.FromError(err); ok {
 		switch grpcErr.Code() {
 		case codes.PermissionDenied:
-			SetGinError(c, http.StatusForbidden, fmt.Errorf("%s: %w", op, err))
+			utils.SetGinError(c, http.StatusForbidden, fmt.Errorf("%s: %w", op, err))
 			return
 		case codes.NotFound:
-			SetGinError(c, http.StatusNotFound, fmt.Errorf("%s: %w", op, err))
+			utils.SetGinError(c, http.StatusNotFound, fmt.Errorf("%s: %w", op, err))
 			return
 		}
 	}
-	SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to %s via gRPC service: %w", op, err))
+	utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to %s via gRPC service: %w", op, err))
 }
 
 // RoleReply is the REST representation of a role returned to clients.
@@ -71,17 +72,12 @@ type CreateRoleBody struct {
 
 // UpdateRoleBody is the JSON body for updating a role.
 //
+// The role id comes from the URL path (`PATCH /roles/:id`).
 // Only `name` is optional and skipped when absent. `description` is
 // always forwarded (empty string clears the description).
 type UpdateRoleBody struct {
-	Id          string  `json:"id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4ca"`
 	Name        *string `json:"name,omitempty" example:"engineering"`
 	Description string  `json:"description,omitempty" example:"All engineers"`
-}
-
-// DeleteRoleBody is the JSON body for deleting a role.
-type DeleteRoleBody struct {
-	Id string `json:"id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4ca"`
 }
 
 // AddUserToRoleBody is the JSON body for adding a user to a role's membership.
@@ -167,15 +163,15 @@ func roleFilterFromQuery(query GetRolesQuery) *proto.RoleFilter {
 // @Failure 500 {object} map[string]string
 // @Router /roles [post]
 func (rc *RoleController) CreateRole(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var body CreateRoleBody
 	if err := c.ShouldBindJSON(&body); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
 		return
 	}
 
@@ -205,15 +201,15 @@ func (rc *RoleController) CreateRole(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /roles/{id} [get]
 func (rc *RoleController) GetRole(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	id := c.Param("id")
 	if id == "" {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing role ID"))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing role ID"))
 		return
 	}
 
@@ -242,15 +238,15 @@ func (rc *RoleController) GetRole(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /roles [get]
 func (rc *RoleController) GetRoles(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var query GetRolesQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
 		return
 	}
 
@@ -270,7 +266,7 @@ func (rc *RoleController) GetRoles(c *gin.Context) {
 			break
 		}
 		if err != nil {
-			SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to stream roles via gRPC service: %w", err))
+			utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to stream roles via gRPC service: %w", err))
 			return
 		}
 		roles = append(roles, roleReplyFromProto(role))
@@ -286,28 +282,35 @@ func (rc *RoleController) GetRoles(c *gin.Context) {
 // @Tags roles
 // @Accept json
 // @Produce json
+// @Param id path string true "Role ID"
 // @Param payload body UpdateRoleBody true "Update role request"
 // @Success 200 {object} RoleReply
 // @Failure 400 {object} map[string]string
 // @Failure 403 {object} map[string]string
 // @Failure 500 {object} map[string]string
-// @Router /roles [patch]
+// @Router /roles/{id} [patch]
 func (rc *RoleController) UpdateRole(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		return
+	}
+
+	id, code, err := utils.GetIdFromURL(c, "id")
+	if err != nil {
+		utils.SetGinError(c, code, fmt.Errorf("missing role ID: %w", err))
 		return
 	}
 
 	var body UpdateRoleBody
 	if err := c.ShouldBindJSON(&body); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
 		return
 	}
 
 	updated, err := (*rc.RoleService).UpdateRole(c, &proto.UpdateRoleRequest{
 		UserId:      user.ID,
-		Id:          body.Id,
+		Id:          id,
 		Name:        body.Name,
 		Description: body.Description,
 	})
@@ -328,30 +331,29 @@ func (rc *RoleController) UpdateRole(c *gin.Context) {
 // @Tags roles
 // @Accept json
 // @Produce json
-// @Param payload body DeleteRoleBody true "Delete role request"
+// @Param id path string true "Role ID"
 // @Success 204
 // @Failure 400 {object} map[string]string
 // @Failure 403 {object} map[string]string
 // @Failure 500 {object} map[string]string
-// @Router /roles [delete]
+// @Router /roles/{id} [delete]
 func (rc *RoleController) DeleteRole(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
-	var body DeleteRoleBody
-	if err := c.ShouldBindJSON(&body); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
+	id, code, err := utils.GetIdFromURL(c, "id")
+	if err != nil {
+		utils.SetGinError(c, code, fmt.Errorf("missing role ID: %w", err))
 		return
 	}
 
-	_, err = (*rc.RoleService).DeleteRole(c, &proto.DeleteRoleRequest{
+	if _, err := (*rc.RoleService).DeleteRole(c, &proto.DeleteRoleRequest{
 		UserId: user.ID,
-		Id:     body.Id,
-	})
-	if err != nil {
+		Id:     id,
+	}); err != nil {
 		setRoleGRPCError(c, err, "delete role")
 		return
 	}
@@ -373,15 +375,15 @@ func (rc *RoleController) DeleteRole(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /roles/members [post]
 func (rc *RoleController) AddUserToRole(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var body AddUserToRoleBody
 	if err := c.ShouldBindJSON(&body); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
 		return
 	}
 
@@ -412,15 +414,15 @@ func (rc *RoleController) AddUserToRole(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /roles/members [delete]
 func (rc *RoleController) RemoveUserFromRole(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var body RemoveUserFromRoleBody
 	if err := c.ShouldBindJSON(&body); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
 		return
 	}
 
@@ -449,15 +451,15 @@ func (rc *RoleController) RemoveUserFromRole(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /roles/by-user [get]
 func (rc *RoleController) GetRolesForUser(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var query GetRolesForUserQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
 		return
 	}
 
@@ -477,7 +479,7 @@ func (rc *RoleController) GetRolesForUser(c *gin.Context) {
 			break
 		}
 		if err != nil {
-			SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to stream roles via gRPC service: %w", err))
+			utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to stream roles via gRPC service: %w", err))
 			return
 		}
 		roles = append(roles, roleReplyFromProto(role))
@@ -498,15 +500,15 @@ func (rc *RoleController) GetRolesForUser(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /roles/members [get]
 func (rc *RoleController) GetUsersForRole(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var query GetUsersForRoleQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
 		return
 	}
 
@@ -526,7 +528,7 @@ func (rc *RoleController) GetUsersForRole(c *gin.Context) {
 			break
 		}
 		if err != nil {
-			SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to stream memberships via gRPC service: %w", err))
+			utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to stream memberships via gRPC service: %w", err))
 			return
 		}
 		memberships = append(memberships, userRoleMembershipReplyFromProto(m))

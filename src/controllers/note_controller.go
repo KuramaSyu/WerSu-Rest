@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
+	"github.com/KuramaSyu/WerSu-Rest/src/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -164,16 +165,16 @@ func NewNoteController(noteService *proto.NoteServiceClient) *NoteController {
 // @Router /notes/{id} [get]
 func (uc *NoteController) GetNote(c *gin.Context) {
 	// get user from session
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	// read path UUID
 	id := c.Params.ByName("note_id")
 	if id == "" {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing note ID"))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing note ID"))
 		return
 	}
 
@@ -182,7 +183,7 @@ func (uc *NoteController) GetNote(c *gin.Context) {
 		c, &proto.GetNoteRequest{Id: id, UserId: user.ID},
 	)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch note via gRPC service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch note via gRPC service: %w", err))
 		return
 	}
 	c.JSON(http.StatusOK, NoteResponseToProto(resp))
@@ -200,16 +201,16 @@ func (uc *NoteController) GetNote(c *gin.Context) {
 // @Router /notes [post]
 func (uc *NoteController) PostNote(c *gin.Context) {
 	// get user from session
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	// parse request body
 	var postNoteRequest PostNoteRequest
 	if err := c.ShouldBindJSON(&postNoteRequest); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
 		return
 	}
 
@@ -224,7 +225,7 @@ func (uc *NoteController) PostNote(c *gin.Context) {
 	}
 	note, err := (*uc.NoteService).PostNote(c, &grpcPostNoteRequest)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to post note via gRPC service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to post note via gRPC service: %w", err))
 		return
 	}
 
@@ -245,16 +246,16 @@ func (uc *NoteController) PostNote(c *gin.Context) {
 // @Router /notes [patch]
 func (uc *NoteController) PatchNote(c *gin.Context) {
 	// get user from session
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	// parse request body
 	var patchNoteRequest PatchNoteRequest
 	if err := c.ShouldBindJSON(&patchNoteRequest); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
 		return
 	}
 
@@ -286,7 +287,7 @@ func (uc *NoteController) PatchNote(c *gin.Context) {
 
 	note, err := (*uc.NoteService).PatchNote(c, &grpcAlterNoteRequest)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to patch note via gRPC service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to patch note via gRPC service: %w", err))
 		return
 	}
 
@@ -307,16 +308,16 @@ func (uc *NoteController) PatchNote(c *gin.Context) {
 // @Router /notes/{id} [delete]
 func (uc *NoteController) DeleteNote(c *gin.Context) {
 	// get user from session
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	// parse path UUID
 	id := c.Params.ByName("note_id")
 	if id == "" {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing note ID"))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing note ID"))
 		return
 	}
 
@@ -327,7 +328,7 @@ func (uc *NoteController) DeleteNote(c *gin.Context) {
 	}
 	note, err := (*uc.NoteService).DeleteNote(c, &grpcDeleteNoteRequest)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to delete note via gRPC service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to delete note via gRPC service: %w", err))
 		return
 	}
 

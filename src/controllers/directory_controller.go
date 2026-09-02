@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
+	"github.com/KuramaSyu/WerSu-Rest/src/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -125,21 +126,21 @@ func directoryReplyFromProto(directory *proto.Directory) DirectoryReply {
 // @Failure 500 {object} map[string]string
 // @Router /directories/{id} [get]
 func (dc *DirectoryController) GetDirectory(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	id := c.Params.ByName("id")
 	if id == "" {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing directory ID"))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing directory ID"))
 		return
 	}
 
 	var query GetDirectoryQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
 		return
 	}
 
@@ -152,7 +153,7 @@ func (dc *DirectoryController) GetDirectory(c *gin.Context) {
 		IncludeShelves:    query.IncludeShelves,
 	})
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch directory via gRPC service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch directory via gRPC service: %w", err))
 		return
 	}
 
@@ -177,15 +178,15 @@ func (dc *DirectoryController) GetDirectory(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /directories [get]
 func (dc *DirectoryController) GetDirectories(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var query GetDirectoriesQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
 		return
 	}
 
@@ -200,7 +201,7 @@ func (dc *DirectoryController) GetDirectories(c *gin.Context) {
 		IncludeShelves:    query.IncludeShelves,
 	})
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch directories via gRPC service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch directories via gRPC service: %w", err))
 		return
 	}
 
@@ -211,7 +212,7 @@ func (dc *DirectoryController) GetDirectories(c *gin.Context) {
 			break
 		}
 		if err != nil {
-			SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to stream directories via gRPC service: %w", err))
+			utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to stream directories via gRPC service: %w", err))
 			return
 		}
 
@@ -235,21 +236,21 @@ func (dc *DirectoryController) GetDirectories(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /directories/{id}/notes [get]
 func (dc *DirectoryController) GetNotesOfDirectory(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	id := c.Params.ByName("id")
 	if id == "" {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing directory ID"))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing directory ID"))
 		return
 	}
 
 	var query GetNotesOfDirectoryQuery
 	if err := c.ShouldBindQuery(&query); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query parameters: %w", err))
 		return
 	}
 
@@ -270,7 +271,7 @@ func (dc *DirectoryController) GetNotesOfDirectory(c *gin.Context) {
 		UserId:      user.ID,
 	})
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch directory notes via gRPC service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch directory notes via gRPC service: %w", err))
 		return
 	}
 
@@ -289,15 +290,15 @@ func (dc *DirectoryController) GetNotesOfDirectory(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /directories [post]
 func (dc *DirectoryController) CreateDirectory(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var body CreateDirectoryBody
 	if err := c.ShouldBindJSON(&body); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
 		return
 	}
 
@@ -311,7 +312,7 @@ func (dc *DirectoryController) CreateDirectory(c *gin.Context) {
 		UserId:      user.ID,
 	})
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to create directory via gRPC service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to create directory via gRPC service: %w", err))
 		return
 	}
 
@@ -330,15 +331,15 @@ func (dc *DirectoryController) CreateDirectory(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /directories [patch]
 func (dc *DirectoryController) PatchDirectory(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	var body PatchDirectoryBody
 	if err := c.ShouldBindJSON(&body); err != nil {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid request body: %w", err))
 		return
 	}
 
@@ -366,7 +367,7 @@ func (dc *DirectoryController) PatchDirectory(c *gin.Context) {
 	}
 	directory, err := (*dc.DirectoryService).PatchDirectory(c, alterReq)
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to patch directory via gRPC service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to patch directory via gRPC service: %w", err))
 		return
 	}
 
@@ -385,21 +386,21 @@ func (dc *DirectoryController) PatchDirectory(c *gin.Context) {
 // @Failure 500 {object} map[string]string
 // @Router /directories/{id} [delete]
 func (dc *DirectoryController) DeleteDirectory(c *gin.Context) {
-	user, code, err := UserFromContext(c)
+	user, code, err := utils.UserFromContext(c)
 	if err != nil {
-		SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
 		return
 	}
 
 	id := c.Params.ByName("id")
 	if id == "" {
-		SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing directory ID"))
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("missing directory ID"))
 		return
 	}
 
 	directory, err := (*dc.DirectoryService).DeleteDirectory(c, &proto.DeleteDirectoryRequest{Id: id, UserId: user.ID})
 	if err != nil {
-		SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to delete directory via gRPC service: %w", err))
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to delete directory via gRPC service: %w", err))
 		return
 	}
 

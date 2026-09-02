@@ -8,19 +8,20 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/KuramaSyu/WerSu-Rest/src/utils"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-// runSetGinError invokes SetGinError against a recorder so a test can read
+// runSetGinError invokesutils.SetGinError against a recorder so a test can read
 // back the status code and JSON body it produced.
 func runSetGinError(t *testing.T, statusCode int, err error) (*httptest.ResponseRecorder, map[string]any) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	SetGinError(c, statusCode, err)
+	utils.SetGinError(c, statusCode, err)
 
 	var body map[string]any
 	if err := json.NewDecoder(recorder.Body).Decode(&body); err != nil {
@@ -30,7 +31,7 @@ func runSetGinError(t *testing.T, statusCode int, err error) (*httptest.Response
 }
 
 // TestSetGinErrorUpgradesGrpcUnavailableToServiceUnavailable confirms that
-// calling SetGinError with status=500 and a gRPC error that signals an
+// callingutils.SetGinError with status=500 and a gRPC error that signals an
 // unreachable backend (Unavailable / DeadlineExceeded / ResourceExhausted)
 // results in a 503 response so REST clients can distinguish "backend down"
 // from generic internal errors.
@@ -58,7 +59,7 @@ func TestSetGinErrorUpgradesGrpcUnavailableToServiceUnavailable(t *testing.T) {
 
 // TestSetGinErrorUpgradesWrappedGrpcUnavailable verifies that the upgrade
 // still fires when the gRPC status error is wrapped via fmt.Errorf("...: %w").
-// SetGinError must look through the wrapping to find the original gRPC code.
+// utils.SetGinError must look through the wrapping to find the original gRPC code.
 func TestSetGinErrorUpgradesWrappedGrpcUnavailable(t *testing.T) {
 	wrapped := fmt.Errorf("failed to fetch directory via gRPC service: %w",
 		status.Error(codes.Unavailable, "connection refused"))
@@ -71,7 +72,7 @@ func TestSetGinErrorUpgradesWrappedGrpcUnavailable(t *testing.T) {
 }
 
 // TestSetGinErrorUpgradesGrpcNotFoundTo404 confirms that calling
-// SetGinError with status=500 and a gRPC NotFound error results in a
+// utils.SetGinError with status=500 and a gRPC NotFound error results in a
 // 404 response so REST clients see "entity missing" as 404 instead of
 // a generic 500.
 func TestSetGinErrorUpgradesGrpcNotFoundTo404(t *testing.T) {
@@ -85,7 +86,7 @@ func TestSetGinErrorUpgradesGrpcNotFoundTo404(t *testing.T) {
 
 // TestSetGinErrorUpgradesWrappedGrpcNotFound verifies that the NotFound
 // upgrade still fires when the gRPC status error is wrapped via
-// fmt.Errorf("...: %w"). SetGinError must look through the wrapping to
+// fmt.Errorf("...: %w").utils.SetGinError must look through the wrapping to
 // find the original gRPC code.
 func TestSetGinErrorUpgradesWrappedGrpcNotFound(t *testing.T) {
 	wrapped := fmt.Errorf("failed to fetch user via gRPC service: %w",
@@ -99,7 +100,7 @@ func TestSetGinErrorUpgradesWrappedGrpcNotFound(t *testing.T) {
 }
 
 // TestSetGinErrorUpgradesGrpcPermissionDeniedTo403 confirms that calling
-// SetGinError with status=500 and a gRPC PermissionDenied error results
+// utils.SetGinError with status=500 and a gRPC PermissionDenied error results
 // in a 403 response so REST clients see "no permission" as 403 instead of
 // a generic 500.
 func TestSetGinErrorUpgradesGrpcPermissionDeniedTo403(t *testing.T) {
@@ -113,7 +114,7 @@ func TestSetGinErrorUpgradesGrpcPermissionDeniedTo403(t *testing.T) {
 
 // TestSetGinErrorUpgradesWrappedGrpcPermissionDenied verifies that the
 // PermissionDenied upgrade still fires when the gRPC status error is
-// wrapped via fmt.Errorf("...: %w"). SetGinError must look through the
+// wrapped via fmt.Errorf("...: %w").utils.SetGinError must look through the
 // wrapping to find the original gRPC code.
 func TestSetGinErrorUpgradesWrappedGrpcPermissionDenied(t *testing.T) {
 	wrapped := fmt.Errorf("failed to fetch directory via gRPC service: %w",
