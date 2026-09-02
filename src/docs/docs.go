@@ -697,6 +697,12 @@ const docTemplate = `{
                         "description": "Include child note IDs in each response",
                         "name": "include_child_notes",
                         "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include shelf IDs the directory sits on in each response",
+                        "name": "include_shelves",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -946,6 +952,12 @@ const docTemplate = `{
                         "type": "boolean",
                         "description": "Include child note IDs in the response",
                         "name": "include_child_notes",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include shelf IDs the directory sits on in the response",
+                        "name": "include_shelves",
                         "in": "query"
                     }
                 ],
@@ -2107,121 +2119,6 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
-            "delete": {
-                "description": "Deletes a role via gRPC service.  Caller must hold\n` + "`" + `manage` + "`" + ` on the role.  Membership edges become dangling\nreferences in SpiceDB (they silently evaluate to nothing);\ncleanup of those is the caller's responsibility.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "roles"
-                ],
-                "summary": "Delete role",
-                "parameters": [
-                    {
-                        "description": "Delete role request",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/controllers.DeleteRoleBody"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "description": "Updates a role's metadata via gRPC service.  Caller must\nhold ` + "`" + `manage` + "`" + ` on the role.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "roles"
-                ],
-                "summary": "Update role",
-                "parameters": [
-                    {
-                        "description": "Update role request",
-                        "name": "payload",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/controllers.UpdateRoleBody"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/controllers.RoleReply"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
             }
         },
         "/roles/by-user": {
@@ -2485,6 +2382,440 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes a role via gRPC service.  Caller must hold\n` + "`" + `manage` + "`" + ` on the role.  Membership edges become dangling\nreferences in SpiceDB (they silently evaluate to nothing);\ncleanup of those is the caller's responsibility.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Delete role",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Role ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Updates a role's metadata via gRPC service.  Caller must\nhold ` + "`" + `manage` + "`" + ` on the role.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "roles"
+                ],
+                "summary": "Update role",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Role ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update role request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.UpdateRoleBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.RoleReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/rules": {
+            "get": {
+                "description": "Lists rules matching an optional filter via the gRPC service.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rules"
+                ],
+                "summary": "List rules",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by event type",
+                        "name": "event_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by attached entity type",
+                        "name": "attached_entity_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by attached entity id",
+                        "name": "attached_entity_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Only include enabled rules",
+                        "name": "enabled_only",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by creator id",
+                        "name": "creator_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/controllers.RuleReply"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Creates a rule via the gRPC service.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rules"
+                ],
+                "summary": "Create rule",
+                "parameters": [
+                    {
+                        "description": "Create rule request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.CreateRuleBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.RuleReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/rules/{id}": {
+            "get": {
+                "description": "Fetches a single rule by ID via the gRPC service.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rules"
+                ],
+                "summary": "Get rule by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.RuleReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes a rule via the gRPC service.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rules"
+                ],
+                "summary": "Delete rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Updates an existing rule via the gRPC service.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rules"
+                ],
+                "summary": "Update rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update rule request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.UpdateRuleBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.RuleReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2816,6 +3147,641 @@ const docTemplate = `{
                 }
             }
         },
+        "/shelves": {
+            "get": {
+                "description": "Lists shelves with optional pagination via the gRPC service.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "shelves"
+                ],
+                "summary": "List shelves",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Maximum results to return",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include book IDs each shelf binds",
+                        "name": "include_books",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/controllers.ShelfReply"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Creates a shelf via the gRPC service.  Optionally runs a\nbootstrap strategy (e.g. zettelkasten) immediately after insert.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "shelves"
+                ],
+                "summary": "Create shelf",
+                "parameters": [
+                    {
+                        "description": "Create shelf request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.CreateShelfBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.CreateShelfReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes a shelf via the gRPC service.  Set ` + "`" + `dry=true` + "`" + ` to\npreview the would-be cascade without deleting.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "shelves"
+                ],
+                "summary": "Delete shelf",
+                "parameters": [
+                    {
+                        "description": "Delete shelf request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.DeleteShelfBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.DeleteShelfReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Updates an existing shelf via the gRPC service.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "shelves"
+                ],
+                "summary": "Update shelf",
+                "parameters": [
+                    {
+                        "description": "Update shelf request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.UpdateShelfBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ShelfReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/shelves/books": {
+            "put": {
+                "description": "Replaces the set of books bound to a shelf.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "shelves"
+                ],
+                "summary": "Replace books on shelf",
+                "parameters": [
+                    {
+                        "description": "Set books request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.SetBooksBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/shelves/books/attach": {
+            "post": {
+                "description": "Attaches a single book to a shelf.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "shelves"
+                ],
+                "summary": "Attach book to shelf",
+                "parameters": [
+                    {
+                        "description": "Attach book request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.AttachBookBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/shelves/books/detach": {
+            "post": {
+                "description": "Detaches a single book from a shelf.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "shelves"
+                ],
+                "summary": "Detach book from shelf",
+                "parameters": [
+                    {
+                        "description": "Detach book request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.DetachBookBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/shelves/by-book": {
+            "get": {
+                "description": "Returns the IDs of every shelf the book sits on.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "shelves"
+                ],
+                "summary": "List shelves for book",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Book ID",
+                        "name": "book_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ShelfIdsReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/shelves/by-ids": {
+            "post": {
+                "description": "Fetches multiple shelves by ID via the gRPC service.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "shelves"
+                ],
+                "summary": "Get shelves by IDs",
+                "parameters": [
+                    {
+                        "description": "Shelf IDs to fetch",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.GetShelvesBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/controllers.ShelfReply"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/shelves/{id}": {
+            "get": {
+                "description": "Fetches a single shelf via the gRPC service.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "shelves"
+                ],
+                "summary": "Get shelf by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shelf ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include book IDs the shelf binds",
+                        "name": "include_books",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ShelfReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/shelves/{id}/books": {
+            "get": {
+                "description": "Returns the IDs of every book bound to the shelf.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "shelves"
+                ],
+                "summary": "List books on shelf",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Shelf ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.BookIdsReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/status": {
             "get": {
                 "description": "Reports DNS reachability and service-level reachability for\nGarage (S3), SpiceDB (gRPC), imgproxy (HTTP /health), the\nWerSu gRPC backend, and Postgres (when DATABASE_DSN is set).\nThe response is always returned with HTTP 200; inspect the\n` + "`" + `overall_ok` + "`" + ` and per-service ` + "`" + `reachable` + "`" + ` flags for health.",
@@ -2892,6 +3858,23 @@ const docTemplate = `{
                 }
             }
         },
+        "controllers.AttachBookBody": {
+            "type": "object",
+            "required": [
+                "book_id",
+                "shelf_id"
+            ],
+            "properties": {
+                "book_id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                },
+                "shelf_id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4ca"
+                }
+            }
+        },
         "controllers.AttachmentLinkBody": {
             "type": "object",
             "required": [
@@ -2936,6 +3919,17 @@ const docTemplate = `{
                 }
             }
         },
+        "controllers.BookIdsReply": {
+            "type": "object",
+            "properties": {
+                "book_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "controllers.BookstackBookImportReply": {
             "type": "object",
             "properties": {
@@ -2967,6 +3961,23 @@ const docTemplate = `{
                 },
                 "pages_imported": {
                     "type": "integer"
+                }
+            }
+        },
+        "controllers.BootstrapResultReply": {
+            "type": "object",
+            "properties": {
+                "created_directory_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "created_rule_id": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
                 }
             }
         },
@@ -3023,6 +4034,15 @@ const docTemplate = `{
                     "example": [
                         "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
                     ]
+                },
+                "shelf_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                    ]
                 }
             }
         },
@@ -3067,6 +4087,9 @@ const docTemplate = `{
                 }
             }
         },
+        "controllers.CreateRuleBody": {
+            "type": "object"
+        },
         "controllers.CreateShareRequestBody": {
             "type": "object",
             "required": [
@@ -3101,6 +4124,49 @@ const docTemplate = `{
                 }
             }
         },
+        "controllers.CreateShelfBody": {
+            "type": "object",
+            "required": [
+                "slug"
+            ],
+            "properties": {
+                "bootstrap_strategy": {
+                    "type": "string",
+                    "example": "BOOTSTRAP_STRATEGY_NONE"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Shared notes for engineering team"
+                },
+                "display_name": {
+                    "type": "string",
+                    "example": "Engineering"
+                },
+                "image_url": {
+                    "type": "string",
+                    "example": "https://cdn.example.com/engineering.png"
+                },
+                "readme_note_id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                },
+                "slug": {
+                    "type": "string",
+                    "example": "engineering"
+                }
+            }
+        },
+        "controllers.CreateShelfReply": {
+            "type": "object",
+            "properties": {
+                "bootstrap_result": {
+                    "$ref": "#/definitions/controllers.BootstrapResultReply"
+                },
+                "shelf": {
+                    "$ref": "#/definitions/controllers.ShelfReply"
+                }
+            }
+        },
         "controllers.DeletePermissionBody": {
             "type": "object",
             "required": [
@@ -3126,18 +4192,6 @@ const docTemplate = `{
                 }
             }
         },
-        "controllers.DeleteRoleBody": {
-            "type": "object",
-            "required": [
-                "id"
-            ],
-            "properties": {
-                "id": {
-                    "type": "string",
-                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4ca"
-                }
-            }
-        },
         "controllers.DeleteSharesBody": {
             "type": "object",
             "required": [
@@ -3152,6 +4206,56 @@ const docTemplate = `{
                     "example": [
                         "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
                     ]
+                }
+            }
+        },
+        "controllers.DeleteShelfBody": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "dry": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4ca"
+                }
+            }
+        },
+        "controllers.DeleteShelfReply": {
+            "type": "object",
+            "properties": {
+                "affected_book_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "binding_count": {
+                    "type": "integer"
+                },
+                "dry": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "controllers.DetachBookBody": {
+            "type": "object",
+            "required": [
+                "book_id",
+                "shelf_id"
+            ],
+            "properties": {
+                "book_id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                },
+                "shelf_id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4ca"
                 }
             }
         },
@@ -3194,6 +4298,12 @@ const docTemplate = `{
                         "$ref": "#/definitions/controllers.PermissionRelationshipReply"
                     }
                 },
+                "shelf_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "slug": {
                     "type": "string"
                 }
@@ -3230,6 +4340,27 @@ const docTemplate = `{
                         "SHARE_PERMISSION_WRITE"
                     ],
                     "example": "SHARE_PERMISSION_READ"
+                }
+            }
+        },
+        "controllers.GetShelvesBody": {
+            "type": "object",
+            "required": [
+                "ids"
+            ],
+            "properties": {
+                "ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "0195f8f4-1167-7f89-b5ec-b40a8f08f4ca"
+                    ]
+                },
+                "include_books": {
+                    "type": "boolean",
+                    "example": false
                 }
             }
         },
@@ -3328,6 +4459,12 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/controllers.PermissionRelationshipReply"
+                    }
+                },
+                "shelf_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
                     }
                 },
                 "tag_ids": {
@@ -3563,6 +4700,15 @@ const docTemplate = `{
                     "example": [
                         "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
                     ]
+                },
+                "shelf_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                    ]
                 }
             }
         },
@@ -3741,6 +4887,20 @@ const docTemplate = `{
                     "type": "string",
                     "example": "This is the content of my note."
                 },
+                "directory_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                    ]
+                },
+                "shelf_id": {
+                    "description": "Either ShelfId or DirectoryIds must be provided; the gRPC server\nresolves rules against the shelf and auto-selects a directory when\nonly ShelfId is set.",
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                },
                 "title": {
                     "type": "string",
                     "example": "My Note Title"
@@ -3809,6 +4969,46 @@ const docTemplate = `{
                 }
             }
         },
+        "controllers.RuleReply": {
+            "type": "object",
+            "properties": {
+                "action_context": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "action_type": {
+                    "type": "string"
+                },
+                "attached_entity_id": {
+                    "type": "string"
+                },
+                "attached_entity_type": {
+                    "type": "string"
+                },
+                "condition": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "creator_id": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "event_type": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
         "controllers.ServiceStatus": {
             "type": "object",
             "properties": {
@@ -3830,6 +5030,68 @@ const docTemplate = `{
                 },
                 "service": {
                     "$ref": "#/definitions/controllers.CheckResult"
+                }
+            }
+        },
+        "controllers.SetBooksBody": {
+            "type": "object",
+            "required": [
+                "book_ids",
+                "shelf_id"
+            ],
+            "properties": {
+                "book_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                    ]
+                },
+                "shelf_id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4ca"
+                }
+            }
+        },
+        "controllers.ShelfIdsReply": {
+            "type": "object",
+            "properties": {
+                "shelf_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "controllers.ShelfReply": {
+            "type": "object",
+            "properties": {
+                "book_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "image_url": {
+                    "type": "string"
+                },
+                "readme_note_id": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
                 }
             }
         },
@@ -3861,21 +5123,47 @@ const docTemplate = `{
         },
         "controllers.UpdateRoleBody": {
             "type": "object",
-            "required": [
-                "id"
-            ],
             "properties": {
                 "description": {
                     "type": "string",
                     "example": "All engineers"
                 },
-                "id": {
-                    "type": "string",
-                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4ca"
-                },
                 "name": {
                     "type": "string",
                     "example": "engineering"
+                }
+            }
+        },
+        "controllers.UpdateRuleBody": {
+            "type": "object",
+            "properties": {
+                "action_context": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "action_type": {
+                    "type": "string",
+                    "example": "add_tag"
+                },
+                "attached_entity_id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                },
+                "attached_entity_type": {
+                    "type": "string",
+                    "example": "shelf"
+                },
+                "condition": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "event_type": {
+                    "type": "string",
+                    "example": "note_created"
                 }
             }
         },
@@ -3915,6 +5203,38 @@ const docTemplate = `{
                         "SHARE_PERMISSION_WRITE"
                     ],
                     "example": "SHARE_PERMISSION_READ"
+                }
+            }
+        },
+        "controllers.UpdateShelfBody": {
+            "type": "object",
+            "required": [
+                "id"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "Shared notes for engineering team"
+                },
+                "display_name": {
+                    "type": "string",
+                    "example": "Engineering"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4ca"
+                },
+                "image_url": {
+                    "type": "string",
+                    "example": "https://cdn.example.com/engineering.png"
+                },
+                "readme_note_id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                },
+                "slug": {
+                    "type": "string",
+                    "example": "engineering"
                 }
             }
         },

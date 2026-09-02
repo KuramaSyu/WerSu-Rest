@@ -36,6 +36,18 @@ definitions:
     - role_id
     - subject_user_id
     type: object
+  controllers.AttachBookBody:
+    properties:
+      book_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        type: string
+      shelf_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4ca
+        type: string
+    required:
+    - book_id
+    - shelf_id
+    type: object
   controllers.AttachmentLinkBody:
     properties:
       attachment_key:
@@ -65,6 +77,13 @@ definitions:
       updated_at:
         type: string
     type: object
+  controllers.BookIdsReply:
+    properties:
+      book_ids:
+        items:
+          type: string
+        type: array
+    type: object
   controllers.BookstackBookImportReply:
     properties:
       attachments_uploaded:
@@ -86,6 +105,17 @@ definitions:
         type: string
       pages_imported:
         type: integer
+    type: object
+  controllers.BootstrapResultReply:
+    properties:
+      created_directory_ids:
+        items:
+          type: string
+        type: array
+      created_rule_id:
+        type: string
+      description:
+        type: string
     type: object
   controllers.CheckResult:
     properties:
@@ -129,6 +159,12 @@ definitions:
         items:
           type: string
         type: array
+      shelf_ids:
+        example:
+        - 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        items:
+          type: string
+        type: array
     required:
     - name
     type: object
@@ -161,6 +197,8 @@ definitions:
     required:
     - name
     type: object
+  controllers.CreateRuleBody:
+    type: object
   controllers.CreateShareRequestBody:
     properties:
       description:
@@ -186,6 +224,36 @@ definitions:
     - note_id
     - permission
     type: object
+  controllers.CreateShelfBody:
+    properties:
+      bootstrap_strategy:
+        example: BOOTSTRAP_STRATEGY_NONE
+        type: string
+      description:
+        example: Shared notes for engineering team
+        type: string
+      display_name:
+        example: Engineering
+        type: string
+      image_url:
+        example: https://cdn.example.com/engineering.png
+        type: string
+      readme_note_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        type: string
+      slug:
+        example: engineering
+        type: string
+    required:
+    - slug
+    type: object
+  controllers.CreateShelfReply:
+    properties:
+      bootstrap_result:
+        $ref: '#/definitions/controllers.BootstrapResultReply'
+      shelf:
+        $ref: '#/definitions/controllers.ShelfReply'
+    type: object
   controllers.DeletePermissionBody:
     properties:
       object_id:
@@ -204,14 +272,6 @@ definitions:
     - object_type
     - relationship
     type: object
-  controllers.DeleteRoleBody:
-    properties:
-      id:
-        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4ca
-        type: string
-    required:
-    - id
-    type: object
   controllers.DeleteSharesBody:
     properties:
       share_ids:
@@ -222,6 +282,40 @@ definitions:
         type: array
     required:
     - share_ids
+    type: object
+  controllers.DeleteShelfBody:
+    properties:
+      dry:
+        example: false
+        type: boolean
+      id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4ca
+        type: string
+    required:
+    - id
+    type: object
+  controllers.DeleteShelfReply:
+    properties:
+      affected_book_ids:
+        items:
+          type: string
+        type: array
+      binding_count:
+        type: integer
+      dry:
+        type: boolean
+    type: object
+  controllers.DetachBookBody:
+    properties:
+      book_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        type: string
+      shelf_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4ca
+        type: string
+    required:
+    - book_id
+    - shelf_id
     type: object
   controllers.DirectoryReply:
     properties:
@@ -249,6 +343,10 @@ definitions:
         items:
           $ref: '#/definitions/controllers.PermissionRelationshipReply'
         type: array
+      shelf_ids:
+        items:
+          type: string
+        type: array
       slug:
         type: string
     type: object
@@ -274,6 +372,20 @@ definitions:
         - SHARE_PERMISSION_WRITE
         example: SHARE_PERMISSION_READ
         type: string
+    type: object
+  controllers.GetShelvesBody:
+    properties:
+      ids:
+        example:
+        - 0195f8f4-1167-7f89-b5ec-b40a8f08f4ca
+        items:
+          type: string
+        type: array
+      include_books:
+        example: false
+        type: boolean
+    required:
+    - ids
     type: object
   controllers.MinimalDirectory:
     properties:
@@ -338,6 +450,10 @@ definitions:
       permissions:
         items:
           $ref: '#/definitions/controllers.PermissionRelationshipReply'
+        type: array
+      shelf_ids:
+        items:
+          type: string
         type: array
       tag_ids:
         items:
@@ -493,6 +609,12 @@ definitions:
         items:
           type: string
         type: array
+      shelf_ids:
+        example:
+        - 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        items:
+          type: string
+        type: array
     required:
     - id
     type: object
@@ -614,6 +736,19 @@ definitions:
       content:
         example: This is the content of my note.
         type: string
+      directory_ids:
+        example:
+        - 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        items:
+          type: string
+        type: array
+      shelf_id:
+        description: |-
+          Either ShelfId or DirectoryIds must be provided; the gRPC server
+          resolves rules against the shelf and auto-selects a directory when
+          only ShelfId is set.
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        type: string
       title:
         example: My Note Title
         type: string
@@ -664,6 +799,33 @@ definitions:
       name:
         type: string
     type: object
+  controllers.RuleReply:
+    properties:
+      action_context:
+        additionalProperties: {}
+        type: object
+      action_type:
+        type: string
+      attached_entity_id:
+        type: string
+      attached_entity_type:
+        type: string
+      condition:
+        additionalProperties: {}
+        type: object
+      created_at:
+        type: string
+      creator_id:
+        type: string
+      enabled:
+        type: boolean
+      event_type:
+        type: string
+      id:
+        type: string
+      updated_at:
+        type: string
+    type: object
   controllers.ServiceStatus:
     properties:
       address:
@@ -682,6 +844,47 @@ definitions:
         type: boolean
       service:
         $ref: '#/definitions/controllers.CheckResult'
+    type: object
+  controllers.SetBooksBody:
+    properties:
+      book_ids:
+        example:
+        - 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        items:
+          type: string
+        type: array
+      shelf_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4ca
+        type: string
+    required:
+    - book_ids
+    - shelf_id
+    type: object
+  controllers.ShelfIdsReply:
+    properties:
+      shelf_ids:
+        items:
+          type: string
+        type: array
+    type: object
+  controllers.ShelfReply:
+    properties:
+      book_ids:
+        items:
+          type: string
+        type: array
+      description:
+        type: string
+      display_name:
+        type: string
+      id:
+        type: string
+      image_url:
+        type: string
+      readme_note_id:
+        type: string
+      slug:
+        type: string
     type: object
   controllers.StatusResponse:
     properties:
@@ -705,14 +908,33 @@ definitions:
       description:
         example: All engineers
         type: string
-      id:
-        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4ca
-        type: string
       name:
         example: engineering
         type: string
-    required:
-    - id
+    type: object
+  controllers.UpdateRuleBody:
+    properties:
+      action_context:
+        additionalProperties: {}
+        type: object
+      action_type:
+        example: add_tag
+        type: string
+      attached_entity_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        type: string
+      attached_entity_type:
+        example: shelf
+        type: string
+      condition:
+        additionalProperties: {}
+        type: object
+      enabled:
+        example: false
+        type: boolean
+      event_type:
+        example: note_created
+        type: string
     type: object
   controllers.UpdateShareBody:
     properties:
@@ -742,6 +964,29 @@ definitions:
     - id
     - note_id
     - permission
+    type: object
+  controllers.UpdateShelfBody:
+    properties:
+      description:
+        example: Shared notes for engineering team
+        type: string
+      display_name:
+        example: Engineering
+        type: string
+      id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4ca
+        type: string
+      image_url:
+        example: https://cdn.example.com/engineering.png
+        type: string
+      readme_note_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        type: string
+      slug:
+        example: engineering
+        type: string
+    required:
+    - id
     type: object
   controllers.UserRoleMembershipReply:
     properties:
@@ -1292,6 +1537,10 @@ paths:
         in: query
         name: include_child_notes
         type: boolean
+      - description: Include shelf IDs the directory sits on in each response
+        in: query
+        name: include_shelves
+        type: boolean
       produces:
       - application/json
       responses:
@@ -1436,6 +1685,10 @@ paths:
       - description: Include child note IDs in the response
         in: query
         name: include_child_notes
+        type: boolean
+      - description: Include shelf IDs the directory sits on in the response
+        in: query
+        name: include_shelves
         type: boolean
       produces:
       - application/json
@@ -2167,47 +2420,6 @@ paths:
       tags:
       - permissions
   /roles:
-    delete:
-      consumes:
-      - application/json
-      description: |-
-        Deletes a role via gRPC service.  Caller must hold
-        `manage` on the role.  Membership edges become dangling
-        references in SpiceDB (they silently evaluate to nothing);
-        cleanup of those is the caller's responsibility.
-      parameters:
-      - description: Delete role request
-        in: body
-        name: payload
-        required: true
-        schema:
-          $ref: '#/definitions/controllers.DeleteRoleBody'
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "403":
-          description: Forbidden
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Delete role
-      tags:
-      - roles
     get:
       consumes:
       - application/json
@@ -2243,47 +2455,6 @@ paths:
               type: string
             type: object
       summary: List roles
-      tags:
-      - roles
-    patch:
-      consumes:
-      - application/json
-      description: |-
-        Updates a role's metadata via gRPC service.  Caller must
-        hold `manage` on the role.
-      parameters:
-      - description: Update role request
-        in: body
-        name: payload
-        required: true
-        schema:
-          $ref: '#/definitions/controllers.UpdateRoleBody'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/controllers.RoleReply'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "403":
-          description: Forbidden
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Update role
       tags:
       - roles
     post:
@@ -2328,6 +2499,46 @@ paths:
       tags:
       - roles
   /roles/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: |-
+        Deletes a role via gRPC service.  Caller must hold
+        `manage` on the role.  Membership edges become dangling
+        references in SpiceDB (they silently evaluate to nothing);
+        cleanup of those is the caller's responsibility.
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete role
+      tags:
+      - roles
     get:
       consumes:
       - application/json
@@ -2364,6 +2575,52 @@ paths:
               type: string
             type: object
       summary: Get role by ID
+      tags:
+      - roles
+    patch:
+      consumes:
+      - application/json
+      description: |-
+        Updates a role's metadata via gRPC service.  Caller must
+        hold `manage` on the role.
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update role request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateRoleBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.RoleReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update role
       tags:
       - roles
   /roles/by-user:
@@ -2516,6 +2773,214 @@ paths:
       summary: Add user to role
       tags:
       - roles
+  /rules:
+    get:
+      consumes:
+      - application/json
+      description: Lists rules matching an optional filter via the gRPC service.
+      parameters:
+      - description: Filter by event type
+        in: query
+        name: event_type
+        type: string
+      - description: Filter by attached entity type
+        in: query
+        name: attached_entity_type
+        type: string
+      - description: Filter by attached entity id
+        in: query
+        name: attached_entity_id
+        type: string
+      - description: Only include enabled rules
+        in: query
+        name: enabled_only
+        type: boolean
+      - description: Filter by creator id
+        in: query
+        name: creator_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/controllers.RuleReply'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List rules
+      tags:
+      - rules
+    post:
+      consumes:
+      - application/json
+      description: Creates a rule via the gRPC service.
+      parameters:
+      - description: Create rule request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreateRuleBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.RuleReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create rule
+      tags:
+      - rules
+  /rules/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a rule via the gRPC service.
+      parameters:
+      - description: Rule ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete rule
+      tags:
+      - rules
+    get:
+      consumes:
+      - application/json
+      description: Fetches a single rule by ID via the gRPC service.
+      parameters:
+      - description: Rule ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.RuleReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get rule by ID
+      tags:
+      - rules
+    patch:
+      consumes:
+      - application/json
+      description: Updates an existing rule via the gRPC service.
+      parameters:
+      - description: Rule ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update rule request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateRuleBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.RuleReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update rule
+      tags:
+      - rules
   /shares:
     delete:
       consumes:
@@ -2722,6 +3187,428 @@ paths:
       summary: Get shares by IDs
       tags:
       - shares
+  /shelves:
+    delete:
+      consumes:
+      - application/json
+      description: |-
+        Deletes a shelf via the gRPC service.  Set `dry=true` to
+        preview the would-be cascade without deleting.
+      parameters:
+      - description: Delete shelf request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.DeleteShelfBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.DeleteShelfReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete shelf
+      tags:
+      - shelves
+    get:
+      consumes:
+      - application/json
+      description: Lists shelves with optional pagination via the gRPC service.
+      parameters:
+      - description: Maximum results to return
+        in: query
+        name: limit
+        type: integer
+      - description: Pagination offset
+        in: query
+        name: offset
+        type: integer
+      - description: Include book IDs each shelf binds
+        in: query
+        name: include_books
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/controllers.ShelfReply'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List shelves
+      tags:
+      - shelves
+    patch:
+      consumes:
+      - application/json
+      description: Updates an existing shelf via the gRPC service.
+      parameters:
+      - description: Update shelf request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateShelfBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.ShelfReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update shelf
+      tags:
+      - shelves
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Creates a shelf via the gRPC service.  Optionally runs a
+        bootstrap strategy (e.g. zettelkasten) immediately after insert.
+      parameters:
+      - description: Create shelf request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreateShelfBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.CreateShelfReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create shelf
+      tags:
+      - shelves
+  /shelves/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Fetches a single shelf via the gRPC service.
+      parameters:
+      - description: Shelf ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Include book IDs the shelf binds
+        in: query
+        name: include_books
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.ShelfReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get shelf by ID
+      tags:
+      - shelves
+  /shelves/{id}/books:
+    get:
+      consumes:
+      - application/json
+      description: Returns the IDs of every book bound to the shelf.
+      parameters:
+      - description: Shelf ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.BookIdsReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List books on shelf
+      tags:
+      - shelves
+  /shelves/books:
+    put:
+      consumes:
+      - application/json
+      description: Replaces the set of books bound to a shelf.
+      parameters:
+      - description: Set books request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.SetBooksBody'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Replace books on shelf
+      tags:
+      - shelves
+  /shelves/books/attach:
+    post:
+      consumes:
+      - application/json
+      description: Attaches a single book to a shelf.
+      parameters:
+      - description: Attach book request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.AttachBookBody'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Attach book to shelf
+      tags:
+      - shelves
+  /shelves/books/detach:
+    post:
+      consumes:
+      - application/json
+      description: Detaches a single book from a shelf.
+      parameters:
+      - description: Detach book request
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.DetachBookBody'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Detach book from shelf
+      tags:
+      - shelves
+  /shelves/by-book:
+    get:
+      consumes:
+      - application/json
+      description: Returns the IDs of every shelf the book sits on.
+      parameters:
+      - description: Book ID
+        in: query
+        name: book_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.ShelfIdsReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List shelves for book
+      tags:
+      - shelves
+  /shelves/by-ids:
+    post:
+      consumes:
+      - application/json
+      description: Fetches multiple shelves by ID via the gRPC service.
+      parameters:
+      - description: Shelf IDs to fetch
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.GetShelvesBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/controllers.ShelfReply'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get shelves by IDs
+      tags:
+      - shelves
   /status:
     get:
       description: |-
