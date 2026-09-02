@@ -1,0 +1,124 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+package proto;
+option go_package = "github.com/KuramaSyu/WerSu-Rest/src/proto;proto";
+
+// Stored "if x then do y" event. attached_entity is the scope anchor
+// (e.g. a directory); the rule fires only when the event's primary entity
+// matches it (or a descendant in the directory/shelf case). Global rules
+// are no longer supported.
+//
+// condition and action_context are Structs so the shape can evolve without
+// breaking the gRPC contract.
+// Valid condition.type values: "always_true", "note_content_contains" (with substring),
+// "note_title_contains" (with substring).
+// Valid action_type values: "add_to_directory" (with directory_id), "add_tag" (with tag_id).
+message Rule {
+    string id = 1;
+    string event_type = 2;
+
+    // Required scope anchor: rule fires only for events whose primary entity
+    // matches this (or, for directory/shelf, a descendant of it).
+    string attached_entity_type = 3;  // "directory" | "note" | "shelf"
+    string attached_entity_id = 4;
+
+    // Condition Struct, e.g. {"type": "note_content_contains", "substring": "linux"}.
+    google.protobuf.Struct condition = 5;
+
+    // Action discriminator + parameters; discriminator is indexable.
+    string action_type = 6;            // "add_to_directory" | "add_tag" | ...
+    google.protobuf.Struct action_context = 7;
+
+    bool enabled = 8;
+    string creator_id = 9;
+    google.protobuf.Timestamp created_at = 10;
+    google.protobuf.Timestamp updated_at = 11;
+}
+
+// Scopes the GetRules list. All fields optional.
+message RuleFilter {
+    string event_type = 1;
+    string attached_entity_type = 2;  // "directory" | "note" | "shelf"
+    string attached_entity_id = 3;
+    bool enabled_only = 4;
+    string creator_id = 5;
+}
+
+// ===== Requests ===========================================================
+
+message CreateRuleRequest {
+    string user_id = 1;
+    string event_type = 2;
+    string attached_entity_type = 3;
+    string attached_entity_id = 4;
+    google.protobuf.Struct condition = 5;
+    string action_type = 6;
+    google.protobuf.Struct action_context = 7;
+    optional bool enabled = 8;
+    // creator_id defaults to user_id when unset.
+    string creator_id = 9;
+}
+
+message GetRuleRequest {
+    string user_id = 1;
+    string id = 2;
+}
+
+message GetRulesRequest {
+    string user_id = 1;
+    RuleFilter filter = 2;
+}
+
+message UpdateRuleRequest {
+    string user_id = 1;
+    string id = 2;
+    optional string event_type = 3;
+    optional string attached_entity_type = 4;
+    optional string attached_entity_id = 5;
+    google.protobuf.Struct condition = 6;
+    optional string action_type = 7;
+    google.protobuf.Struct action_context = 8;
+    optional bool enabled = 9;
+}
+
+message DeleteRuleRequest {
+    string user_id = 1;
+    string id = 2;
+}
+
+// ===== Responses ==========================================================
+
+message CreateRuleResponse {
+    Rule rule = 1;
+}
+
+message GetRuleResponse {
+    Rule rule = 1;
+}
+
+message GetRulesResponse {
+    repeated Rule rules = 1;
+}
+
+message UpdateRuleResponse {
+    Rule rule = 1;
+}
+
+message DeleteRuleResponse {
+    // Empty for now; kept so the response shape can grow without breaking clients.
+    google.protobuf.Empty empty = 1;
+}
+
+// ===== Service ============================================================
+
+service RuleService {
+    rpc CreateRule(CreateRuleRequest) returns (CreateRuleResponse);
+    rpc GetRule(GetRuleRequest) returns (GetRuleResponse);
+    rpc GetRules(GetRulesRequest) returns (GetRulesResponse);
+    rpc UpdateRule(UpdateRuleRequest) returns (UpdateRuleResponse);
+    rpc DeleteRule(DeleteRuleRequest) returns (DeleteRuleResponse);
+}
