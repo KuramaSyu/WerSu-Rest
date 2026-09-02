@@ -87,6 +87,8 @@ func main() {
 	activityGrpcClient := proto.NewActivityStatisticsServiceClient(grpcConn)
 	migrationsGrpcClient := proto.NewThirdpartyMigrationsServiceClient(grpcConn)
 	roleGrpcClient := proto.NewRoleServiceClient(grpcConn)
+	ruleGrpcClient := proto.NewRuleServiceClient(grpcConn)
+	shelfGrpcClient := proto.NewShelfServiceClient(grpcConn)
 
 	// Initialize RSET controllers.
 	//
@@ -115,6 +117,8 @@ func main() {
 	activityController := controllers.NewActivityController(&activityGrpcClient)
 	migrationController := controllers.NewThirdpartyMigrationController(&migrationsGrpcClient)
 	roleController := controllers.NewRoleController(&roleGrpcClient)
+	ruleController := controllers.NewRuleController(&ruleGrpcClient)
+	shelfController := controllers.NewShelfController(&shelfGrpcClient)
 	statusController := controllers.NewStatusController(appConfig, &userGrpcClient, s3Client)
 
 	// Setup routes
@@ -132,6 +136,8 @@ func main() {
 		activityController,
 		migrationController,
 		roleController,
+		ruleController,
+		shelfController,
 		statusController,
 	)
 

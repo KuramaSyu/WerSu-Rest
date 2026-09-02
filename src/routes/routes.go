@@ -23,8 +23,12 @@ func SetupRouter(
 	activityController *controllers.ActivityController,
 	migrationController *controllers.ThirdpartyMigrationController,
 	roleController *controllers.RoleController,
+	ruleController *controllers.RuleController,
+	shelfController *controllers.ShelfController,
 	statusController *controllers.StatusController,
 ) {
+
+	// TODO: some endpoints still use PATCH {id: } instead of PATCH /:id shape
 
 	// API routes
 	api := r.Group("/api")
@@ -133,21 +137,63 @@ func SetupRouter(
 		{
 			roles.POST("", roleController.CreateRole)
 			roles.GET("", roleController.GetRoles)
-			roles.PATCH("", roleController.UpdateRole)
-			roles.DELETE("", roleController.DeleteRole)
 
 			role := roles.Group("/:id")
 			{
 				role.GET("", roleController.GetRole)
+				role.PATCH("", roleController.UpdateRole)
+				role.DELETE("", roleController.DeleteRole)
 			}
 
-			// membership edges: a single role, multiple users
+			// a role can have multiple members (e.g. a shelf with multiple users)
+			// for this we have an extra /members to add/remove users and list them.
+			// i did not want to put this into role.PATCH
 			roles.POST("/members", roleController.AddUserToRole)
 			roles.DELETE("/members", roleController.RemoveUserFromRole)
 			roles.GET("/members", roleController.GetUsersForRole)
 
 			// reverse lookup: every role a given user belongs to
 			roles.GET("/by-user", roleController.GetRolesForUser)
+		}
+
+		// rule routes (conditional automation attached to a directory / note / shelf)
+		rules := api.Group("/rules")
+		{
+			rules.POST("", ruleController.CreateRule)
+			// lists shelves
+			rules.GET("", ruleController.GetRules)
+
+			rule := rules.Group("/:id")
+			{
+				rule.GET("", ruleController.GetRule)
+				rule.PATCH("", ruleController.UpdateRule)
+				rule.DELETE("", ruleController.DeleteRule)
+			}
+		}
+
+		// shelf routes (flat grouping of books / directories)
+		shelves := api.Group("/shelves")
+		{
+			shelves.POST("", shelfController.CreateShelf)
+			shelves.GET("", shelfController.ListShelves)
+			shelves.PATCH("", shelfController.UpdateShelf)
+			shelves.DELETE("", shelfController.DeleteShelf)
+
+			// batch read by ids (POST because of the body)
+			shelves.POST("/by-ids", shelfController.GetShelves)
+			// reverse lookup: every shelf a given book sits on
+			shelves.GET("/by-book", shelfController.GetShelvesOfBook)
+
+			// book-binding RPCs
+			shelves.PUT("/books", shelfController.SetBooks)
+			shelves.POST("/books/attach", shelfController.AttachBook)
+			shelves.POST("/books/detach", shelfController.DetachBook)
+
+			shelf := shelves.Group("/:id")
+			{
+				shelf.GET("", shelfController.GetShelf)
+				shelf.GET("/books", shelfController.GetBooksOfShelf)
+			}
 		}
 
 		// route for swagger API docs
