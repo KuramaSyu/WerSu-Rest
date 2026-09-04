@@ -32,9 +32,7 @@ const (
 //
 // Note Service
 type NoteServiceClient interface {
-	// GetNote returns a Note from DB. If the user is a public/temp user,
-	// then an additional id_token_map will be returned, containing a
-	// JWT for each attachment in the file.
+	// For public/temp users, id_token_map carries a JWT per attachment.
 	GetNote(ctx context.Context, in *GetNoteRequest, opts ...grpc.CallOption) (*NoteResponse, error)
 	PostNote(ctx context.Context, in *PostNoteRequest, opts ...grpc.CallOption) (*Note, error)
 	PatchNote(ctx context.Context, in *AlterNoteRequest, opts ...grpc.CallOption) (*Note, error)
@@ -106,9 +104,7 @@ func (c *noteServiceClient) SearchNotes(ctx context.Context, in *GetSearchNotesR
 //
 // Note Service
 type NoteServiceServer interface {
-	// GetNote returns a Note from DB. If the user is a public/temp user,
-	// then an additional id_token_map will be returned, containing a
-	// JWT for each attachment in the file.
+	// For public/temp users, id_token_map carries a JWT per attachment.
 	GetNote(context.Context, *GetNoteRequest) (*NoteResponse, error)
 	PostNote(context.Context, *PostNoteRequest) (*Note, error)
 	PatchNote(context.Context, *AlterNoteRequest) (*Note, error)

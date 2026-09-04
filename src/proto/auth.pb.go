@@ -78,20 +78,18 @@ func (CredentialKind) EnumDescriptor() ([]byte, []int) {
 	return file_src_proto_auth_proto_rawDescGZIP(), []int{0}
 }
 
-// A user as exposed to the auth layer.
+// User as exposed to the auth layer.
 type UserAuth struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Email string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
-	// Username is optional; empty string means the user has not set one.
+	// Username is optional; empty string means unset.
 	Username string `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
 	// Zero timestamp means the email has not been verified yet.
 	EmailVerifiedAt *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=email_verified_at,json=emailVerifiedAt,proto3" json:"email_verified_at,omitempty"`
 	IsActive        bool                   `protobuf:"varint,5,opt,name=is_active,json=isActive,proto3" json:"is_active,omitempty"`
 	CreatedAt       *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	// Absolute URL to the user's avatar. Empty string means none
-	// is configured. The REST controller maps this to JSON null
-	// on the frontend.
+	// Absolute avatar URL. Empty string means none; REST maps empty to JSON null.
 	AvatarUrl     string `protobuf:"bytes,7,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -176,9 +174,8 @@ func (x *UserAuth) GetAvatarUrl() string {
 	return ""
 }
 
-// A stored credential. Exactly one of the `payload` oneof fields is
-// populated, enforced by the service layer. The `kind` enum tells
-// REST which one to read.
+// Stored credential. Exactly one payload oneof field is populated
+// (enforced by the service layer); kind tells REST which one to read.
 type Credential struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -315,17 +312,17 @@ type Credential_DiscordId struct {
 }
 
 type Credential_PasswordHash struct {
-	// kind = PASSWORD -- argon2id encoded string
+	// kind = PASSWORD; argon2id encoded string
 	PasswordHash string `protobuf:"bytes,7,opt,name=password_hash,json=passwordHash,proto3,oneof"`
 }
 
 type Credential_PasskeyId struct {
-	// kind = PASSKEY -- points at the row in `passkeys` table
+	// kind = PASSKEY; points at the row in passkeys table
 	PasskeyId string `protobuf:"bytes,8,opt,name=passkey_id,json=passkeyId,proto3,oneof"`
 }
 
 type Credential_GoogleId struct {
-	// kind = GOOGLE -- Google's stable user id from the `sub` claim
+	// kind = GOOGLE; Google's stable user id from the sub claim
 	GoogleId string `protobuf:"bytes,9,opt,name=google_id,json=googleId,proto3,oneof"`
 }
 
@@ -337,12 +334,10 @@ func (*Credential_PasskeyId) isCredential_Payload() {}
 
 func (*Credential_GoogleId) isCredential_Payload() {}
 
-// A stored WebAuthn passkey (public-key credential).
-//
-// The private key never leaves the user's device. The `public_key`
-// field holds the COSE-encoded public key produced by the
-// authenticator at registration time. `sign_count` is updated on
-// every successful login and must strictly increase; a non-monotonic
+// Stored WebAuthn passkey (public-key credential).
+// The private key never leaves the user's device. public_key holds the
+// COSE-encoded public key produced at registration. sign_count is bumped
+// on every successful login and must strictly increase; a non-monotonic
 // counter suggests an authenticator clone.
 type Passkey struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -492,10 +487,9 @@ func (x *Passkey) GetRevokedAt() *timestamppb.Timestamp {
 	return nil
 }
 
-// Lookup a user by id/email/discord id
+// Lookup a user by id/email/discord id.
 // Often used by frontend: useUser() hook resolves to this.
-// REST takes user id from session, and checks against this endpoint
-// if information is correct.
+// REST takes user id from session and checks against this endpoint.
 type GetUserAuthRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Identifier:
@@ -638,16 +632,15 @@ func (x *GetUserAuthResponse) GetUser() *UserAuth {
 	return nil
 }
 
-// Create a user (email + password signup). Returns
-// ALREADY_EXISTS if a user with the email already exists.
+// Create a user (email + password signup).
+// Returns ALREADY_EXISTS if a user with the email already exists.
 type CreateUserAuthRequest struct {
 	state        protoimpl.MessageState `protogen:"open.v1"`
 	Email        string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
 	Username     string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
 	PasswordHash string                 `protobuf:"bytes,3,opt,name=password_hash,json=passwordHash,proto3" json:"password_hash,omitempty"`
-	// Optional. Absolute URL to the user's avatar (resolved by the
-	// REST controller via Discord/Google/Gravatar fallbacks). Empty
-	// string means none. The frontend maps empty to JSON null.
+	// Optional. Absolute avatar URL resolved by REST via Discord/Google/Gravatar.
+	// Empty string means none; frontend maps empty to JSON null.
 	AvatarUrl     string `protobuf:"bytes,4,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -755,14 +748,13 @@ func (x *CreateUserAuthResponse) GetUser() *UserAuth {
 	return nil
 }
 
-// Update mutable fields on an existing user. Each field is a
-// tri-state: omitted (leave unchanged), `_set` populated (write the
-// value), or `_clear` populated (set the column to NULL). Used for
-// username/email changes and `email_verified_at`.
+// Update mutable fields on a user. Each field is tri-state:
+// omitted (leave unchanged), _set (write value), or _clear (set column NULL).
+// Used for username/email changes and email_verified_at.
 type UpdateUserAuthRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	UserId string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	// the actor on which we will check permissions
+	// actor used for permission checks
 	RequesterId string `protobuf:"bytes,2,opt,name=requester_id,json=requesterId,proto3" json:"requester_id,omitempty"`
 	// Types that are valid to be assigned to UsernameChange:
 	//
@@ -1199,9 +1191,9 @@ func (x *FindCredentialByProviderResponse) GetUser() *UserAuth {
 	return nil
 }
 
-// Look up a passkey by its WebAuthn credential id. REST calls
-// this with the `id` from `navigator.credentials.get()` so it
-// can do the signature verification with the right public key.
+// Look up a passkey by its WebAuthn credential id. REST calls this with
+// the id from navigator.credentials.get() so it can verify the signature
+// with the right public key.
 type FindPasskeyRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	CredentialId  []byte                 `protobuf:"bytes,1,opt,name=credential_id,json=credentialId,proto3" json:"credential_id,omitempty"`
@@ -1290,8 +1282,7 @@ func (x *FindPasskeyResponse) GetPasskey() *Passkey {
 	return nil
 }
 
-// List a user's passkeys for the settings page (with a friendly
-// label, last-used date, and a way to revoke each).
+// List a user's passkeys for the settings page (friendly label, last-used date, revoke).
 type ListPasskeysRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	UserId         string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
@@ -1388,10 +1379,9 @@ func (x *ListPasskeysResponse) GetPasskeys() []*Passkey {
 	return nil
 }
 
-// Bump the sign counter after a successful assertion. REST
-// verifies the signature first, then calls this. The service
-// returns FAILED_PRECONDITION if the new counter is not strictly
-// greater than the stored one (cloned authenticator).
+// Bump the sign counter after a successful assertion. REST verifies the
+// signature first, then calls this. Returns FAILED_PRECONDITION if the new
+// counter is not strictly greater than the stored one (cloned authenticator).
 type UpdatePasskeyCounterRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	PasskeyId     string                 `protobuf:"bytes,1,opt,name=passkey_id,json=passkeyId,proto3" json:"passkey_id,omitempty"`
@@ -1489,14 +1479,13 @@ func (x *UpdatePasskeyCounterResponse) GetPasskey() *Passkey {
 }
 
 // Store a new passkey after REST has verified the attestation.
-// `credential_id` is the raw bytes from the authenticator.
-// `public_key` is the COSE-encoded public key extracted from the
-// attestation authData. The service layer is responsible for
-// storing both in their native byte form -- they are not reshaped.
+// credential_id is the raw bytes from the authenticator; public_key is the
+// COSE-encoded public key extracted from the attestation authData.
+// The service stores both in their native byte form; they are not reshaped.
 type RegisterPasskeyRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	UserId string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	// actor on which we will check permissions
+	// actor used for permission checks
 	RequesterId    string   `protobuf:"bytes,2,opt,name=requester_id,json=requesterId,proto3" json:"requester_id,omitempty"`
 	CredentialId   []byte   `protobuf:"bytes,3,opt,name=credential_id,json=credentialId,proto3" json:"credential_id,omitempty"`
 	PublicKey      []byte   `protobuf:"bytes,4,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
@@ -1714,14 +1703,12 @@ func (x *RevokePasskeyRequest) GetRequesterId() string {
 	return ""
 }
 
-// Account Linking: Attach a new credential to an existing user (Passkey
-// Discord OAuth, Google OAuth, or password)
-//
-// `kind` selects which payload field is populated. Exactly one of
-// `discord_id`, `password_hash`, `passkey_id`, or `google_id` must
-// be set. Returns ALREADY_EXISTS if the user already has a
-// credential of that kind (with the exception of passkey, which
-// can have many).
+// Account Linking: attach a new credential to an existing user
+// (Passkey, Discord OAuth, Google OAuth, or password).
+// kind selects which payload field is populated; exactly one of
+// discord_id, password_hash, passkey_id, or google_id must be set.
+// Returns ALREADY_EXISTS if the user already has a credential of that kind
+// (passkey is the exception and can have many).
 type LinkCredentialRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	UserId      string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
@@ -1904,7 +1891,7 @@ func (x *LinkCredentialResponse) GetCredential() *Credential {
 	return nil
 }
 
-// Unlink a credential. Removing the last credential should raise
+// Unlink a credential. Removing the last credential should raise.
 type UnlinkCredentialRequest struct {
 	state        protoimpl.MessageState `protogen:"open.v1"`
 	CredentialId string                 `protobuf:"bytes,1,opt,name=credential_id,json=credentialId,proto3" json:"credential_id,omitempty"`
@@ -1966,7 +1953,7 @@ func (x *UnlinkCredentialRequest) GetRequesterId() string {
 	return ""
 }
 
-// Summary of every credential linked to a user (Google, Discord, Passkey, Password)
+// Every credential linked to a user (Google, Discord, Passkey, Password).
 type ListLinkedCredentialsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
