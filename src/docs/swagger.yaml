@@ -2251,18 +2251,65 @@ paths:
       - description: Search query
         in: query
         name: query
-        required: true
         type: string
       - description: Maximum results to return
         in: query
         name: limit
-        required: true
         type: integer
       - description: Pagination offset
         in: query
         name: offset
-        required: true
         type: integer
+      - collectionFormat: csv
+        description: Restrict to notes in any of these directories (XOR with exclude_directory_ids)
+        in: query
+        items:
+          type: string
+        name: include_directory_ids
+        type: array
+      - collectionFormat: csv
+        description: Exclude notes in any of these directories (XOR with include_directory_ids)
+        in: query
+        items:
+          type: string
+        name: exclude_directory_ids
+        type: array
+      - collectionFormat: csv
+        description: Restrict to notes on any of these shelves (XOR with exclude_shelf_ids)
+        in: query
+        items:
+          type: string
+        name: include_shelf_ids
+        type: array
+      - collectionFormat: csv
+        description: Exclude notes on any of these shelves (XOR with include_shelf_ids)
+        in: query
+        items:
+          type: string
+        name: exclude_shelf_ids
+        type: array
+      - collectionFormat: csv
+        description: Restrict to notes tagged with any of these tags (XOR with exclude_tag_ids)
+        in: query
+        items:
+          type: string
+        name: include_tag_ids
+        type: array
+      - collectionFormat: csv
+        description: Exclude notes tagged with any of these tags (XOR with include_tag_ids)
+        in: query
+        items:
+          type: string
+        name: exclude_tag_ids
+        type: array
+      - description: RFC3339 lower bound on note updated_at
+        in: query
+        name: date_from
+        type: string
+      - description: RFC3339 upper bound on note updated_at
+        in: query
+        name: date_until
+        type: string
       produces:
       - application/json
       responses:
