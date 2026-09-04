@@ -235,59 +235,38 @@ func permissionFromString(permission string) (proto.SharePermission, error) {
 	return proto.SharePermission(value), nil
 }
 
-// parseOptionalRFC3339 parses an optional RFC3339 timestamp string.
-//
-// Query parameters arrive as strings, so the controller converts them explicitly
-// instead of relying on implicit binding behavior. Nil means the parameter was
-// not supplied.
-func parseOptionalRFC3339(value *string) (*timestamppb.Timestamp, error) {
-	if value == nil || *value == "" {
-		return nil, nil
-	}
-
-	parsed, err := time.Parse(time.RFC3339, *value)
-	if err != nil {
-		return nil, err
-	}
-
-	return timestamppb.New(parsed), nil
-}
-
-// shareFilterFromQuery converts REST query parameters into a protobuf share filter.
-//
-// This helper exists so the handler stays focused on HTTP concerns while all
-// query-to-proto mapping is kept in one place.
-func shareFilterFromQuery(query GetSharesQuery) (*proto.ShareFilter, error) {
+// shareFilterFromQuery converts REST query into proto; collects every malformed date in one pass.
+func shareFilterFromQuery(query GetSharesQuery) (*proto.ShareFilter, map[string]string) {
 	filter := &proto.ShareFilter{
 		NoteId:    query.NoteId,
 		CreatedBy: query.CreatedBy,
 	}
+	details := map[string]string{}
 
-	if ts, err := parseOptionalRFC3339(query.OnlineSince); err != nil {
-		return nil, fmt.Errorf("invalid online_since: %w", err)
+	if ts, err := utils.ParseOptionalTimestamp(query.OnlineSince); err != nil {
+		details["online_since"] = (&utils.TimestampFieldError{Field: "online_since", Value: utils.DerefString(query.OnlineSince)}).Detail()
 	} else if ts != nil {
 		filter.OnlineSince = &proto.NullableTimestamp{
 			Kind: &proto.NullableTimestamp_Value{Value: ts},
 		}
 	}
 
-	if ts, err := parseOptionalRFC3339(query.OnlineUntil); err != nil {
-		return nil, fmt.Errorf("invalid online_until: %w", err)
+	if ts, err := utils.ParseOptionalTimestamp(query.OnlineUntil); err != nil {
+		details["online_until"] = (&utils.TimestampFieldError{Field: "online_until", Value: utils.DerefString(query.OnlineUntil)}).Detail()
 	} else if ts != nil {
 		filter.OnlineUntil = &proto.NullableTimestamp{
 			Kind: &proto.NullableTimestamp_Value{Value: ts},
 		}
 	}
 
+	if len(details) > 0 {
+		return nil, details
+	}
 	return filter, nil
 }
 
-// updateShareProtoFromBody converts a REST update request into the protobuf
-// payload expected by the gRPC service.
-//
-// The permission argument must already be the proto SharePermission enum value
-// produced by permissionFromString; the conversion is kept out of this helper so
-// the caller can validate it against the REST payload and return a 400 on error.
+// updateShareProtoFromBody converts a REST update body into the proto payload. permission
+// must already be the validated proto SharePermission enum value.
 func updateShareProtoFromBody(body UpdateShareBody, permission proto.SharePermission, userID string) *proto.NoteShare {
 	return &proto.NoteShare{
 		Id:          body.Id,
@@ -426,9 +405,9 @@ func (sc *SharingController) GetShares(c *gin.Context) {
 		return
 	}
 
-	filter, err := shareFilterFromQuery(query)
-	if err != nil {
-		utils.SetGinError(c, http.StatusBadRequest, err)
+	filter, details := shareFilterFromQuery(query)
+	if details != nil {
+		utils.SetGinBadRequestWithDetails(c, "invalid query parameters", details)
 		return
 	}
 
