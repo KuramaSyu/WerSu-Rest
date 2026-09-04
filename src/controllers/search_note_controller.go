@@ -54,6 +54,19 @@ type GetSearchNotesRequest struct {
 	// maximum number of results to return
 	Limit  int32 `form:"limit" binding:"omitempty" example:"10"`
 	Offset int32 `form:"offset" binding:"omitempty" example:"0"`
+
+	// optional RFC3339 lower bound on note updated_at
+	DateFrom *string `form:"date_from" binding:"omitempty" example:"2026-01-01T00:00:00Z"`
+	// optional RFC3339 upper bound on note updated_at
+	DateUntil *string `form:"date_until" binding:"omitempty" example:"2026-12-31T23:59:59Z"`
+
+	// optional repeated id filters forwarded to proto.NoteSearchFilter
+	IncludeDirectoryIds []string `form:"include_directory_ids" binding:"omitempty" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
+	ExcludeDirectoryIds []string `form:"exclude_directory_ids" binding:"omitempty" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
+	IncludeShelfIds     []string `form:"include_shelf_ids" binding:"omitempty" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
+	ExcludeShelfIds     []string `form:"exclude_shelf_ids" binding:"omitempty" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
+	IncludeTagIds       []string `form:"include_tag_ids" binding:"omitempty" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
+	ExcludeTagIds       []string `form:"exclude_tag_ids" binding:"omitempty" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 }
 
 type MinimalNote struct {
@@ -172,9 +185,17 @@ func NotesReplyFromProto(reply *proto.NotesReply) NotesReply {
 // @Accept json
 // @Produce json
 // @Param search_type query string true "Search algorithm" Enums(context, keyword, typo_tolerant, latest)
-// @Param query query string true "Search query"
-// @Param limit query int true "Maximum results to return"
-// @Param offset query int true "Pagination offset"
+// @Param query query string false "Search query"
+// @Param limit query int false "Maximum results to return"
+// @Param offset query int false "Pagination offset"
+// @Param include_directory_ids query []string false "Restrict to notes in any of these directories (XOR with exclude_directory_ids)"
+// @Param exclude_directory_ids query []string false "Exclude notes in any of these directories (XOR with include_directory_ids)"
+// @Param include_shelf_ids query []string false "Restrict to notes on any of these shelves (XOR with exclude_shelf_ids)"
+// @Param exclude_shelf_ids query []string false "Exclude notes on any of these shelves (XOR with include_shelf_ids)"
+// @Param include_tag_ids query []string false "Restrict to notes tagged with any of these tags (XOR with exclude_tag_ids)"
+// @Param exclude_tag_ids query []string false "Exclude notes tagged with any of these tags (XOR with include_tag_ids)"
+// @Param date_from query string false "RFC3339 lower bound on note updated_at"
+// @Param date_until query string false "RFC3339 upper bound on note updated_at"
 // @Success 200 {object} NotesReply
 // @Failure 400 {object} map[string]string
 // @Router /notes/search [get]
@@ -193,6 +214,32 @@ func (uc *SearchNotesController) GetNotes(c *gin.Context) {
 		return
 	}
 
+	// collect every malformed date field, then bail once.
+	dateDetails := map[string]string{}
+	dateFrom, err := utils.ParseOptionalTimestamp(getSearchNotesRequest.DateFrom)
+	if err != nil {
+		dateDetails["date_from"] = (&utils.TimestampFieldError{Field: "date_from", Value: utils.DerefString(getSearchNotesRequest.DateFrom)}).Detail()
+	}
+	dateUntil, err := utils.ParseOptionalTimestamp(getSearchNotesRequest.DateUntil)
+	if err != nil {
+		dateDetails["date_until"] = (&utils.TimestampFieldError{Field: "date_until", Value: utils.DerefString(getSearchNotesRequest.DateUntil)}).Detail()
+	}
+	if len(dateDetails) > 0 {
+		utils.SetGinBadRequestWithDetails(c, "invalid query parameters", dateDetails)
+		return
+	}
+
+	filter := &proto.NoteSearchFilter{
+		IncludeDirectoryIds: getSearchNotesRequest.IncludeDirectoryIds,
+		ExcludeDirectoryIds: getSearchNotesRequest.ExcludeDirectoryIds,
+		IncludeShelfIds:     getSearchNotesRequest.IncludeShelfIds,
+		ExcludeShelfIds:     getSearchNotesRequest.ExcludeShelfIds,
+		IncludeTagIds:       getSearchNotesRequest.IncludeTagIds,
+		ExcludeTagIds:       getSearchNotesRequest.ExcludeTagIds,
+		DateFrom:            dateFrom,
+		DateUntil:           dateUntil,
+	}
+
 	// call gRPC service
 	grpcSearchNotesRequest := proto.GetSearchNotesRequest{
 		SearchType: MapSearchTypeToProto(getSearchNotesRequest.SearchType),
@@ -200,6 +247,7 @@ func (uc *SearchNotesController) GetNotes(c *gin.Context) {
 		Limit:      getSearchNotesRequest.Limit,
 		Offset:     getSearchNotesRequest.Offset,
 		UserId:     user.ID,
+		Filter:     filter,
 	}
 	reply, err := (*uc.NoteService).SearchNotes(c, &grpcSearchNotesRequest)
 	if err != nil {
