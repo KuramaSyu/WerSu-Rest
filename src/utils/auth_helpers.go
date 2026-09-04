@@ -179,6 +179,14 @@ func SetGinError(c *gin.Context, status int, err error) {
 
 }
 
+// SetGinBadRequestWithDetails writes a 400 with a summary and a per-field `details` map.
+func SetGinBadRequestWithDetails(c *gin.Context, summary string, details map[string]string) {
+	c.JSON(http.StatusBadRequest, gin.H{
+		"error":   summary,
+		"details": details,
+	})
+}
+
 // isGrpcBackendUnavailable reports whether err (or any wrapped error in its
 // chain) carries a gRPC status code that indicates the backend service is
 // unreachable: Unavailable, DeadlineExceeded, or ResourceExhausted.
@@ -196,13 +204,8 @@ func isGrpcBackendUnavailable(err error) bool {
 	return false
 }
 
-// isGrpcNotFound reports whether err (or any wrapped error in its chain)
-// carries a gRPC status code of NotFound. SetGinError uses this to upgrade
-// 500 paths to 404 so "entity missing" reaches REST clients as 404 without
-// each handler having to inspect the error itself.
-//
-// Returns false for nil, for plain (non-gRPC) errors, and for any other
-// gRPC status code.
+// whether or not the grpc returned a not found 404 error. Used,
+// to transform a 500 REST error into an actual 404 REST error
 func isGrpcNotFound(err error) bool {
 	if err == nil {
 		return false
@@ -210,13 +213,8 @@ func isGrpcNotFound(err error) bool {
 	return status.Code(err) == codes.NotFound
 }
 
-// isGrpcPermissionDenied reports whether err (or any wrapped error in its
-// chain) carries a gRPC status code of PermissionDenied. SetGinError uses
-// this to upgrade 500 paths to 403 so "no permission" reaches REST clients
-// as 403 without each handler having to inspect the error itself.
-//
-// Returns false for nil, for plain (non-gRPC) errors, and for any other
-// gRPC status code.
+// whether or not the grpc returned a permission denied 403 error. Used,
+// to transform a 500 REST error into an actual 403 REST error
 func isGrpcPermissionDenied(err error) bool {
 	if err == nil {
 		return false
