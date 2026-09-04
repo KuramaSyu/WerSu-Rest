@@ -23,10 +23,8 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// A role that bundles a set of users for permission grants.
-//
-// Metadata (name, description) lives in Postgres.  Membership edges
-// (`user#member_of@role`) live in SpiceDB.
+// Bundles users for permission grants. Metadata lives in Postgres;
+// membership edges (user#member_of@role) live in SpiceDB.
 type Role struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -95,7 +93,7 @@ func (x *Role) GetCreatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
-// A single `user#member_of@role` edge.
+// A single user#member_of@role edge.
 type UserRoleMembership struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
@@ -156,12 +154,9 @@ func (x *UserRoleMembership) GetGrantedAt() *timestamppb.Timestamp {
 	return nil
 }
 
-// Filter for searching roles.
-//
-// `member_id` matches roles whose SpiceDB `user#member_of@role`
-// relation includes the given user id.  `name` matches by exact
-// role name.  Both fields are optional; unset means "don't filter
-// on that field".
+// Filter for roles. member_id matches roles whose SpiceDB
+// user#member_of@role relation includes the user; name matches by exact role name.
+// Both fields optional; unset means "don't filter on that field".
 type RoleFilter struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
@@ -214,8 +209,8 @@ func (x *RoleFilter) GetMemberId() string {
 	return ""
 }
 
-// Create a new role.  The actor's user_id is used for permission
-// checks (currently: must hold `manage` on the bootstrap role).
+// Create a role. Actor's user_id is used for permission checks
+// (currently: must hold manage on the bootstrap role).
 type CreateRoleRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
@@ -276,9 +271,8 @@ func (x *CreateRoleRequest) GetDescription() string {
 	return ""
 }
 
-// Update a role's metadata (name and/or description).  Membership
-// is managed through `AddUserToRole` / `RemoveUserFromRole`.  The
-// actor's user_id is used for permission checks.
+// Update a role's metadata (name/description). Membership is managed
+// through AddUserToRole / RemoveUserFromRole. Actor's user_id is used for permission checks.
 type UpdateRoleRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
@@ -347,10 +341,9 @@ func (x *UpdateRoleRequest) GetDescription() string {
 	return ""
 }
 
-// Delete a role.  Membership edges become dangling references in
-// SpiceDB (they silently evaluate to nothing); cleanup of those is
-// the caller's responsibility.  The actor's user_id is used for
-// permission checks.
+// Delete a role. Membership edges become dangling references in SpiceDB
+// (silently evaluate to nothing); cleanup is the caller's responsibility.
+// Actor's user_id is used for permission checks.
 type DeleteRoleRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
@@ -507,8 +500,7 @@ func (x *GetRolesRequest) GetFilter() *RoleFilter {
 	return nil
 }
 
-// Add a user to a role's membership.  Gated by `manage` permission
-// on the role.
+// Add a user to a role's membership. Gated by manage permission on the role.
 type AddUserToRoleRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
@@ -569,8 +561,7 @@ func (x *AddUserToRoleRequest) GetSubjectUserId() string {
 	return ""
 }
 
-// Remove a user from a role's membership.  Gated by `manage`
-// permission on the role.
+// Remove a user from a role's membership. Gated by manage permission on the role.
 type RemoveUserFromRoleRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`

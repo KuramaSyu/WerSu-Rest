@@ -37,9 +37,9 @@ type AttachmentServiceClient interface {
 	GetAttachment(ctx context.Context, in *GetAttachmentRequest, opts ...grpc.CallOption) (*Attachment, error)
 	GetAttachmentMetadata(ctx context.Context, in *GetAttachmentMetadataRequest, opts ...grpc.CallOption) (*AttachmentMetadata, error)
 	DeleteAttachment(ctx context.Context, in *DeleteAttachmentRequest, opts ...grpc.CallOption) (*DeleteAttachmentResponse, error)
-	// enforces that key (filepath) is given and updates all other provided fields for that key
+	// requires key; updates other provided fields for that key
 	UpdateAttachmentMetadata(ctx context.Context, in *UpdateAttachmentMetadataRequest, opts ...grpc.CallOption) (*AttachmentMetadata, error)
-	// either works -> no return or fails completely with an error, so no need for a response message
+	// either succeeds fully or fails with an error; no response body needed
 	PostAttachmentLink(ctx context.Context, in *PostAttachmentLinkRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteAttachmentLink(ctx context.Context, in *DeleteAttachmentLinkRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
@@ -130,9 +130,9 @@ type AttachmentServiceServer interface {
 	GetAttachment(context.Context, *GetAttachmentRequest) (*Attachment, error)
 	GetAttachmentMetadata(context.Context, *GetAttachmentMetadataRequest) (*AttachmentMetadata, error)
 	DeleteAttachment(context.Context, *DeleteAttachmentRequest) (*DeleteAttachmentResponse, error)
-	// enforces that key (filepath) is given and updates all other provided fields for that key
+	// requires key; updates other provided fields for that key
 	UpdateAttachmentMetadata(context.Context, *UpdateAttachmentMetadataRequest) (*AttachmentMetadata, error)
-	// either works -> no return or fails completely with an error, so no need for a response message
+	// either succeeds fully or fails with an error; no response body needed
 	PostAttachmentLink(context.Context, *PostAttachmentLinkRequest) (*emptypb.Empty, error)
 	DeleteAttachmentLink(context.Context, *DeleteAttachmentLinkRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedAttachmentServiceServer()

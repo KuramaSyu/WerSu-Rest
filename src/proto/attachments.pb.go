@@ -378,7 +378,7 @@ type UpdateAttachmentMetadataRequest struct {
 	ContentType string                 `protobuf:"bytes,3,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
 	Sha256      string                 `protobuf:"bytes,4,opt,name=sha256,proto3" json:"sha256,omitempty"`
 	Size        string                 `protobuf:"bytes,5,opt,name=size,proto3" json:"size,omitempty"`
-	// the requesting user - used for authorization
+	// used for authorization
 	UserId        string `protobuf:"bytes,6,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

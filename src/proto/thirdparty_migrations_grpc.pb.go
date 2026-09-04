@@ -26,8 +26,9 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// Service that imports content from third-party documentation tools
+// Imports content from third-party documentation tools
 // into the project's directory / note / attachment model.
+// Only BookStack is implemented today; Notion, Confluence, ... will follow.
 type ThirdpartyMigrationsServiceClient interface {
 	BookstackBookImport(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[BookstackBookImportChunk, BookstackBookImportResponse], error)
 }
@@ -57,8 +58,9 @@ type ThirdpartyMigrationsService_BookstackBookImportClient = grpc.ClientStreamin
 // All implementations must embed UnimplementedThirdpartyMigrationsServiceServer
 // for forward compatibility.
 //
-// Service that imports content from third-party documentation tools
+// Imports content from third-party documentation tools
 // into the project's directory / note / attachment model.
+// Only BookStack is implemented today; Notion, Confluence, ... will follow.
 type ThirdpartyMigrationsServiceServer interface {
 	BookstackBookImport(grpc.ClientStreamingServer[BookstackBookImportChunk, BookstackBookImportResponse]) error
 	mustEmbedUnimplementedThirdpartyMigrationsServiceServer()

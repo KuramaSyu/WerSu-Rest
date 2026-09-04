@@ -21,11 +21,9 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// One chunk of a streamed BookStack book zip. The first chunk in the
-// stream carries `user_id`; subsequent chunks may leave it empty.
-//
-// `content` holds raw bytes of the zip (or a slice of them when the
-// client chooses to chunk the upload).
+// One chunk of a streamed BookStack book zip.
+// First chunk carries user_id; later chunks may leave it empty.
+// content holds raw bytes of the zip (or a slice when the client chunks the upload).
 type BookstackBookImportChunk struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`

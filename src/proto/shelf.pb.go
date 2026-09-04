@@ -22,16 +22,11 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Bootstrap strategy the service should run immediately after
-// inserting the shelf row.  “UNSPECIFIED“ / “NONE“ both mean
-// "no strategy" -- the caller just gets the bare shelf.
-//
-// “ZETTELKASTEN“ runs the same flow the user bootstrap
-// uses: create the three default books (fleeting / literature /
-// permanent) and bind them to the shelf, then insert the
-// “NoteCreated -> add_to_directory(fleeting)“ rule attached to
-// the new shelf.  The strategy is idempotent: re-running it on a
-// shelf that already carries books is a no-op.
+// Strategy the service runs right after inserting the shelf row.
+// UNSPECIFIED / NONE both mean "no strategy" - caller gets the bare shelf.
+// ZETTELKASTEN runs the user bootstrap flow: create the three default books
+// (fleeting / literature / permanent), bind them to the shelf, and insert the
+// NoteCreated -> add_to_directory(fleeting) rule. Idempotent: re-running is a no-op.
 type BootstrapStrategy int32
 
 const (
@@ -81,13 +76,9 @@ func (BootstrapStrategy) EnumDescriptor() ([]byte, []int) {
 	return file_src_proto_shelf_proto_rawDescGZIP(), []int{0}
 }
 
-// A shelf is a flat (non-hierarchical) grouping of books
-// (directories).  Mirrors the metadata columns of a
-// :class:`~src.db.entities.directory.directory.DirectoryEntity`
-// minus the parent / child lists -- shelves don't nest.
-//
-// “book_ids“ is populated only when the caller opts in via
-// “include_books=true“ on the read request; empty otherwise.
+// A shelf is a flat (non-hierarchical) grouping of books (directories).
+// Mirrors DirectoryEntity metadata minus parent / child lists; shelves do not nest.
+// book_ids is populated only when the caller opts in via include_books=true; empty otherwise.
 type Shelf struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -180,9 +171,8 @@ func (x *Shelf) GetBookIds() []string {
 	return nil
 }
 
-// What the strategy produced.  Echoed back on
-// :class:`CreateShelfResponse` so callers can confirm what was
-// created.  Empty when no strategy ran.
+// What the strategy produced. Echoed back on CreateShelfResponse so
+// callers can confirm what was created. Empty when no strategy ran.
 type BootstrapResult struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	CreatedDirectoryIds []string               `protobuf:"bytes,1,rep,name=created_directory_ids,json=createdDirectoryIds,proto3" json:"created_directory_ids,omitempty"`
@@ -243,10 +233,9 @@ func (x *BootstrapResult) GetDescription() string {
 	return ""
 }
 
-// Returned by “DeleteShelf“ when “dry=true“.  The fields
-// describe the would-be-cascade so the UI can show a
-// confirmation before issuing the real delete.  Empty when
-// “dry=false“ and the delete succeeded.
+// Returned by DeleteShelf when dry=true. Fields describe the would-be-cascade
+// so the UI can show a confirmation before issuing the real delete.
+// Empty when dry=false and the delete succeeded.
 type DeleteShelfResponse struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Dry             bool                   `protobuf:"varint,1,opt,name=dry,proto3" json:"dry,omitempty"`

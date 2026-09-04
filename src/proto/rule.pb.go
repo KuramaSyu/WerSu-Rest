@@ -24,40 +24,27 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// A rule is a stored if x then do y event. attached_entity describes
-// an entity, where this rule is attached to. e.g. if event type
-// is note_created and attached_entity is a directory, then the rule
-// will only fire if the note is created in that directory.
-// action type, describes the then action, e.g. add note to a directory etc
+// Stored "if x then do y" event. attached_entity is the scope anchor
+// (e.g. a directory); the rule fires only when the event's primary entity
+// matches it (or a descendant in the directory/shelf case). Global rules
+// are no longer supported.
 //
-// Both `condition` and `action_context` fields are structs,
-// so the shape can evolve without breaking
-// the gRPC contract.  Valid `condition.type` values:
-//
-//   - "always_true"
-//   - "note_content_contains"   (with “substring“)
-//   - "note_title_contains"     (with “substring“)
-//
-// Valid “action_type“ values:
-//
-//   - "add_to_directory"        (with “directory_id“)
-//   - "add_tag"                 (with “tag_id“)
+// condition and action_context are Structs so the shape can evolve without
+// breaking the gRPC contract.
+// Valid condition.type values: "always_true", "note_content_contains" (with substring),
+// "note_title_contains" (with substring).
+// Valid action_type values: "add_to_directory" (with directory_id), "add_tag" (with tag_id).
 type Rule struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	EventType string                 `protobuf:"bytes,2,opt,name=event_type,json=eventType,proto3" json:"event_type,omitempty"`
-	// Required scope anchor.  The rule fires only for events
-	// whose primary entity matches this anchor (or, in the
-	// directory / shelf case, a descendant / contained book of
-	// it).  Global rules are no longer supported.
+	// Required scope anchor: rule fires only for events whose primary entity
+	// matches this (or, for directory/shelf, a descendant of it).
 	AttachedEntityType string `protobuf:"bytes,3,opt,name=attached_entity_type,json=attachedEntityType,proto3" json:"attached_entity_type,omitempty"` // "directory" | "note" | "shelf"
 	AttachedEntityId   string `protobuf:"bytes,4,opt,name=attached_entity_id,json=attachedEntityId,proto3" json:"attached_entity_id,omitempty"`
-	// Condition dataclass, serialised as a Struct:
-	//
-	//	{ "type": "note_content_contains", "substring": "linux" }
+	// Condition Struct, e.g. {"type": "note_content_contains", "substring": "linux"}.
 	Condition *structpb.Struct `protobuf:"bytes,5,opt,name=condition,proto3" json:"condition,omitempty"`
-	// Action split into a discriminator + parameters so the
-	// discriminator is indexable and round-trips cleanly.
+	// Action discriminator + parameters; discriminator is indexable.
 	ActionType    string                 `protobuf:"bytes,6,opt,name=action_type,json=actionType,proto3" json:"action_type,omitempty"` // "add_to_directory" | "add_tag" | ...
 	ActionContext *structpb.Struct       `protobuf:"bytes,7,opt,name=action_context,json=actionContext,proto3" json:"action_context,omitempty"`
 	Enabled       bool                   `protobuf:"varint,8,opt,name=enabled,proto3" json:"enabled,omitempty"`
@@ -175,7 +162,7 @@ func (x *Rule) GetUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
-// Used by GetRules to scope the list.  All fields optional.
+// Scopes the GetRules list. All fields optional.
 type RuleFilter struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	EventType          string                 `protobuf:"bytes,1,opt,name=event_type,json=eventType,proto3" json:"event_type,omitempty"`
@@ -803,8 +790,7 @@ func (x *UpdateRuleResponse) GetRule() *Rule {
 
 type DeleteRuleResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Empty for now; kept so the response shape can grow
-	// without breaking clients.
+	// Empty for now; kept so the response shape can grow without breaking clients.
 	Empty         *emptypb.Empty `protobuf:"bytes,1,opt,name=empty,proto3" json:"empty,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

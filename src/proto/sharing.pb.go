@@ -23,7 +23,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// the permission a share can have
+// Permission level of a share.
 type SharePermission int32
 
 const (
@@ -73,10 +73,8 @@ func (SharePermission) EnumDescriptor() ([]byte, []int) {
 	return file_src_proto_sharing_proto_rawDescGZIP(), []int{0}
 }
 
-// String value wrapper for fields where the API needs to distinguish:
-// - field omitted: leave unchanged / do not filter
-// - null_value=true: explicitly set or search for NULL
-// - value set: use the provided string
+// String wrapper: field omitted = leave unchanged, null_value = explicit NULL,
+// value = use the provided string.
 type NullableString struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Kind:
@@ -159,10 +157,8 @@ func (*NullableString_Value) isNullableString_Kind() {}
 
 func (*NullableString_NullValue) isNullableString_Kind() {}
 
-// Timestamp value wrapper for fields where the API needs to distinguish:
-// - field omitted: leave unchanged / do not filter
-// - null_value=true: explicitly set or search for NULL
-// - value set: use the provided timestamp
+// Timestamp wrapper: field omitted = leave unchanged, null_value = explicit NULL,
+// value = use the provided timestamp.
 type NullableTimestamp struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Kind:
@@ -354,12 +350,9 @@ func (x *NoteShare) GetAccessAs() string {
 	return ""
 }
 
-// Filter for searching shares.
-//
-// Date values are evaluated inclusively:
-// - online_since.value finds shares with online_since >= value
-// - online_until.value finds shares with online_until <= value
-// - null_value=true searches for rows where the date column is NULL
+// Filter for shares. Dates are inclusive:
+// online_since.value matches online_since >= value, online_until.value matches
+// online_until <= value, null_value matches rows where the column is NULL.
 type ShareFilter struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	NoteId        *string                `protobuf:"bytes,1,opt,name=note_id,json=noteId,proto3,oneof" json:"note_id,omitempty"`
@@ -513,7 +506,7 @@ func (x *CreateShareRequest) GetPermission() SharePermission {
 	return SharePermission_SHARE_PERMISSION_UNSPECIFIED
 }
 
-// Access a share by its ID. This ID is part of the share URL /public/n/<share_id>
+// Access a share by its ID (the share_id segment of /public/n/<share_id>).
 type AccessShareRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ShareId       string                 `protobuf:"bytes,1,opt,name=share_id,json=shareId,proto3" json:"share_id,omitempty"`
@@ -603,7 +596,7 @@ func (x *AccessShareResponse) GetShare() *NoteShare {
 	return nil
 }
 
-// request with share id to get the temporary user id that can be used to access the share.
+// Look up the temporary user id used to access a share.
 type GetShareUserRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ShareId       string                 `protobuf:"bytes,1,opt,name=share_id,json=shareId,proto3" json:"share_id,omitempty"`
@@ -648,7 +641,7 @@ func (x *GetShareUserRequest) GetShareId() string {
 	return ""
 }
 
-// Response for a get share user request, containing the temporary user id
+// Response carrying the temporary user id for a share.
 type GetShareUserResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AccessAs      string                 `protobuf:"bytes,1,opt,name=access_as,json=accessAs,proto3" json:"access_as,omitempty"`
