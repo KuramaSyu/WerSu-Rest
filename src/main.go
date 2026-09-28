@@ -10,6 +10,7 @@ package main
 import (
 	"encoding/gob"
 	"log"
+	"time"
 
 	"github.com/KuramaSyu/WerSu-Rest/src/config"
 	"github.com/KuramaSyu/WerSu-Rest/src/controllers"
@@ -54,12 +55,20 @@ func main() {
 	r.Use(sessions.Sessions("discord_auth", store))
 
 	// Setup gRPC connection to WerSu backend service
-	grpcConn, err := grpc.NewClient(
-		appConfig.GRPCServerAddress,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
-	if err != nil {
-		log.Fatalf("Failed to connect to gRPC server: %v", err)
+	var grpcConn *grpc.ClientConn
+	for i := 0; i < 10; i++ {
+		var err error
+		grpcConn, err = grpc.NewClient(
+			appConfig.GRPCServerAddress,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
+		if err != nil {
+			log.Printf("Failed to connect to gRPC server: %v", err)
+			log.Printf("Retry to connect (%d/10) in 20s", i+1)
+			time.Sleep(20 * time.Second)
+			continue
+		}
+		break
 	}
 	defer grpcConn.Close()
 
