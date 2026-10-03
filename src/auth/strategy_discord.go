@@ -50,7 +50,7 @@ func (s *DiscordStrategy) Login(ctx context.Context) (*proto.UserAuth, error) {
 	if err == nil {
 		return resp.GetUser(), nil
 	}
-	if !isNotFound(err) {
+	if !IsNotFound(err) {
 		return nil, err
 	}
 

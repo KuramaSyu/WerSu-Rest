@@ -89,9 +89,15 @@ func DecodePHC(s string) (string, int, uint32, uint32, uint8, []byte, []byte, er
 	return mode, version, m, t, p, salt, hash, nil
 }
 
-// constantTimeEqual reports whether a and b are equal in constant
-// time. Used to compare the recomputed argon2 hash against the
-// stored hash so a successful verify doesn't leak ratio information.
-func constantTimeEqual(a, b []byte) bool {
+// ConstantTimeEqual reports whether a and b are equal in constant
+// time. Exported so the controller can compare submitted hashes
+// against the stored hash without leaking prefix information.
+func ConstantTimeEqual(a, b []byte) bool {
 	return subtle.ConstantTimeCompare(a, b) == 1
+}
+
+// constantTimeEqual is the package-internal alias kept for callers
+// inside the auth package.
+func constantTimeEqual(a, b []byte) bool {
+	return ConstantTimeEqual(a, b)
 }
