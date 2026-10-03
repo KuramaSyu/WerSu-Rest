@@ -48,7 +48,6 @@ type AuthController struct {
 	authService  auth.AuthServiceClientIface
 	shareService *proto.SharingServiceClient
 	JWTSecret    string
-	Hasher       auth.PasswordHasher
 
 	// webauthn runs the WebAuthn ceremony. Nil when RP ID is unset
 	// (the six passkey endpoints then return 503).
@@ -83,7 +82,6 @@ func NewAuthController(
 		authService:  authService,
 		shareService: shareService,
 		JWTSecret:    jwtSecret,
-		Hasher:       auth.Argon2Hasher{},
 	}
 	if rpID != "" {
 		w, err := webauthn.New(&webauthn.Config{
@@ -150,15 +148,20 @@ func (ac *AuthController) webauthnConfigured() bool {
 
 // ------------ Login / signup requests -------------
 
+// PasswordLoginRequest carries a precomputed hash for signin.
+// The server never sees plaintext.
 type PasswordLoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email     string `json:"email"`
+	Hash      string `json:"hash"`
+	Algorithm string `json:"algorithm"`
 }
 
+// PasswordSignupRequest carries a precomputed hash for signup.
 type PasswordSignupRequest struct {
-	Email    string `json:"email"`
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Email     string `json:"email"`
+	Username  string `json:"username"`
+	Hash      string `json:"hash"`
+	Algorithm string `json:"algorithm"`
 }
 
 // LoginRequest is the unified entry point for non-OAuth login flows.
@@ -169,18 +172,20 @@ type LoginRequest struct {
 	Kind auth.Kind `json:"kind"`
 
 	// Password fields
-	Email    string `json:"email,omitempty"`
-	Password string `json:"password,omitempty"`
-	Username string `json:"username,omitempty"` // signup only
+	Email     string `json:"email,omitempty"`
+	Hash      string `json:"hash,omitempty"`
+	Algorithm string `json:"algorithm,omitempty"`
+	Username  string `json:"username,omitempty"` // signup only
 }
 
 // SignupRequest is the dedicated entry point for password signup.
 // Splitting signup from login keeps the controller's branching
 // explicit (signup is a separate code path on the gRPC side too).
 type SignupRequest struct {
-	Email    string `json:"email"`
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Email     string `json:"email"`
+	Username  string `json:"username"`
+	Hash      string `json:"hash"`
+	Algorithm string `json:"algorithm"`
 }
 
 // loginUser is the post-strategy hook that wires the verified user
@@ -439,16 +444,16 @@ func (ac *AuthController) PostLogin(c *gin.Context) {
 	var strategy auth.LoginStrategy
 	switch kind {
 	case auth.KindPassword:
-		if req.Email == "" || req.Password == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "email and password are required"})
+		if req.Email == "" || req.Hash == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "email and hash are required"})
 			return
 		}
 		strategy = &auth.PasswordStrategy{
-			Auth:     ac.authService,
-			Hasher:   ac.Hasher,
-			Email:    req.Email,
-			Password: req.Password,
-			Signup:   false,
+			Auth:      ac.authService,
+			Email:     req.Email,
+			Hash:      req.Hash,
+			Algorithm: req.Algorithm,
+			Signup:    false,
 		}
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Login kind requires its own route: " + string(kind)})
@@ -468,31 +473,33 @@ func (ac *AuthController) PostLogin(c *gin.Context) {
 }
 
 // PostSignup handles password signup. The body is a SignupRequest
-// (email, username, password). On success, the user is logged in
-// (session cookie is set) and the canonical UserAuth is returned.
+// (email, username, hash, algorithm). The server never sees the
+// plaintext password; the client precomputes the argon2id hash.
+// On success, the user is logged in (session cookie is set) and
+// the canonical UserAuth is returned.
 func (ac *AuthController) PostSignup(c *gin.Context) {
 	var req SignupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
-	if req.Email == "" || req.Password == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "email and password are required"})
+	if req.Email == "" || req.Username == "" || req.Hash == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email, username, and hash are required"})
+		return
+	}
+	if !auth.ValidatePasswordHash(req.Hash, req.Algorithm) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported algorithm or malformed hash"})
 		return
 	}
 
-	// Resolve the avatar *at signup time* so the user has something
-	// to display from the very first request. Gravatar is the
-	// fallback for password signups -- it'll either show the user's
-	// actual Gravatar if they have one, or a generated identicon.
 	gravatarAvatar := auth.GravatarURL(req.Email)
 
 	strategy := &auth.PasswordStrategy{
 		Auth:      ac.authService,
-		Hasher:    ac.Hasher,
 		Email:     req.Email,
 		Username:  req.Username,
-		Password:  req.Password,
+		Hash:      req.Hash,
+		Algorithm: req.Algorithm,
 		Signup:    true,
 		AvatarUrl: gravatarAvatar,
 	}
@@ -926,8 +933,11 @@ func ceremonyOptionsJSON(v any) map[string]any {
 // `LinkCredential` RPC (with the existing user's id as the
 // `requester_id`).
 
+// LinkPasswordRequest carries a precomputed argon2id hash.
+// The server stores the hash directly; no plaintext is accepted.
 type LinkPasswordRequest struct {
-	Password string `json:"password"`
+	Hash      string `json:"hash"`
+	Algorithm string `json:"algorithm,omitempty"`
 }
 
 // PostLinkDiscord: link a discord_id to the authenticated user.
@@ -1021,7 +1031,112 @@ func (ac *AuthController) PostLinkGoogle(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"linked": "google"})
 }
 
+// ChangePasswordRequest is the body of POST /auth/password/change.
+// Both hashes are precomputed by the client; the server constant-time
+// compares current_hash to the stored hash, then unlinks the old
+// credential and links the new one.
+type ChangePasswordRequest struct {
+	CurrentHash      string `json:"current_hash"`
+	CurrentAlgorithm string `json:"current_algorithm,omitempty"`
+	NewHash          string `json:"new_hash"`
+	NewAlgorithm     string `json:"new_algorithm,omitempty"`
+}
+
+// PostChangePassword godoc
+// @Summary      Change the authenticated user's password
+// @Description  Constant-time-compares the submitted current hash to
+// the stored hash, then unlinks the old password credential and
+// links a new one. Returns 401 on a wrong current hash and 400 if
+// the account has no password credential yet (OAuth-only signups
+// should use /auth/link/password first).
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Security     CookieAuth
+// @Param        payload  body      ChangePasswordRequest  true  "current and new hash"
+// @Success      200      {object}  map[string]string      "password changed"
+// @Failure      400      {object}  map[string]string      "missing fields, no password set, or bad hash format"
+// @Failure      401      {object}  map[string]string      "unauthenticated or wrong current hash"
+// @Router       /auth/password/change [post]
+func (ac *AuthController) PostChangePassword(c *gin.Context) {
+	user, _, err := utils.UserFromContext(c)
+	if user == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+	var req ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil ||
+		req.CurrentHash == "" || req.NewHash == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "current_hash and new_hash are required"})
+		return
+	}
+	if req.CurrentHash == req.NewHash {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "new_hash must differ from current_hash"})
+		return
+	}
+	if req.CurrentAlgorithm != "" && req.CurrentAlgorithm != "argon2id" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported current_algorithm"})
+		return
+	}
+	if !auth.ValidatePasswordHash(req.CurrentHash, req.CurrentAlgorithm) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported current_algorithm or malformed current_hash"})
+		return
+	}
+	if !auth.ValidatePasswordHash(req.NewHash, req.NewAlgorithm) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported new_algorithm or malformed new_hash"})
+		return
+	}
+
+	lookup, err := ac.authService.FindCredentialByProvider(c, &proto.FindCredentialByProviderRequest{
+		Kind:       proto.CredentialKind_CREDENTIAL_KIND_PASSWORD,
+		Identifier: &proto.FindCredentialByProviderRequest_Email{Email: user.Email},
+	})
+	if err != nil {
+		if auth.IsNotFound(err) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "no password is set on this account; use /auth/link/password first"})
+			return
+		}
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("lookup password credential: %w", err))
+		return
+	}
+	storedHash := lookup.GetCredential().GetPasswordHash()
+	credentialID := lookup.GetCredential().GetId()
+	if storedHash == "" || credentialID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no password credential to update"})
+		return
+	}
+
+	if !auth.ConstantTimeEqual([]byte(req.CurrentHash), []byte(storedHash)) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid current hash"})
+		return
+	}
+
+	// Unlink the old row first. LinkCredential returns ALREADY_EXISTS
+	// when a PASSWORD credential already exists, so we can't just overwrite.
+	if _, err := ac.authService.UnlinkCredential(c, &proto.UnlinkCredentialRequest{
+		CredentialId: credentialID,
+		UserId:       user.ID,
+		RequesterId:  user.ID,
+	}); err != nil {
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("unlink old password credential: %w", err))
+		return
+	}
+
+	if _, err := ac.authService.LinkCredential(c, &proto.LinkCredentialRequest{
+		UserId:      user.ID,
+		RequesterId: user.ID,
+		Kind:        proto.CredentialKind_CREDENTIAL_KIND_PASSWORD,
+		Payload:     &proto.LinkCredentialRequest_PasswordHash{PasswordHash: req.NewHash},
+	}); err != nil {
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("link new password credential: %w", err))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"changed": "password"})
+}
+
 // PostLinkPassword: link a password to the authenticated user.
+// The body carries a precomputed hash; the server never sees plaintext.
 func (ac *AuthController) PostLinkPassword(c *gin.Context) {
 	user, _, err := utils.UserFromContext(c)
 	if user == nil {
@@ -1029,22 +1144,20 @@ func (ac *AuthController) PostLinkPassword(c *gin.Context) {
 		return
 	}
 	var req LinkPasswordRequest
-	if err := c.ShouldBindJSON(&req); err != nil || req.Password == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "password is required"})
+	if err := c.ShouldBindJSON(&req); err != nil || req.Hash == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "hash is required"})
 		return
 	}
-	hash, err := ac.Hasher.Hash(req.Password)
-	if err != nil {
-		utils.SetGinError(c, http.StatusInternalServerError, err)
+	if !auth.ValidatePasswordHash(req.Hash, req.Algorithm) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported algorithm or malformed hash"})
 		return
 	}
-	_, err = ac.authService.LinkCredential(c, &proto.LinkCredentialRequest{
+	if _, err := ac.authService.LinkCredential(c, &proto.LinkCredentialRequest{
 		UserId:      user.ID,
 		RequesterId: user.ID,
 		Kind:        proto.CredentialKind_CREDENTIAL_KIND_PASSWORD,
-		Payload:     &proto.LinkCredentialRequest_PasswordHash{PasswordHash: hash},
-	})
-	if err != nil {
+		Payload:     &proto.LinkCredentialRequest_PasswordHash{PasswordHash: req.Hash},
+	}); err != nil {
 		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("link password failed: %w", err))
 		return
 	}

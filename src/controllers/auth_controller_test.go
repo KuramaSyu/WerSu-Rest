@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/KuramaSyu/WerSu-Rest/src/auth"
 	"github.com/KuramaSyu/WerSu-Rest/src/models"
@@ -54,6 +55,7 @@ func newAuthTestRouter(t *testing.T, fake auth.AuthServiceClientIface) *gin.Engi
 	authGroup.POST("/link/discord", ac.PostLinkDiscord)
 	authGroup.POST("/link/google", ac.PostLinkGoogle)
 	authGroup.POST("/link/password", ac.PostLinkPassword)
+	authGroup.POST("/password/change", ac.PostChangePassword)
 	authGroup.POST("/passkey/register/begin", ac.PostPasskeyRegisterBegin)
 	authGroup.POST("/passkey/register/finish", ac.PostPasskeyRegisterFinish)
 	authGroup.POST("/passkey/login/begin", ac.PostPasskeyLoginBegin)
@@ -122,10 +124,11 @@ func TestPostLoginPasswordMissingFields(t *testing.T) {
 func TestPostLoginPasswordInvalidCredentials(t *testing.T) {
 	// The strategy's signin path returns InvalidCredentialsError
 	// specifically when the user isn't found. Any other gRPC
-	// error propagates and utils.SetGinError` decides the HTTP status.
+	// error propagates and utils.SetGinError decides the HTTP status.
 	// For a NotFound the controller returns 401; for any other
 	// gRPC code, it falls through to 500 (or an upgrade if the
 	// code matches Unavailable/DeadlineExceeded/etc).
+	hash, _ := (auth.Argon2Hasher{}).Hash("wrong")
 	fake := &auth.FakeAuthClient{
 		OnFindCredentialByProv: func(*proto.FindCredentialByProviderRequest) (*proto.FindCredentialByProviderResponse, error) {
 			return nil, status.Error(codes.NotFound, "user not found")
@@ -133,9 +136,10 @@ func TestPostLoginPasswordInvalidCredentials(t *testing.T) {
 	}
 	r := newAuthTestRouter(t, fake)
 	w := doRequest(r, http.MethodPost, "/auth/login", LoginRequest{
-		Kind:     auth.KindPassword,
-		Email:    "alice@example.com",
-		Password: "wrong",
+		Kind:      auth.KindPassword,
+		Email:     "alice@example.com",
+		Hash:      hash,
+		Algorithm: "argon2id",
 	})
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want 401", w.Code)
@@ -146,13 +150,12 @@ func TestPostLoginPasswordInvalidCredentials(t *testing.T) {
 }
 
 func TestPostLoginPasswordSuccess(t *testing.T) {
+	hash, _ := (auth.Argon2Hasher{}).Hash("realpw")
 	fake := &auth.FakeAuthClient{
 		OnFindCredentialByProv: func(in *proto.FindCredentialByProviderRequest) (*proto.FindCredentialByProviderResponse, error) {
-			// Pretend the user exists and the password matched.
-			// The strategy internally hashes; for this test we
-			// just return success.
-			_ = in
-			hash, _ := (auth.Argon2Hasher{}).Hash("realpw")
+			if in.GetEmail() != "alice@example.com" {
+				t.Errorf("email = %q, want alice@example.com", in.GetEmail())
+			}
 			return &proto.FindCredentialByProviderResponse{
 				Credential: &proto.Credential{
 					Kind:    proto.CredentialKind_CREDENTIAL_KIND_PASSWORD,
@@ -164,9 +167,10 @@ func TestPostLoginPasswordSuccess(t *testing.T) {
 	}
 	r := newAuthTestRouter(t, fake)
 	w := doRequest(r, http.MethodPost, "/auth/login", LoginRequest{
-		Kind:     auth.KindPassword,
-		Email:    "alice@example.com",
-		Password: "realpw",
+		Kind:      auth.KindPassword,
+		Email:     "alice@example.com",
+		Hash:      hash,
+		Algorithm: "argon2id",
 	})
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, body=%s", w.Code, w.Body.String())
@@ -180,6 +184,20 @@ func TestPostLoginPasswordSuccess(t *testing.T) {
 	}
 	if got["email"] != "alice@example.com" {
 		t.Errorf("email = %v", got["email"])
+	}
+}
+
+func TestPostLoginPasswordRejectsBadAlgorithm(t *testing.T) {
+	hash, _ := (auth.Argon2Hasher{}).Hash("realpw")
+	r := newAuthTestRouter(t, &auth.FakeAuthClient{})
+	w := doRequest(r, http.MethodPost, "/auth/login", LoginRequest{
+		Kind:      auth.KindPassword,
+		Email:     "alice@example.com",
+		Hash:      hash,
+		Algorithm: "bcrypt",
+	})
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", w.Code)
 	}
 }
 
@@ -210,7 +228,34 @@ func TestPostSignupBadJSON(t *testing.T) {
 
 func TestPostSignupMissingFields(t *testing.T) {
 	r := newAuthTestRouter(t, &auth.FakeAuthClient{})
-	w := doRequest(r, http.MethodPost, "/auth/signup", SignupRequest{Email: "", Password: ""})
+	w := doRequest(r, http.MethodPost, "/auth/signup", SignupRequest{Email: "", Hash: ""})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", w.Code)
+	}
+}
+
+func TestPostSignupRejectsBadAlgorithm(t *testing.T) {
+	hash, _ := (auth.Argon2Hasher{}).Hash("pw")
+	r := newAuthTestRouter(t, &auth.FakeAuthClient{})
+	w := doRequest(r, http.MethodPost, "/auth/signup", SignupRequest{
+		Email:     "alice@example.com",
+		Username:  "alice",
+		Hash:      hash,
+		Algorithm: "bcrypt",
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", w.Code)
+	}
+}
+
+func TestPostSignupRejectsMalformedHash(t *testing.T) {
+	r := newAuthTestRouter(t, &auth.FakeAuthClient{})
+	w := doRequest(r, http.MethodPost, "/auth/signup", SignupRequest{
+		Email:     "alice@example.com",
+		Username:  "alice",
+		Hash:      "not-a-phc-string",
+		Algorithm: "argon2id",
+	})
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", w.Code)
 	}
@@ -219,6 +264,7 @@ func TestPostSignupMissingFields(t *testing.T) {
 func TestPostSignupConflict(t *testing.T) {
 	// When the gRPC service returns AlreadyExists, the controller
 	// maps to 409 with a generic "email already in use" message.
+	hash, _ := (auth.Argon2Hasher{}).Hash("pw")
 	fake := &auth.FakeAuthClient{
 		OnCreateUserAuth: func(*proto.CreateUserAuthRequest) (*proto.CreateUserAuthResponse, error) {
 			return nil, status.Error(codes.AlreadyExists, "email taken")
@@ -226,9 +272,10 @@ func TestPostSignupConflict(t *testing.T) {
 	}
 	r := newAuthTestRouter(t, fake)
 	w := doRequest(r, http.MethodPost, "/auth/signup", SignupRequest{
-		Email:    "taken@example.com",
-		Username: "alice",
-		Password: "pw",
+		Email:     "taken@example.com",
+		Username:  "alice",
+		Hash:      hash,
+		Algorithm: "argon2id",
 	})
 	if w.Code != http.StatusConflict {
 		t.Fatalf("status = %d, want 409", w.Code)
@@ -239,8 +286,12 @@ func TestPostSignupConflict(t *testing.T) {
 }
 
 func TestPostSignupSuccess(t *testing.T) {
+	clientHash, _ := (auth.Argon2Hasher{}).Hash("x")
 	fake := &auth.FakeAuthClient{
 		OnCreateUserAuth: func(in *proto.CreateUserAuthRequest) (*proto.CreateUserAuthResponse, error) {
+			if in.PasswordHash != clientHash {
+				t.Errorf("server hash = %q, want client hash", in.PasswordHash)
+			}
 			return &proto.CreateUserAuthResponse{
 				User: &proto.UserAuth{Id: "new-u", Email: in.Email},
 			}, nil
@@ -248,9 +299,10 @@ func TestPostSignupSuccess(t *testing.T) {
 	}
 	r := newAuthTestRouter(t, fake)
 	w := doRequest(r, http.MethodPost, "/auth/signup", SignupRequest{
-		Email:    "alice@example.com",
-		Username: "alice",
-		Password: "x",
+		Email:     "alice@example.com",
+		Username:  "alice",
+		Hash:      clientHash,
+		Algorithm: "argon2id",
 	})
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, body=%s", w.Code, w.Body.String())
@@ -372,7 +424,7 @@ func TestGetLinkedCredentialsSuccess(t *testing.T) {
 
 func TestPostLinkPasswordNotLoggedIn(t *testing.T) {
 	r := newAuthTestRouter(t, &auth.FakeAuthClient{})
-	w := doRequest(r, http.MethodPost, "/auth/link/password", LinkPasswordRequest{Password: "new"})
+	w := doRequest(r, http.MethodPost, "/auth/link/password", LinkPasswordRequest{Hash: "$argon2id$xxx"})
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want 401", w.Code)
 	}
@@ -398,7 +450,7 @@ func TestPostLinkPasswordBadJSON(t *testing.T) {
 	}
 }
 
-func TestPostLinkPasswordMissingPassword(t *testing.T) {
+func TestPostLinkPasswordMissingHash(t *testing.T) {
 	r := newAuthTestRouter(t, &auth.FakeAuthClient{})
 	rec := httptest.NewRecorder()
 	runWithSession(nil, rec, r, func(c *gin.Context) {
@@ -406,7 +458,27 @@ func TestPostLinkPasswordMissingPassword(t *testing.T) {
 		s.Set("user", models.User{ID: "u-1"})
 		_ = s.Save()
 	})
-	body, _ := json.Marshal(LinkPasswordRequest{Password: ""})
+	body, _ := json.Marshal(LinkPasswordRequest{Hash: ""})
+	req := httptest.NewRequest(http.MethodPost, "/auth/link/password", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Cookie", rec.Result().Header.Get("Set-Cookie"))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", w.Code)
+	}
+}
+
+func TestPostLinkPasswordRejectsBadAlgorithm(t *testing.T) {
+	hash, _ := (auth.Argon2Hasher{}).Hash("anything")
+	r := newAuthTestRouter(t, &auth.FakeAuthClient{})
+	rec := httptest.NewRecorder()
+	runWithSession(nil, rec, r, func(c *gin.Context) {
+		s := sessions.Default(c)
+		s.Set("user", models.User{ID: "u-1"})
+		_ = s.Save()
+	})
+	body, _ := json.Marshal(LinkPasswordRequest{Hash: hash, Algorithm: "bcrypt"})
 	req := httptest.NewRequest(http.MethodPost, "/auth/link/password", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Cookie", rec.Result().Header.Get("Set-Cookie"))
@@ -437,8 +509,8 @@ func TestPostLinkPasswordSuccess(t *testing.T) {
 		_ = s.Save()
 	})
 
-	// Repackage the request body and the cookie.
-	body, _ := json.Marshal(LinkPasswordRequest{Password: "newpw"})
+	clientHash, _ := (auth.Argon2Hasher{}).Hash("anything")
+	body, _ := json.Marshal(LinkPasswordRequest{Hash: clientHash, Algorithm: "argon2id"})
 	req = httptest.NewRequest(http.MethodPost, "/auth/link/password", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Cookie", rec.Result().Header.Get("Set-Cookie"))
@@ -459,8 +531,245 @@ func TestPostLinkPasswordSuccess(t *testing.T) {
 	if linked.GetPasswordHash() == "" {
 		t.Errorf("password hash was empty")
 	}
-	if linked.GetPasswordHash() == "newpw" {
+	if linked.GetPasswordHash() == "anything" {
 		t.Errorf("plaintext password was sent to gRPC")
+	}
+	if linked.GetPasswordHash() != clientHash {
+		t.Errorf("server hash differs from client hash")
+	}
+}
+
+// ---------- PostChangePassword ----------
+
+// changePasswordFixture seeds the fake with a stored hash for the
+// current password and returns a router with an authenticated session.
+func changePasswordFixture(t *testing.T, fake auth.AuthServiceClientIface) (*gin.Engine, string) {
+	t.Helper()
+	r := newAuthTestRouter(t, fake)
+	rec := httptest.NewRecorder()
+	runWithSession(nil, rec, r, func(c *gin.Context) {
+		s := sessions.Default(c)
+		s.Set("user", models.User{ID: "u-1", Email: "alice@example.com"})
+		_ = s.Save()
+	})
+	return r, rec.Result().Header.Get("Set-Cookie")
+}
+
+func TestPostChangePasswordNotLoggedIn(t *testing.T) {
+	r := newAuthTestRouter(t, &auth.FakeAuthClient{})
+	w := doRequest(r, http.MethodPost, "/auth/password/change", ChangePasswordRequest{
+		CurrentHash: "$argon2id$xxx", NewHash: "$argon2id$yyy",
+	})
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", w.Code)
+	}
+}
+
+func TestPostChangePasswordMissingFields(t *testing.T) {
+	hash, _ := auth.Argon2Hasher{}.Hash("oldpw")
+	fake := &auth.FakeAuthClient{
+		OnFindCredentialByProv: func(*proto.FindCredentialByProviderRequest) (*proto.FindCredentialByProviderResponse, error) {
+			return &proto.FindCredentialByProviderResponse{
+				Credential: &proto.Credential{Id: "c-1", Payload: &proto.Credential_PasswordHash{PasswordHash: hash}},
+			}, nil
+		},
+	}
+	r, cookie := changePasswordFixture(t, fake)
+
+	body, _ := json.Marshal(ChangePasswordRequest{CurrentHash: "", NewHash: "new"})
+	req := httptest.NewRequest(http.MethodPost, "/auth/password/change", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Cookie", cookie)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, body=%s", w.Code, w.Body.String())
+	}
+}
+
+func TestPostChangePasswordSameAsCurrent(t *testing.T) {
+	hash, _ := auth.Argon2Hasher{}.Hash("oldpw")
+	fake := &auth.FakeAuthClient{
+		OnFindCredentialByProv: func(*proto.FindCredentialByProviderRequest) (*proto.FindCredentialByProviderResponse, error) {
+			return &proto.FindCredentialByProviderResponse{
+				Credential: &proto.Credential{Id: "c-1", Payload: &proto.Credential_PasswordHash{PasswordHash: hash}},
+			}, nil
+		},
+	}
+	r, cookie := changePasswordFixture(t, fake)
+
+	body, _ := json.Marshal(ChangePasswordRequest{CurrentHash: hash, NewHash: hash})
+	req := httptest.NewRequest(http.MethodPost, "/auth/password/change", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Cookie", cookie)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", w.Code)
+	}
+}
+
+func TestPostChangePasswordRejectsBadAlgorithm(t *testing.T) {
+	hash, _ := auth.Argon2Hasher{}.Hash("oldpw")
+	r, cookie := changePasswordFixture(t, &auth.FakeAuthClient{})
+	newHash, _ := auth.Argon2Hasher{}.Hash("newpw")
+	body, _ := json.Marshal(ChangePasswordRequest{
+		CurrentHash:      hash,
+		CurrentAlgorithm: "bcrypt",
+		NewHash:          newHash,
+		NewAlgorithm:     "argon2id",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/auth/password/change", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Cookie", cookie)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", w.Code)
+	}
+}
+
+func TestPostChangePasswordRejectsMalformedHash(t *testing.T) {
+	r, cookie := changePasswordFixture(t, &auth.FakeAuthClient{})
+	newHash, _ := auth.Argon2Hasher{}.Hash("newpw")
+	body, _ := json.Marshal(ChangePasswordRequest{
+		CurrentHash:  "not-a-phc-string",
+		NewHash:      newHash,
+		NewAlgorithm: "argon2id",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/auth/password/change", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Cookie", cookie)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", w.Code)
+	}
+}
+
+func TestPostChangePasswordWrongCurrent(t *testing.T) {
+	storedHash, _ := auth.Argon2Hasher{}.Hash("oldpw")
+	wrongHash, _ := auth.Argon2Hasher{}.Hash("WRONG")
+	newHash, _ := auth.Argon2Hasher{}.Hash("newpw")
+	fake := &auth.FakeAuthClient{
+		OnFindCredentialByProv: func(*proto.FindCredentialByProviderRequest) (*proto.FindCredentialByProviderResponse, error) {
+			return &proto.FindCredentialByProviderResponse{
+				Credential: &proto.Credential{Id: "c-1", Payload: &proto.Credential_PasswordHash{PasswordHash: storedHash}},
+			}, nil
+		},
+		// Unlink/Link should never be called on a wrong-hash path.
+		OnUnlinkCredential: func(*proto.UnlinkCredentialRequest) (*emptypb.Empty, error) {
+			t.Fatal("UnlinkCredential was called on wrong-current-hash path")
+			return nil, nil
+		},
+		OnLinkCredential: func(*proto.LinkCredentialRequest) (*proto.LinkCredentialResponse, error) {
+			t.Fatal("LinkCredential was called on wrong-current-hash path")
+			return nil, nil
+		},
+	}
+	r, cookie := changePasswordFixture(t, fake)
+
+	body, _ := json.Marshal(ChangePasswordRequest{
+		CurrentHash: wrongHash,
+		NewHash:     newHash,
+	})
+	req := httptest.NewRequest(http.MethodPost, "/auth/password/change", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Cookie", cookie)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, body=%s", w.Code, w.Body.String())
+	}
+}
+
+func TestPostChangePasswordNoPasswordSet(t *testing.T) {
+	fake := &auth.FakeAuthClient{
+		OnFindCredentialByProv: func(*proto.FindCredentialByProviderRequest) (*proto.FindCredentialByProviderResponse, error) {
+			return nil, status.Error(codes.NotFound, "no credential")
+		},
+	}
+	r, cookie := changePasswordFixture(t, fake)
+
+	hash, _ := auth.Argon2Hasher{}.Hash("oldpw")
+	newHash, _ := auth.Argon2Hasher{}.Hash("newpw")
+	body, _ := json.Marshal(ChangePasswordRequest{
+		CurrentHash: hash,
+		NewHash:     newHash,
+	})
+	req := httptest.NewRequest(http.MethodPost, "/auth/password/change", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Cookie", cookie)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, body=%s", w.Code, w.Body.String())
+	}
+}
+
+func TestPostChangePasswordSuccess(t *testing.T) {
+	storedHash, _ := auth.Argon2Hasher{}.Hash("oldpw")
+	newHash, _ := auth.Argon2Hasher{}.Hash("newpw")
+	var (
+		gotUnlink *proto.UnlinkCredentialRequest
+		gotLink   *proto.LinkCredentialRequest
+	)
+	fake := &auth.FakeAuthClient{
+		OnFindCredentialByProv: func(in *proto.FindCredentialByProviderRequest) (*proto.FindCredentialByProviderResponse, error) {
+			if in.GetEmail() != "alice@example.com" {
+				t.Errorf("lookup email = %q, want alice@example.com", in.GetEmail())
+			}
+			return &proto.FindCredentialByProviderResponse{
+				Credential: &proto.Credential{Id: "c-old", Payload: &proto.Credential_PasswordHash{PasswordHash: storedHash}},
+			}, nil
+		},
+		OnUnlinkCredential: func(in *proto.UnlinkCredentialRequest) (*emptypb.Empty, error) {
+			gotUnlink = in
+			return &emptypb.Empty{}, nil
+		},
+		OnLinkCredential: func(in *proto.LinkCredentialRequest) (*proto.LinkCredentialResponse, error) {
+			gotLink = in
+			return &proto.LinkCredentialResponse{
+				Credential: &proto.Credential{Id: "c-new"},
+			}, nil
+		},
+	}
+	r, cookie := changePasswordFixture(t, fake)
+
+	body, _ := json.Marshal(ChangePasswordRequest{
+		CurrentHash:      storedHash,
+		CurrentAlgorithm: "argon2id",
+		NewHash:          newHash,
+		NewAlgorithm:     "argon2id",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/auth/password/change", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Cookie", cookie)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, body=%s", w.Code, w.Body.String())
+	}
+	if gotUnlink == nil {
+		t.Fatal("UnlinkCredential was not called")
+	}
+	if gotUnlink.GetCredentialId() != "c-old" {
+		t.Errorf("unlink credential id = %q, want c-old", gotUnlink.GetCredentialId())
+	}
+	if gotUnlink.GetUserId() != "u-1" || gotUnlink.GetRequesterId() != "u-1" {
+		t.Errorf("unlink user/requester = (%q, %q)", gotUnlink.GetUserId(), gotUnlink.GetRequesterId())
+	}
+	if gotLink == nil {
+		t.Fatal("LinkCredential was not called")
+	}
+	if gotLink.GetUserId() != "u-1" || gotLink.GetRequesterId() != "u-1" {
+		t.Errorf("link user/requester = (%q, %q)", gotLink.GetUserId(), gotLink.GetRequesterId())
+	}
+	if gotLink.Kind != proto.CredentialKind_CREDENTIAL_KIND_PASSWORD {
+		t.Errorf("link kind = %v, want PASSWORD", gotLink.Kind)
+	}
+	if gotLink.GetPasswordHash() != newHash {
+		t.Errorf("server hash = %q, want client new hash", gotLink.GetPasswordHash())
 	}
 }
 

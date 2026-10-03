@@ -228,6 +228,7 @@ func SetupRouter(
 		auth.POST("/link/discord", authController.PostLinkDiscord)
 		auth.POST("/link/google", authController.PostLinkGoogle)
 		auth.POST("/link/password", authController.PostLinkPassword)
+		auth.POST("/password/change", authController.PostChangePassword)
 		auth.POST("/link/passkey/begin", authController.PostLinkPasskeyBegin)
 		auth.POST("/link/passkey/finish", authController.PostLinkPasskeyFinish)
 

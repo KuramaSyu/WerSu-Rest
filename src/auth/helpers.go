@@ -9,8 +9,8 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// isNotFound reports whether the gRPC error carries NotFound.
-func isNotFound(err error) bool {
+// IsNotFound reports whether the gRPC error carries NotFound.
+func IsNotFound(err error) bool {
 	return status.Code(err) == codes.NotFound
 }
 
