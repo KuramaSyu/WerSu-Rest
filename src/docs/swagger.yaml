@@ -52,11 +52,20 @@ definitions:
     properties:
       attachment_key:
         type: string
+      link_to:
+        enum:
+        - note
+        - user
+        example: note
+        type: string
       note_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        type: string
+      user_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
         type: string
     required:
     - attachment_key
-    - note_id
     type: object
   controllers.AttachmentMetadataReply:
     properties:
@@ -115,6 +124,17 @@ definitions:
       created_rule_id:
         type: string
       description:
+        type: string
+    type: object
+  controllers.ChangePasswordRequest:
+    properties:
+      current_algorithm:
+        type: string
+      current_hash:
+        type: string
+      new_algorithm:
+        type: string
+      new_hash:
         type: string
     type: object
   controllers.CheckResult:
@@ -1041,7 +1061,7 @@ paths:
       responses:
         "204":
           description: No Content
-      summary: Unlink attachment from note
+      summary: Unlink attachment from a note (default) or user
       tags:
       - attachment-links
     post:
@@ -1057,7 +1077,7 @@ paths:
       responses:
         "204":
           description: No Content
-      summary: Link attachment to note
+      summary: Link attachment to a note (default) or user
       tags:
       - attachment-links
   /attachments:
@@ -1447,6 +1467,44 @@ paths:
               type: string
             type: object
       summary: Finish a passkey registration ceremony
+      tags:
+      - Authentication
+  /auth/password/change:
+    post:
+      consumes:
+      - application/json
+      description: Constant-time-compares the submitted current hash to
+      parameters:
+      - description: current and new hash
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: password changed
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: missing fields, no password set, or bad hash format
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: unauthenticated or wrong current hash
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Change the authenticated user's password
       tags:
       - Authentication
   /auth/public-access-token:

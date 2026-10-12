@@ -23,7 +23,7 @@ const docTemplate = `{
                 "tags": [
                     "attachment-links"
                 ],
-                "summary": "Link attachment to note",
+                "summary": "Link attachment to a note (default) or user",
                 "parameters": [
                     {
                         "description": "Link payload",
@@ -48,7 +48,7 @@ const docTemplate = `{
                 "tags": [
                     "attachment-links"
                 ],
-                "summary": "Unlink attachment from note",
+                "summary": "Unlink attachment from a note (default) or user",
                 "parameters": [
                     {
                         "description": "Unlink payload",
@@ -556,6 +556,66 @@ const docTemplate = `{
                     },
                     "503": {
                         "description": "Service Unavailable - Passkey support not configured",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/password/change": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Constant-time-compares the submitted current hash to",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Change the authenticated user's password",
+                "parameters": [
+                    {
+                        "description": "current and new hash",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ChangePasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "password changed",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "missing fields, no password set, or bad hash format",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "unauthenticated or wrong current hash",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -3947,15 +4007,27 @@ const docTemplate = `{
         "controllers.AttachmentLinkBody": {
             "type": "object",
             "required": [
-                "attachment_key",
-                "note_id"
+                "attachment_key"
             ],
             "properties": {
                 "attachment_key": {
                     "type": "string"
                 },
+                "link_to": {
+                    "type": "string",
+                    "enum": [
+                        "note",
+                        "user"
+                    ],
+                    "example": "note"
+                },
                 "note_id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
                 }
             }
         },
@@ -4046,6 +4118,23 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "description": {
+                    "type": "string"
+                }
+            }
+        },
+        "controllers.ChangePasswordRequest": {
+            "type": "object",
+            "properties": {
+                "current_algorithm": {
+                    "type": "string"
+                },
+                "current_hash": {
+                    "type": "string"
+                },
+                "new_algorithm": {
+                    "type": "string"
+                },
+                "new_hash": {
                     "type": "string"
                 }
             }

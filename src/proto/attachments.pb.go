@@ -23,6 +23,107 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// To which type of resource the attachment is linked.
+// UNSPECIFIED defaults to NOTE.
+type PostAttachmentLinkRequest_LinkTarget int32
+
+const (
+	PostAttachmentLinkRequest_LINK_TARGET_UNSPECIFIED PostAttachmentLinkRequest_LinkTarget = 0
+	PostAttachmentLinkRequest_LINK_TARGET_NOTE        PostAttachmentLinkRequest_LinkTarget = 1
+	PostAttachmentLinkRequest_LINK_TARGET_USER        PostAttachmentLinkRequest_LinkTarget = 2
+)
+
+// Enum value maps for PostAttachmentLinkRequest_LinkTarget.
+var (
+	PostAttachmentLinkRequest_LinkTarget_name = map[int32]string{
+		0: "LINK_TARGET_UNSPECIFIED",
+		1: "LINK_TARGET_NOTE",
+		2: "LINK_TARGET_USER",
+	}
+	PostAttachmentLinkRequest_LinkTarget_value = map[string]int32{
+		"LINK_TARGET_UNSPECIFIED": 0,
+		"LINK_TARGET_NOTE":        1,
+		"LINK_TARGET_USER":        2,
+	}
+)
+
+func (x PostAttachmentLinkRequest_LinkTarget) Enum() *PostAttachmentLinkRequest_LinkTarget {
+	p := new(PostAttachmentLinkRequest_LinkTarget)
+	*p = x
+	return p
+}
+
+func (x PostAttachmentLinkRequest_LinkTarget) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PostAttachmentLinkRequest_LinkTarget) Descriptor() protoreflect.EnumDescriptor {
+	return file_src_proto_attachments_proto_enumTypes[0].Descriptor()
+}
+
+func (PostAttachmentLinkRequest_LinkTarget) Type() protoreflect.EnumType {
+	return &file_src_proto_attachments_proto_enumTypes[0]
+}
+
+func (x PostAttachmentLinkRequest_LinkTarget) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PostAttachmentLinkRequest_LinkTarget.Descriptor instead.
+func (PostAttachmentLinkRequest_LinkTarget) EnumDescriptor() ([]byte, []int) {
+	return file_src_proto_attachments_proto_rawDescGZIP(), []int{3, 0}
+}
+
+// Same semantics as PostAttachmentLinkRequest.LinkTarget.
+type DeleteAttachmentLinkRequest_LinkTarget int32
+
+const (
+	DeleteAttachmentLinkRequest_LINK_TARGET_UNSPECIFIED DeleteAttachmentLinkRequest_LinkTarget = 0
+	DeleteAttachmentLinkRequest_LINK_TARGET_NOTE        DeleteAttachmentLinkRequest_LinkTarget = 1
+	DeleteAttachmentLinkRequest_LINK_TARGET_USER        DeleteAttachmentLinkRequest_LinkTarget = 2
+)
+
+// Enum value maps for DeleteAttachmentLinkRequest_LinkTarget.
+var (
+	DeleteAttachmentLinkRequest_LinkTarget_name = map[int32]string{
+		0: "LINK_TARGET_UNSPECIFIED",
+		1: "LINK_TARGET_NOTE",
+		2: "LINK_TARGET_USER",
+	}
+	DeleteAttachmentLinkRequest_LinkTarget_value = map[string]int32{
+		"LINK_TARGET_UNSPECIFIED": 0,
+		"LINK_TARGET_NOTE":        1,
+		"LINK_TARGET_USER":        2,
+	}
+)
+
+func (x DeleteAttachmentLinkRequest_LinkTarget) Enum() *DeleteAttachmentLinkRequest_LinkTarget {
+	p := new(DeleteAttachmentLinkRequest_LinkTarget)
+	*p = x
+	return p
+}
+
+func (x DeleteAttachmentLinkRequest_LinkTarget) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DeleteAttachmentLinkRequest_LinkTarget) Descriptor() protoreflect.EnumDescriptor {
+	return file_src_proto_attachments_proto_enumTypes[1].Descriptor()
+}
+
+func (DeleteAttachmentLinkRequest_LinkTarget) Type() protoreflect.EnumType {
+	return &file_src_proto_attachments_proto_enumTypes[1]
+}
+
+func (x DeleteAttachmentLinkRequest_LinkTarget) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DeleteAttachmentLinkRequest_LinkTarget.Descriptor instead.
+func (DeleteAttachmentLinkRequest_LinkTarget) EnumDescriptor() ([]byte, []int) {
+	return file_src_proto_attachments_proto_rawDescGZIP(), []int{4, 0}
+}
+
 type AttachmentMetadata struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
@@ -252,10 +353,12 @@ func (x *PostAttachmentRequest) GetUserId() string {
 }
 
 type PostAttachmentLinkRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	AttachmentKey string                 `protobuf:"bytes,1,opt,name=attachment_key,json=attachmentKey,proto3" json:"attachment_key,omitempty"`
-	NoteId        string                 `protobuf:"bytes,2,opt,name=note_id,json=noteId,proto3" json:"note_id,omitempty"`
-	UserId        string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	state         protoimpl.MessageState               `protogen:"open.v1"`
+	AttachmentKey string                               `protobuf:"bytes,1,opt,name=attachment_key,json=attachmentKey,proto3" json:"attachment_key,omitempty"`
+	NoteIdLink    string                               `protobuf:"bytes,2,opt,name=note_id_link,json=noteIdLink,proto3" json:"note_id_link,omitempty"` // used when link_target == LINK_TARGET_NOTE
+	UserIdLink    string                               `protobuf:"bytes,3,opt,name=user_id_link,json=userIdLink,proto3" json:"user_id_link,omitempty"` // used when link_target == LINK_TARGET_USER
+	LinkTarget    PostAttachmentLinkRequest_LinkTarget `protobuf:"varint,4,opt,name=link_target,json=linkTarget,proto3,enum=proto.PostAttachmentLinkRequest_LinkTarget" json:"link_target,omitempty"`
+	UserId        string                               `protobuf:"bytes,5,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"` // caller identity (auth)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -297,11 +400,25 @@ func (x *PostAttachmentLinkRequest) GetAttachmentKey() string {
 	return ""
 }
 
-func (x *PostAttachmentLinkRequest) GetNoteId() string {
+func (x *PostAttachmentLinkRequest) GetNoteIdLink() string {
 	if x != nil {
-		return x.NoteId
+		return x.NoteIdLink
 	}
 	return ""
+}
+
+func (x *PostAttachmentLinkRequest) GetUserIdLink() string {
+	if x != nil {
+		return x.UserIdLink
+	}
+	return ""
+}
+
+func (x *PostAttachmentLinkRequest) GetLinkTarget() PostAttachmentLinkRequest_LinkTarget {
+	if x != nil {
+		return x.LinkTarget
+	}
+	return PostAttachmentLinkRequest_LINK_TARGET_UNSPECIFIED
 }
 
 func (x *PostAttachmentLinkRequest) GetUserId() string {
@@ -312,10 +429,12 @@ func (x *PostAttachmentLinkRequest) GetUserId() string {
 }
 
 type DeleteAttachmentLinkRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	AttachmentKey string                 `protobuf:"bytes,1,opt,name=attachment_key,json=attachmentKey,proto3" json:"attachment_key,omitempty"`
-	NoteId        string                 `protobuf:"bytes,2,opt,name=note_id,json=noteId,proto3" json:"note_id,omitempty"`
-	UserId        string                 `protobuf:"bytes,3,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	state         protoimpl.MessageState                 `protogen:"open.v1"`
+	AttachmentKey string                                 `protobuf:"bytes,1,opt,name=attachment_key,json=attachmentKey,proto3" json:"attachment_key,omitempty"`
+	NoteId        string                                 `protobuf:"bytes,2,opt,name=note_id,json=noteId,proto3" json:"note_id,omitempty"`
+	UserIdLink    string                                 `protobuf:"bytes,3,opt,name=user_id_link,json=userIdLink,proto3" json:"user_id_link,omitempty"`
+	LinkTarget    DeleteAttachmentLinkRequest_LinkTarget `protobuf:"varint,4,opt,name=link_target,json=linkTarget,proto3,enum=proto.DeleteAttachmentLinkRequest_LinkTarget" json:"link_target,omitempty"`
+	UserId        string                                 `protobuf:"bytes,5,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -362,6 +481,20 @@ func (x *DeleteAttachmentLinkRequest) GetNoteId() string {
 		return x.NoteId
 	}
 	return ""
+}
+
+func (x *DeleteAttachmentLinkRequest) GetUserIdLink() string {
+	if x != nil {
+		return x.UserIdLink
+	}
+	return ""
+}
+
+func (x *DeleteAttachmentLinkRequest) GetLinkTarget() DeleteAttachmentLinkRequest_LinkTarget {
+	if x != nil {
+		return x.LinkTarget
+	}
+	return DeleteAttachmentLinkRequest_LINK_TARGET_UNSPECIFIED
 }
 
 func (x *DeleteAttachmentLinkRequest) GetUserId() string {
@@ -681,15 +814,34 @@ const file_src_proto_attachments_proto_rawDesc = "" +
 	"\bfilepath\x18\x02 \x01(\tR\bfilepath\x12!\n" +
 	"\fcontent_type\x18\x03 \x01(\tR\vcontentType\x12\x18\n" +
 	"\acontent\x18\x04 \x01(\fR\acontent\x12\x17\n" +
-	"\auser_id\x18\x05 \x01(\tR\x06userId\"t\n" +
+	"\auser_id\x18\x05 \x01(\tR\x06userId\"\xc4\x02\n" +
 	"\x19PostAttachmentLinkRequest\x12%\n" +
-	"\x0eattachment_key\x18\x01 \x01(\tR\rattachmentKey\x12\x17\n" +
-	"\anote_id\x18\x02 \x01(\tR\x06noteId\x12\x17\n" +
-	"\auser_id\x18\x03 \x01(\tR\x06userId\"v\n" +
+	"\x0eattachment_key\x18\x01 \x01(\tR\rattachmentKey\x12 \n" +
+	"\fnote_id_link\x18\x02 \x01(\tR\n" +
+	"noteIdLink\x12 \n" +
+	"\fuser_id_link\x18\x03 \x01(\tR\n" +
+	"userIdLink\x12L\n" +
+	"\vlink_target\x18\x04 \x01(\x0e2+.proto.PostAttachmentLinkRequest.LinkTargetR\n" +
+	"linkTarget\x12\x17\n" +
+	"\auser_id\x18\x05 \x01(\tR\x06userId\"U\n" +
+	"\n" +
+	"LinkTarget\x12\x1b\n" +
+	"\x17LINK_TARGET_UNSPECIFIED\x10\x00\x12\x14\n" +
+	"\x10LINK_TARGET_NOTE\x10\x01\x12\x14\n" +
+	"\x10LINK_TARGET_USER\x10\x02\"\xbf\x02\n" +
 	"\x1bDeleteAttachmentLinkRequest\x12%\n" +
 	"\x0eattachment_key\x18\x01 \x01(\tR\rattachmentKey\x12\x17\n" +
-	"\anote_id\x18\x02 \x01(\tR\x06noteId\x12\x17\n" +
-	"\auser_id\x18\x03 \x01(\tR\x06userId\"\xb7\x01\n" +
+	"\anote_id\x18\x02 \x01(\tR\x06noteId\x12 \n" +
+	"\fuser_id_link\x18\x03 \x01(\tR\n" +
+	"userIdLink\x12N\n" +
+	"\vlink_target\x18\x04 \x01(\x0e2-.proto.DeleteAttachmentLinkRequest.LinkTargetR\n" +
+	"linkTarget\x12\x17\n" +
+	"\auser_id\x18\x05 \x01(\tR\x06userId\"U\n" +
+	"\n" +
+	"LinkTarget\x12\x1b\n" +
+	"\x17LINK_TARGET_UNSPECIFIED\x10\x00\x12\x14\n" +
+	"\x10LINK_TARGET_NOTE\x10\x01\x12\x14\n" +
+	"\x10LINK_TARGET_USER\x10\x02\"\xb7\x01\n" +
 	"\x1fUpdateAttachmentMetadataRequest\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x1a\n" +
 	"\bfilename\x18\x02 \x01(\tR\bfilename\x12!\n" +
@@ -729,44 +881,49 @@ func file_src_proto_attachments_proto_rawDescGZIP() []byte {
 	return file_src_proto_attachments_proto_rawDescData
 }
 
+var file_src_proto_attachments_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_src_proto_attachments_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_src_proto_attachments_proto_goTypes = []any{
-	(*AttachmentMetadata)(nil),              // 0: proto.AttachmentMetadata
-	(*Attachment)(nil),                      // 1: proto.Attachment
-	(*PostAttachmentRequest)(nil),           // 2: proto.PostAttachmentRequest
-	(*PostAttachmentLinkRequest)(nil),       // 3: proto.PostAttachmentLinkRequest
-	(*DeleteAttachmentLinkRequest)(nil),     // 4: proto.DeleteAttachmentLinkRequest
-	(*UpdateAttachmentMetadataRequest)(nil), // 5: proto.UpdateAttachmentMetadataRequest
-	(*GetAttachmentRequest)(nil),            // 6: proto.GetAttachmentRequest
-	(*GetAttachmentMetadataRequest)(nil),    // 7: proto.GetAttachmentMetadataRequest
-	(*DeleteAttachmentRequest)(nil),         // 8: proto.DeleteAttachmentRequest
-	(*DeleteAttachmentResponse)(nil),        // 9: proto.DeleteAttachmentResponse
-	(*timestamppb.Timestamp)(nil),           // 10: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),                   // 11: google.protobuf.Empty
+	(PostAttachmentLinkRequest_LinkTarget)(0),   // 0: proto.PostAttachmentLinkRequest.LinkTarget
+	(DeleteAttachmentLinkRequest_LinkTarget)(0), // 1: proto.DeleteAttachmentLinkRequest.LinkTarget
+	(*AttachmentMetadata)(nil),                  // 2: proto.AttachmentMetadata
+	(*Attachment)(nil),                          // 3: proto.Attachment
+	(*PostAttachmentRequest)(nil),               // 4: proto.PostAttachmentRequest
+	(*PostAttachmentLinkRequest)(nil),           // 5: proto.PostAttachmentLinkRequest
+	(*DeleteAttachmentLinkRequest)(nil),         // 6: proto.DeleteAttachmentLinkRequest
+	(*UpdateAttachmentMetadataRequest)(nil),     // 7: proto.UpdateAttachmentMetadataRequest
+	(*GetAttachmentRequest)(nil),                // 8: proto.GetAttachmentRequest
+	(*GetAttachmentMetadataRequest)(nil),        // 9: proto.GetAttachmentMetadataRequest
+	(*DeleteAttachmentRequest)(nil),             // 10: proto.DeleteAttachmentRequest
+	(*DeleteAttachmentResponse)(nil),            // 11: proto.DeleteAttachmentResponse
+	(*timestamppb.Timestamp)(nil),               // 12: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                       // 13: google.protobuf.Empty
 }
 var file_src_proto_attachments_proto_depIdxs = []int32{
-	10, // 0: proto.AttachmentMetadata.created_at:type_name -> google.protobuf.Timestamp
-	10, // 1: proto.AttachmentMetadata.updated_at:type_name -> google.protobuf.Timestamp
-	0,  // 2: proto.Attachment.metadata:type_name -> proto.AttachmentMetadata
-	2,  // 3: proto.AttachmentService.PostAttachment:input_type -> proto.PostAttachmentRequest
-	6,  // 4: proto.AttachmentService.GetAttachment:input_type -> proto.GetAttachmentRequest
-	7,  // 5: proto.AttachmentService.GetAttachmentMetadata:input_type -> proto.GetAttachmentMetadataRequest
-	8,  // 6: proto.AttachmentService.DeleteAttachment:input_type -> proto.DeleteAttachmentRequest
-	5,  // 7: proto.AttachmentService.UpdateAttachmentMetadata:input_type -> proto.UpdateAttachmentMetadataRequest
-	3,  // 8: proto.AttachmentService.PostAttachmentLink:input_type -> proto.PostAttachmentLinkRequest
-	4,  // 9: proto.AttachmentService.DeleteAttachmentLink:input_type -> proto.DeleteAttachmentLinkRequest
-	1,  // 10: proto.AttachmentService.PostAttachment:output_type -> proto.Attachment
-	1,  // 11: proto.AttachmentService.GetAttachment:output_type -> proto.Attachment
-	0,  // 12: proto.AttachmentService.GetAttachmentMetadata:output_type -> proto.AttachmentMetadata
-	9,  // 13: proto.AttachmentService.DeleteAttachment:output_type -> proto.DeleteAttachmentResponse
-	0,  // 14: proto.AttachmentService.UpdateAttachmentMetadata:output_type -> proto.AttachmentMetadata
-	11, // 15: proto.AttachmentService.PostAttachmentLink:output_type -> google.protobuf.Empty
-	11, // 16: proto.AttachmentService.DeleteAttachmentLink:output_type -> google.protobuf.Empty
-	10, // [10:17] is the sub-list for method output_type
-	3,  // [3:10] is the sub-list for method input_type
-	3,  // [3:3] is the sub-list for extension type_name
-	3,  // [3:3] is the sub-list for extension extendee
-	0,  // [0:3] is the sub-list for field type_name
+	12, // 0: proto.AttachmentMetadata.created_at:type_name -> google.protobuf.Timestamp
+	12, // 1: proto.AttachmentMetadata.updated_at:type_name -> google.protobuf.Timestamp
+	2,  // 2: proto.Attachment.metadata:type_name -> proto.AttachmentMetadata
+	0,  // 3: proto.PostAttachmentLinkRequest.link_target:type_name -> proto.PostAttachmentLinkRequest.LinkTarget
+	1,  // 4: proto.DeleteAttachmentLinkRequest.link_target:type_name -> proto.DeleteAttachmentLinkRequest.LinkTarget
+	4,  // 5: proto.AttachmentService.PostAttachment:input_type -> proto.PostAttachmentRequest
+	8,  // 6: proto.AttachmentService.GetAttachment:input_type -> proto.GetAttachmentRequest
+	9,  // 7: proto.AttachmentService.GetAttachmentMetadata:input_type -> proto.GetAttachmentMetadataRequest
+	10, // 8: proto.AttachmentService.DeleteAttachment:input_type -> proto.DeleteAttachmentRequest
+	7,  // 9: proto.AttachmentService.UpdateAttachmentMetadata:input_type -> proto.UpdateAttachmentMetadataRequest
+	5,  // 10: proto.AttachmentService.PostAttachmentLink:input_type -> proto.PostAttachmentLinkRequest
+	6,  // 11: proto.AttachmentService.DeleteAttachmentLink:input_type -> proto.DeleteAttachmentLinkRequest
+	3,  // 12: proto.AttachmentService.PostAttachment:output_type -> proto.Attachment
+	3,  // 13: proto.AttachmentService.GetAttachment:output_type -> proto.Attachment
+	2,  // 14: proto.AttachmentService.GetAttachmentMetadata:output_type -> proto.AttachmentMetadata
+	11, // 15: proto.AttachmentService.DeleteAttachment:output_type -> proto.DeleteAttachmentResponse
+	2,  // 16: proto.AttachmentService.UpdateAttachmentMetadata:output_type -> proto.AttachmentMetadata
+	13, // 17: proto.AttachmentService.PostAttachmentLink:output_type -> google.protobuf.Empty
+	13, // 18: proto.AttachmentService.DeleteAttachmentLink:output_type -> google.protobuf.Empty
+	12, // [12:19] is the sub-list for method output_type
+	5,  // [5:12] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_src_proto_attachments_proto_init() }
@@ -779,13 +936,14 @@ func file_src_proto_attachments_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_src_proto_attachments_proto_rawDesc), len(file_src_proto_attachments_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      2,
 			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_src_proto_attachments_proto_goTypes,
 		DependencyIndexes: file_src_proto_attachments_proto_depIdxs,
+		EnumInfos:         file_src_proto_attachments_proto_enumTypes,
 		MessageInfos:      file_src_proto_attachments_proto_msgTypes,
 	}.Build()
 	File_src_proto_attachments_proto = out.File
