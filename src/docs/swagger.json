@@ -2124,6 +2124,240 @@
                 }
             }
         },
+        "/preferences": {
+            "get": {
+                "description": "Returns the stored JSON blob for the (scope, target_id) pair. Returns {} when no row exists.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "preferences"
+                ],
+                "summary": "Read preferences",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Scope: user | shelf | role",
+                        "name": "scope",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Target entity id",
+                        "name": "target_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PreferencesReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Replaces the stored JSON blob wholesale with the payload.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "preferences"
+                ],
+                "summary": "Replace preferences",
+                "parameters": [
+                    {
+                        "description": "Preferences replacement",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PreferencesJsonBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PreferencesReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Drops the stored blob. Idempotent; success is true iff a row was actually removed.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "preferences"
+                ],
+                "summary": "Delete preferences",
+                "parameters": [
+                    {
+                        "description": "Target to drop",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.DeletePreferencesBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.DeletePreferencesReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Shallow-merges the payload into the stored blob. Top-level keys overwrite the same keys in storage; nested objects and lists are replaced wholesale.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "preferences"
+                ],
+                "summary": "Merge preferences",
+                "parameters": [
+                    {
+                        "description": "Preferences merge payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PreferencesJsonBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PreferencesReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/roles": {
             "get": {
                 "description": "Fetch roles matching an optional filter via gRPC service",
@@ -4341,6 +4575,37 @@
                 }
             }
         },
+        "controllers.DeletePreferencesBody": {
+            "type": "object",
+            "required": [
+                "scope",
+                "target_id"
+            ],
+            "properties": {
+                "scope": {
+                    "type": "string",
+                    "enum": [
+                        "user",
+                        "shelf",
+                        "role"
+                    ],
+                    "example": "user"
+                },
+                "target_id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                }
+            }
+        },
+        "controllers.DeletePreferencesReply": {
+            "type": "object",
+            "properties": {
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
         "controllers.DeleteSharesBody": {
             "type": "object",
             "required": [
@@ -5053,6 +5318,42 @@
                 "title": {
                     "type": "string",
                     "example": "My Note Title"
+                }
+            }
+        },
+        "controllers.PreferencesJsonBody": {
+            "type": "object",
+            "required": [
+                "preferences_json",
+                "scope",
+                "target_id"
+            ],
+            "properties": {
+                "preferences_json": {
+                    "type": "string",
+                    "example": "{\"theme\":\"dark\",\"language\":\"de\"}"
+                },
+                "scope": {
+                    "type": "string",
+                    "enum": [
+                        "user",
+                        "shelf",
+                        "role"
+                    ],
+                    "example": "user"
+                },
+                "target_id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                }
+            }
+        },
+        "controllers.PreferencesReply": {
+            "type": "object",
+            "properties": {
+                "preferences_json": {
+                    "type": "string",
+                    "example": "{\"theme\":\"dark\",\"language\":\"de\"}"
                 }
             }
         },

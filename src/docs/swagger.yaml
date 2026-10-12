@@ -292,6 +292,28 @@ definitions:
     - object_type
     - relationship
     type: object
+  controllers.DeletePreferencesBody:
+    properties:
+      scope:
+        enum:
+        - user
+        - shelf
+        - role
+        example: user
+        type: string
+      target_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        type: string
+    required:
+    - scope
+    - target_id
+    type: object
+  controllers.DeletePreferencesReply:
+    properties:
+      success:
+        example: true
+        type: boolean
+    type: object
   controllers.DeleteSharesBody:
     properties:
       share_ids:
@@ -775,6 +797,32 @@ definitions:
     required:
     - content
     - title
+    type: object
+  controllers.PreferencesJsonBody:
+    properties:
+      preferences_json:
+        example: '{"theme":"dark","language":"de"}'
+        type: string
+      scope:
+        enum:
+        - user
+        - shelf
+        - role
+        example: user
+        type: string
+      target_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        type: string
+    required:
+    - preferences_json
+    - scope
+    - target_id
+    type: object
+  controllers.PreferencesReply:
+    properties:
+      preferences_json:
+        example: '{"theme":"dark","language":"de"}'
+        type: string
     type: object
   controllers.RemoveUserFromRoleBody:
     properties:
@@ -2524,6 +2572,165 @@ paths:
       summary: Replace all permissions for an object
       tags:
       - permissions
+  /preferences:
+    delete:
+      consumes:
+      - application/json
+      description: Drops the stored blob. Idempotent; success is true iff a row was
+        actually removed.
+      parameters:
+      - description: Target to drop
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.DeletePreferencesBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.DeletePreferencesReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete preferences
+      tags:
+      - preferences
+    get:
+      consumes:
+      - application/json
+      description: Returns the stored JSON blob for the (scope, target_id) pair. Returns
+        {} when no row exists.
+      parameters:
+      - description: 'Scope: user | shelf | role'
+        in: query
+        name: scope
+        required: true
+        type: string
+      - description: Target entity id
+        in: query
+        name: target_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.PreferencesReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Read preferences
+      tags:
+      - preferences
+    patch:
+      consumes:
+      - application/json
+      description: Shallow-merges the payload into the stored blob. Top-level keys
+        overwrite the same keys in storage; nested objects and lists are replaced
+        wholesale.
+      parameters:
+      - description: Preferences merge payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.PreferencesJsonBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.PreferencesReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Merge preferences
+      tags:
+      - preferences
+    post:
+      consumes:
+      - application/json
+      description: Replaces the stored JSON blob wholesale with the payload.
+      parameters:
+      - description: Preferences replacement
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.PreferencesJsonBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.PreferencesReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Replace preferences
+      tags:
+      - preferences
   /roles:
     get:
       consumes:
