@@ -26,6 +26,7 @@ func SetupRouter(
 	ruleController *controllers.RuleController,
 	shelfController *controllers.ShelfController,
 	statusController *controllers.StatusController,
+	preferencesController *controllers.PreferencesController,
 ) {
 
 	// TODO: some endpoints still use PATCH {id: } instead of PATCH /:id shape
@@ -200,6 +201,14 @@ func SetupRouter(
 		api.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
 
+	// preferences path
+	prefs := api.Group("/preferences")
+	{
+		prefs.GET("", preferencesController.GetPreferences)
+		prefs.POST("", preferencesController.PostPreferences)
+		prefs.PATCH("", preferencesController.PatchPreferences)
+		prefs.DELETE("", preferencesController.DeletePreferences)
+	}
 	// Auth routes
 	auth := api.Group("/auth")
 	{
