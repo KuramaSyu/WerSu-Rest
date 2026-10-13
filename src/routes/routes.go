@@ -1,6 +1,8 @@
 package routes
 
 import (
+	"net/http"
+
 	"github.com/KuramaSyu/WerSu-Rest/src/controllers"
 	_ "github.com/KuramaSyu/WerSu-Rest/src/docs" // load docs
 	"github.com/gin-gonic/gin"
@@ -31,6 +33,11 @@ func SetupRouter(
 
 	// TODO: some endpoints still use PATCH {id: } instead of PATCH /:id shape
 
+	// Root liveness probe (HEAD only; 204 with no body).
+	r.HEAD("/", func(c *gin.Context) {
+		c.Status(http.StatusNoContent)
+	})
+
 	// API routes
 	api := r.Group("/api")
 	{
@@ -41,6 +48,13 @@ func SetupRouter(
 
 		// Service reachability status
 		api.GET("/status", statusController.GetStatus)
+
+		// User CRUD (REST wrappers over the auth gRPC service).
+		users := api.Group("/users")
+		{
+			users.POST("", authController.PostUser)
+			users.PATCH("/:id", authController.PatchUser)
+		}
 
 		// Note routes
 		notes := api.Group("/notes")
