@@ -74,18 +74,15 @@ func (s *JsUser) Parse() (*User, error) {
 }
 
 // JsUserAuth is the JSON shape of an authenticated user from the auth
-// proto's `UserAuth`. It deliberately drops the legacy Discord-shaped
-// fields (avatar, discriminator, snowflake) -- those are provider
-// metadata, not auth identity, and live on the discord credential row.
+// proto's UserAuth: the canonical user record REST returns for both
+// signup and PATCH flows.
 type JsUserAuth struct {
-	ID              string    `json:"id"`
-	Email           string    `json:"email"`
-	Username        string    `json:"username,omitempty"`
-	EmailVerifiedAt time.Time `json:"email_verified_at"`
-	IsActive        bool      `json:"is_active"`
-	// AvatarURL is the absolute URL to the user's avatar. Empty
-	// string (the protobuf zero-value) renders as JSON null, so
-	// the frontend sees `avatar_url: null` when no provider has
-	// resolved an avatar.
-	AvatarURL string `json:"avatar_url"`
+	ID              string    `json:"id" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
+	Email           string    `json:"email" example:"alice@example.com"`
+	Username        string    `json:"username,omitempty" example:"alice"`
+	EmailVerifiedAt time.Time `json:"email_verified_at" example:"2026-10-12T10:00:00Z"`
+	IsActive        bool      `json:"is_active" example:"true"`
+	// AvatarURL is the absolute avatar URL. Empty renders as JSON
+	// null so the frontend can fall back to its initials avatar.
+	AvatarURL string `json:"avatar_url" example:"https://cdn.example.com/avatars/alice.png"`
 }

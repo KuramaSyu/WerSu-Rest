@@ -24,6 +24,8 @@ import (
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // The Response of the GET /auth/access-token reply
@@ -334,6 +336,186 @@ func (ac *AuthController) GetUser(c *gin.Context) {
 	})
 	if err != nil {
 		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch user via auth service: %w", err))
+		return
+	}
+	c.JSON(http.StatusOK, resp.GetUser().ParseJS())
+}
+
+// ------------ REST CRUD: /api/users -------------
+
+// PostUserRequest is the body for POST /api/users: clients send a
+// precomputed argon2id PHC string in password_hash, never plaintext.
+type PostUserRequest struct {
+	Email        string `json:"email" binding:"required" example:"alice@example.com"`
+	Username     string `json:"username" binding:"required" example:"alice"`
+	PasswordHash string `json:"password_hash" binding:"required" example:"$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"`
+	AvatarURL    string `json:"avatar_url,omitempty" example:"https://cdn.example.com/avatars/alice.png"`
+}
+
+// PatchUserRequest is the body for PATCH /api/users/:id: each field
+// is tri-state (omit / set / clear) and set+clear is rejected as 400.
+type PatchUserRequest struct {
+	Username             *string    `json:"username,omitempty" example:"alice"`
+	UsernameClear        bool       `json:"username_clear,omitempty" example:"false"`
+	Email                *string    `json:"email,omitempty" example:"alice@example.com"`
+	EmailClear           bool       `json:"email_clear,omitempty" example:"false"`
+	EmailVerifiedAt      *time.Time `json:"email_verified_at,omitempty" example:"2026-10-12T10:00:00Z"`
+	EmailVerifiedAtClear bool       `json:"email_verified_at_clear,omitempty" example:"false"`
+	AvatarURL            *string    `json:"avatar_url,omitempty" example:"https://cdn.example.com/avatars/alice.png"`
+	AvatarURLClear       bool       `json:"avatar_url_clear,omitempty" example:"false"`
+}
+
+// PostUser godoc
+// @Summary      Create a user
+// @Description  Creates a user via the auth gRPC service. The client
+// @Description  precomputes the argon2id PHC hash; the server never sees
+// @Description  plaintext. Unlike POST /api/auth/signup, this endpoint
+// @Description  does not set a session cookie, so it is safe for
+// @Description  admin-issued or import flows.
+// @Description
+// @Description  Returns 409 on a duplicate email and 400 on a malformed
+// @Description  hash or invalid argument.
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Param        payload  body      PostUserRequest  true  "New user payload"
+// @Success      200      {object}  models.JsUserAuth             "Created user"
+// @Failure      400      {object}  map[string]string              "Bad Request - missing fields, malformed hash, or invalid argument"
+// @Failure      409      {object}  map[string]string              "Conflict - email already in use"
+// @Failure      500      {object}  map[string]string              "Internal Server Error - gRPC service failure"
+// @Router       /api/users [post]
+func (ac *AuthController) PostUser(c *gin.Context) {
+	var req PostUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if req.Email == "" || req.Username == "" || req.PasswordHash == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email, username, and password_hash are required"})
+		return
+	}
+	if !auth.ValidatePasswordHash(req.PasswordHash, "") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported password_hash: expected argon2id PHC string"})
+		return
+	}
+
+	resp, err := ac.authService.CreateUserAuth(c, &proto.CreateUserAuthRequest{
+		Email:        req.Email,
+		Username:     req.Username,
+		PasswordHash: req.PasswordHash,
+		AvatarUrl:    req.AvatarURL,
+	})
+	if err != nil {
+		switch status.Code(err) {
+		case codes.AlreadyExists:
+			c.JSON(http.StatusConflict, gin.H{"error": "email already in use"})
+			return
+		case codes.InvalidArgument:
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("create user: %w", err))
+		return
+	}
+	c.JSON(http.StatusOK, resp.GetUser().ParseJS())
+}
+
+// PatchUser godoc
+// @Summary      Partially update a user
+// @Description  Applies a tri-state update (omit / set / clear) to one or
+// @Description  more mutable fields on the user identified by `:id`. The
+// @Description  actor for the gRPC permission check is the authenticated
+// @Description  session user; supplying both `field` and `field_clear` for
+// @Description  the same key is rejected as 400.
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Security     CookieAuth
+// @Param        id       path      string            true  "User ID (UUIDv7)"
+// @Param        payload  body      PatchUserRequest  true  "Partial update payload"
+// @Success      200      {object}  models.JsUserAuth             "Updated user"
+// @Failure      400      {object}  map[string]string              "Bad Request - invalid id, bad JSON, or set/clear conflict"
+// @Failure      401      {object}  map[string]string              "Unauthorized - no session or JWT"
+// @Failure      403      {object}  map[string]string              "Forbidden - actor may not edit this user"
+// @Failure      404      {object}  map[string]string              "Not Found - user does not exist"
+// @Failure      500      {object}  map[string]string              "Internal Server Error - gRPC service failure"
+// @Router       /api/users/{id} [patch]
+func (ac *AuthController) PatchUser(c *gin.Context) {
+	userID, code, err := utils.GetIdFromURL(c, "id")
+	if err != nil {
+		utils.SetGinError(c, code, err)
+		return
+	}
+	actor, actorCode, err := utils.UserFromContext(c)
+	if actor == nil {
+		utils.SetGinError(c, actorCode, err)
+		return
+	}
+
+	var req PatchUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	if (req.Username != nil) && req.UsernameClear {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "username: set and clear are mutually exclusive"})
+		return
+	}
+	if (req.Email != nil) && req.EmailClear {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email: set and clear are mutually exclusive"})
+		return
+	}
+	if (req.EmailVerifiedAt != nil) && req.EmailVerifiedAtClear {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email_verified_at: set and clear are mutually exclusive"})
+		return
+	}
+	if (req.AvatarURL != nil) && req.AvatarURLClear {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "avatar_url: set and clear are mutually exclusive"})
+		return
+	}
+
+	upd := &proto.UpdateUserAuthRequest{
+		UserId:      userID,
+		RequesterId: actor.ID,
+	}
+	if req.Username != nil {
+		upd.UsernameChange = &proto.UpdateUserAuthRequest_UsernameSet{UsernameSet: *req.Username}
+	} else if req.UsernameClear {
+		upd.UsernameChange = &proto.UpdateUserAuthRequest_UsernameClear{UsernameClear: &emptypb.Empty{}}
+	}
+	if req.Email != nil {
+		upd.EmailChange = &proto.UpdateUserAuthRequest_EmailSet{EmailSet: *req.Email}
+	} else if req.EmailClear {
+		upd.EmailChange = &proto.UpdateUserAuthRequest_EmailClear{EmailClear: &emptypb.Empty{}}
+	}
+	if req.EmailVerifiedAt != nil {
+		upd.EmailVerifiedChange = &proto.UpdateUserAuthRequest_EmailVerifiedAtSet{
+			EmailVerifiedAtSet: timestamppb.New(*req.EmailVerifiedAt),
+		}
+	} else if req.EmailVerifiedAtClear {
+		upd.EmailVerifiedChange = &proto.UpdateUserAuthRequest_EmailVerifiedAtClear{EmailVerifiedAtClear: &emptypb.Empty{}}
+	}
+	if req.AvatarURL != nil {
+		upd.AvatarUrlChange = &proto.UpdateUserAuthRequest_AvatarUrlSet{AvatarUrlSet: *req.AvatarURL}
+	} else if req.AvatarURLClear {
+		upd.AvatarUrlChange = &proto.UpdateUserAuthRequest_AvatarUrlClear{AvatarUrlClear: &emptypb.Empty{}}
+	}
+
+	resp, err := ac.authService.UpdateUserAuth(c, upd)
+	if err != nil {
+		switch status.Code(err) {
+		case codes.NotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+			return
+		case codes.PermissionDenied:
+			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		case codes.InvalidArgument:
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("update user: %w", err))
 		return
 	}
 	c.JSON(http.StatusOK, resp.GetUser().ParseJS())

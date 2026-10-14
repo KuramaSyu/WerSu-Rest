@@ -63,6 +63,10 @@ func newAuthTestRouter(t *testing.T, fake auth.AuthServiceClientIface) *gin.Engi
 	authGroup.POST("/link/passkey/begin", ac.PostLinkPasskeyBegin)
 	authGroup.POST("/link/passkey/finish", ac.PostLinkPasskeyFinish)
 	authGroup.GET("/logout", ac.Logout)
+
+	usersGroup := r.Group("/api/users")
+	usersGroup.POST("", ac.PostUser)
+	usersGroup.PATCH("/:id", ac.PatchUser)
 	return r
 }
 
@@ -1046,3 +1050,204 @@ func TestPostPasskeyRegisterFinishRequiresExistingUser(t *testing.T) {
 var _ = errors.New
 var _ = status.Code
 var _ = codes.OK
+
+// ---------- PostUser / PatchUser (REST CRUD on /api/users) ----------
+
+func TestPostUserMissingFields(t *testing.T) {
+	r := newAuthTestRouter(t, &auth.FakeAuthClient{})
+	w := doRequest(r, http.MethodPost, "/api/users", PostUserRequest{Email: "a@b"})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", w.Code)
+	}
+}
+
+func TestPostUserBadHashAlgorithm(t *testing.T) {
+	// The hash must be a PHC argon2id string. A bcrypt-shaped
+	// string is rejected at the REST layer before reaching gRPC.
+	r := newAuthTestRouter(t, &auth.FakeAuthClient{})
+	body, _ := json.Marshal(PostUserRequest{
+		Email:        "alice@example.com",
+		Username:     "alice",
+		PasswordHash: "$2a$10$abcdefghijklmnopqrstuv",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/users", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", w.Code)
+	}
+}
+
+func TestPostUserSuccess(t *testing.T) {
+	var captured *proto.CreateUserAuthRequest
+	fake := &auth.FakeAuthClient{
+		OnCreateUserAuth: func(in *proto.CreateUserAuthRequest) (*proto.CreateUserAuthResponse, error) {
+			captured = in
+			return &proto.CreateUserAuthResponse{
+				User: &proto.UserAuth{Id: "u-1", Email: in.Email, Username: in.Username, AvatarUrl: in.AvatarUrl},
+			}, nil
+		},
+	}
+	r := newAuthTestRouter(t, fake)
+	hash := "$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+	w := doRequest(r, http.MethodPost, "/api/users", PostUserRequest{
+		Email:        "alice@example.com",
+		Username:     "alice",
+		PasswordHash: hash,
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, body=%s", w.Code, w.Body.String())
+	}
+	if captured == nil {
+		t.Fatalf("CreateUserAuth was not called")
+	}
+	if captured.Email != "alice@example.com" || captured.Username != "alice" || captured.PasswordHash != hash {
+		t.Errorf("captured = %+v", captured)
+	}
+	var got map[string]any
+	_ = json.Unmarshal(w.Body.Bytes(), &got)
+	if got["id"] != "u-1" {
+		t.Errorf("id = %v, want u-1", got["id"])
+	}
+}
+
+func TestPostUserEmailConflict(t *testing.T) {
+	fake := &auth.FakeAuthClient{
+		OnCreateUserAuth: func(*proto.CreateUserAuthRequest) (*proto.CreateUserAuthResponse, error) {
+			return nil, status.Error(codes.AlreadyExists, "email taken")
+		},
+	}
+	r := newAuthTestRouter(t, fake)
+	w := doRequest(r, http.MethodPost, "/api/users", PostUserRequest{
+		Email:        "alice@example.com",
+		Username:     "alice",
+		PasswordHash: "$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+	})
+	if w.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want 409", w.Code)
+	}
+}
+
+func TestPatchUserUnauthenticated(t *testing.T) {
+	r := newAuthTestRouter(t, &auth.FakeAuthClient{})
+	// PATCH requires a session cookie; without one the controller
+	// returns 401 before reaching the gRPC layer.
+	req := httptest.NewRequest(http.MethodPatch, "/api/users/0195f8f4-1167-7f89-b5ec-b40a8f08f4cb", bytes.NewReader([]byte(`{}`)))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", w.Code)
+	}
+}
+
+func TestPatchUserInvalidID(t *testing.T) {
+	r := newAuthTestRouter(t, &auth.FakeAuthClient{})
+	// Bad UUID in :id is rejected before auth runs, but we still
+	// need a session so the auth middleware does not shortcut us.
+	rec := httptest.NewRecorder()
+	runWithSession(nil, rec, r, func(c *gin.Context) {
+		s := sessions.Default(c)
+		s.Set("user", models.User{ID: "u-1"})
+		_ = s.Save()
+	})
+	req := httptest.NewRequest(http.MethodPatch, "/api/users/not-a-uuid", bytes.NewReader([]byte(`{}`)))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Cookie", rec.Result().Header.Get("Set-Cookie"))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", w.Code)
+	}
+}
+
+func TestPatchUserSetAndClearRejected(t *testing.T) {
+	r := newAuthTestRouter(t, &auth.FakeAuthClient{})
+	rec := httptest.NewRecorder()
+	runWithSession(nil, rec, r, func(c *gin.Context) {
+		s := sessions.Default(c)
+		s.Set("user", models.User{ID: "u-1"})
+		_ = s.Save()
+	})
+	body := []byte(`{"username":"alice","username_clear":true}`)
+	req := httptest.NewRequest(http.MethodPatch, "/api/users/0195f8f4-1167-7f89-b5ec-b40a8f08f4cb", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Cookie", rec.Result().Header.Get("Set-Cookie"))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", w.Code)
+	}
+}
+
+func TestPatchUserSuccess(t *testing.T) {
+	var captured *proto.UpdateUserAuthRequest
+	fake := &auth.FakeAuthClient{
+		OnUpdateUserAuth: func(in *proto.UpdateUserAuthRequest) (*proto.UpdateUserAuthResponse, error) {
+			captured = in
+			return &proto.UpdateUserAuthResponse{
+				User: &proto.UserAuth{Id: in.UserId, Email: "alice@example.com", Username: "alice"},
+			}, nil
+		},
+	}
+	r := newAuthTestRouter(t, fake)
+	rec := httptest.NewRecorder()
+	runWithSession(nil, rec, r, func(c *gin.Context) {
+		s := sessions.Default(c)
+		s.Set("user", models.User{ID: "u-1"})
+		_ = s.Save()
+	})
+
+	body := []byte(`{"username":"alice","avatar_url_clear":true}`)
+	req := httptest.NewRequest(http.MethodPatch, "/api/users/0195f8f4-1167-7f89-b5ec-b40a8f08f4cb", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Cookie", rec.Result().Header.Get("Set-Cookie"))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, body=%s", w.Code, w.Body.String())
+	}
+	if captured == nil {
+		t.Fatalf("UpdateUserAuth was not called")
+	}
+	if captured.UserId != "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb" {
+		t.Errorf("user_id = %q", captured.UserId)
+	}
+	if captured.RequesterId != "u-1" {
+		t.Errorf("requester_id = %q, want u-1", captured.RequesterId)
+	}
+	if set, ok := captured.UsernameChange.(*proto.UpdateUserAuthRequest_UsernameSet); !ok || set.UsernameSet != "alice" {
+		t.Errorf("username oneof = %T %+v", captured.UsernameChange, captured.UsernameChange)
+	}
+	if _, ok := captured.AvatarUrlChange.(*proto.UpdateUserAuthRequest_AvatarUrlClear); !ok {
+		t.Errorf("avatar_url oneof = %T %+v, want clear", captured.AvatarUrlChange, captured.AvatarUrlChange)
+	}
+	if captured.EmailChange != nil || captured.EmailVerifiedChange != nil {
+		t.Errorf("untouched oneofs must stay nil, got email=%v email_verified=%v", captured.EmailChange, captured.EmailVerifiedChange)
+	}
+}
+
+func TestPatchUserNotFound(t *testing.T) {
+	fake := &auth.FakeAuthClient{
+		OnUpdateUserAuth: func(*proto.UpdateUserAuthRequest) (*proto.UpdateUserAuthResponse, error) {
+			return nil, status.Error(codes.NotFound, "no such user")
+		},
+	}
+	r := newAuthTestRouter(t, fake)
+	rec := httptest.NewRecorder()
+	runWithSession(nil, rec, r, func(c *gin.Context) {
+		s := sessions.Default(c)
+		s.Set("user", models.User{ID: "u-1"})
+		_ = s.Save()
+	})
+	body := []byte(`{"username":"alice"}`)
+	req := httptest.NewRequest(http.MethodPatch, "/api/users/0195f8f4-1167-7f89-b5ec-b40a8f08f4cb", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Cookie", rec.Result().Header.Get("Set-Cookie"))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", w.Code)
+	}
+}
