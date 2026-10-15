@@ -15,6 +15,128 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/auth/login": {
+            "post": {
+                "description": "Authenticates an existing user via password. The client\nprecomputes the argon2id PHC hash; the server never sees\nplaintext. On success, a session cookie is set and the\ncanonical UserAuth is returned.\n\nPasskey login uses the dedicated\n/auth/passkey/login/{begin,finish} endpoints instead.\nOAuth flows (Discord, Google) keep their own\n/auth/\u003cprovider\u003e/login routes so the browser can be\nredirected to the provider.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Sign in with a password",
+                "parameters": [
+                    {
+                        "description": "Login payload (kind: \\",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login successful - session cookie set",
+                        "schema": {
+                            "$ref": "#/definitions/models.JsUserAuth"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid body, unknown kind, or missing fields",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Invalid credentials",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - gRPC service failure",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/signup": {
+            "post": {
+                "description": "Creates a new user via password signup. The client\nprecomputes the argon2id PHC hash; the server never sees\nplaintext. On success, a session cookie is set and the\ncanonical UserAuth is returned.\n\nReturns 409 if the email is already in use.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Sign up with a password",
+                "parameters": [
+                    {
+                        "description": "Signup payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.SignupRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User created and signed in - session cookie set",
+                        "schema": {
+                            "$ref": "#/definitions/models.JsUserAuth"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid body, missing fields, or unsupported algorithm",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict - Email already in use",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - gRPC service failure",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/users": {
             "post": {
                 "description": "Creates a user via the auth gRPC service. The client\nprecomputes the argon2id PHC hash; the server never sees\nplaintext. Unlike POST /api/auth/signup, this endpoint\ndoes not set a session cookie, so it is safe for\nadmin-issued or import flows.\n\nReturns 409 on a duplicate email and 400 on a malformed\nhash or invalid argument.",
@@ -35,7 +157,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PostUserRequest"
+                            "$ref": "#/definitions/controllers.PostUserRequest"
                         }
                     }
                 ],
@@ -43,7 +165,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Created user",
                         "schema": {
-                            "$ref": "#/definitions/github_com_KuramaSyu_WerSu-Rest_src_models.JsUserAuth"
+                            "$ref": "#/definitions/models.JsUserAuth"
                         }
                     },
                     "400": {
@@ -108,7 +230,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PatchUserRequest"
+                            "$ref": "#/definitions/controllers.PatchUserRequest"
                         }
                     }
                 ],
@@ -116,7 +238,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Updated user",
                         "schema": {
-                            "$ref": "#/definitions/github_com_KuramaSyu_WerSu-Rest_src_models.JsUserAuth"
+                            "$ref": "#/definitions/models.JsUserAuth"
                         }
                     },
                     "400": {
@@ -183,7 +305,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.AttachmentLinkBody"
+                            "$ref": "#/definitions/controllers.AttachmentLinkBody"
                         }
                     }
                 ],
@@ -208,7 +330,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.AttachmentLinkBody"
+                            "$ref": "#/definitions/controllers.AttachmentLinkBody"
                         }
                     }
                 ],
@@ -290,7 +412,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.AttachmentMetadataReply"
+                            "$ref": "#/definitions/controllers.AttachmentMetadataReply"
                         }
                     }
                 }
@@ -315,7 +437,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PatchAttachmentMetadataRequest"
+                            "$ref": "#/definitions/controllers.PatchAttachmentMetadataRequest"
                         }
                     }
                 ],
@@ -323,7 +445,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.AttachmentMetadataReply"
+                            "$ref": "#/definitions/controllers.AttachmentMetadataReply"
                         }
                     }
                 }
@@ -377,7 +499,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_KuramaSyu_WerSu-Rest_src_proto.DeleteAttachmentResponse"
+                            "$ref": "#/definitions/proto.DeleteAttachmentResponse"
                         }
                     }
                 }
@@ -405,7 +527,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.AttachmentMetadataReply"
+                            "$ref": "#/definitions/controllers.AttachmentMetadataReply"
                         }
                     }
                 }
@@ -433,7 +555,7 @@ const docTemplate = `{
                     "200": {
                         "description": "WebAuthn registration options",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PasskeyCeremonyBeginReply"
+                            "$ref": "#/definitions/controllers.PasskeyCeremonyBeginReply"
                         }
                     },
                     "401": {
@@ -482,7 +604,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PasskeyCeremonyFinishRequest"
+                            "$ref": "#/definitions/controllers.PasskeyCeremonyFinishRequest"
                         }
                     }
                 ],
@@ -490,7 +612,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Passkey linked to account",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PasskeyCeremonyFinishReply"
+                            "$ref": "#/definitions/controllers.PasskeyCeremonyFinishReply"
                         }
                     },
                     "400": {
@@ -540,7 +662,7 @@ const docTemplate = `{
                     "200": {
                         "description": "WebAuthn assertion options",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PasskeyCeremonyBeginReply"
+                            "$ref": "#/definitions/controllers.PasskeyCeremonyBeginReply"
                         }
                     },
                     "503": {
@@ -575,7 +697,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PasskeyCeremonyFinishRequest"
+                            "$ref": "#/definitions/controllers.PasskeyCeremonyFinishRequest"
                         }
                     }
                 ],
@@ -583,7 +705,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Login successful - session cookie set",
                         "schema": {
-                            "$ref": "#/definitions/github_com_KuramaSyu_WerSu-Rest_src_models.JsUserAuth"
+                            "$ref": "#/definitions/models.JsUserAuth"
                         }
                     },
                     "400": {
@@ -633,7 +755,7 @@ const docTemplate = `{
                     "200": {
                         "description": "WebAuthn registration options",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PasskeyCeremonyBeginReply"
+                            "$ref": "#/definitions/controllers.PasskeyCeremonyBeginReply"
                         }
                     },
                     "400": {
@@ -677,7 +799,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PasskeyCeremonyFinishRequest"
+                            "$ref": "#/definitions/controllers.PasskeyCeremonyFinishRequest"
                         }
                     }
                 ],
@@ -685,7 +807,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Passkey registered",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PasskeyCeremonyFinishReply"
+                            "$ref": "#/definitions/controllers.PasskeyCeremonyFinishReply"
                         }
                     },
                     "400": {
@@ -743,7 +865,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.ChangePasswordRequest"
+                            "$ref": "#/definitions/controllers.ChangePasswordRequest"
                         }
                     }
                 ],
@@ -795,7 +917,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successfully generated and returned access token",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.GetAccessTokenReply"
+                            "$ref": "#/definitions/controllers.GetAccessTokenReply"
                         }
                     },
                     "401": {
@@ -836,7 +958,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successfully generated and returned access token",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.GetAccessTokenReply"
+                            "$ref": "#/definitions/controllers.GetAccessTokenReply"
                         }
                     },
                     "401": {
@@ -923,7 +1045,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/src_controllers.DirectoryReply"
+                                "$ref": "#/definitions/controllers.DirectoryReply"
                             }
                         }
                     },
@@ -966,7 +1088,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.CreateDirectoryBody"
+                            "$ref": "#/definitions/controllers.CreateDirectoryBody"
                         }
                     }
                 ],
@@ -974,7 +1096,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.DirectoryReply"
+                            "$ref": "#/definitions/controllers.DirectoryReply"
                         }
                     },
                     "400": {
@@ -1016,7 +1138,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PatchDirectoryBody"
+                            "$ref": "#/definitions/controllers.PatchDirectoryBody"
                         }
                     }
                 ],
@@ -1024,7 +1146,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.DirectoryReply"
+                            "$ref": "#/definitions/controllers.DirectoryReply"
                         }
                     },
                     "400": {
@@ -1093,7 +1215,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/src_controllers.NoteVersionSummaryReply"
+                                "$ref": "#/definitions/controllers.NoteVersionSummaryReply"
                             }
                         }
                     },
@@ -1177,7 +1299,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.DirectoryReply"
+                            "$ref": "#/definitions/controllers.DirectoryReply"
                         }
                     },
                     "400": {
@@ -1225,7 +1347,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.DirectoryReply"
+                            "$ref": "#/definitions/controllers.DirectoryReply"
                         }
                     },
                     "400": {
@@ -1300,7 +1422,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/src_controllers.NoteVersionSummaryReply"
+                                "$ref": "#/definitions/controllers.NoteVersionSummaryReply"
                             }
                         }
                     },
@@ -1372,7 +1494,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.NotesReply"
+                            "$ref": "#/definitions/controllers.NotesReply"
                         }
                     },
                     "400": {
@@ -1505,7 +1627,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/src_controllers.ActivityReply"
+                                "$ref": "#/definitions/controllers.ActivityReply"
                             }
                         }
                     },
@@ -1561,7 +1683,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.BookstackBookImportReply"
+                            "$ref": "#/definitions/controllers.BookstackBookImportReply"
                         }
                     },
                     "400": {
@@ -1623,7 +1745,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PostNoteRequest"
+                            "$ref": "#/definitions/controllers.PostNoteRequest"
                         }
                     }
                 ],
@@ -1631,7 +1753,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.NoteReply"
+                            "$ref": "#/definitions/controllers.NoteReply"
                         }
                     },
                     "400": {
@@ -1664,7 +1786,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PatchNoteRequest"
+                            "$ref": "#/definitions/controllers.PatchNoteRequest"
                         }
                     }
                 ],
@@ -1672,7 +1794,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.NoteReply"
+                            "$ref": "#/definitions/controllers.NoteReply"
                         }
                     },
                     "400": {
@@ -1818,7 +1940,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.NotesReply"
+                            "$ref": "#/definitions/controllers.NotesReply"
                         }
                     },
                     "400": {
@@ -1859,7 +1981,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.NoteReply"
+                            "$ref": "#/definitions/controllers.NoteReply"
                         }
                     },
                     "400": {
@@ -1898,7 +2020,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.NoteReply"
+                            "$ref": "#/definitions/controllers.NoteReply"
                         }
                     },
                     "400": {
@@ -1962,7 +2084,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/src_controllers.NoteVersionSummaryReply"
+                                "$ref": "#/definitions/controllers.NoteVersionSummaryReply"
                             }
                         }
                     },
@@ -2011,7 +2133,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.NoteVersionContentReply"
+                            "$ref": "#/definitions/controllers.NoteVersionContentReply"
                         }
                     },
                     "400": {
@@ -2059,7 +2181,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.NoteReply"
+                            "$ref": "#/definitions/controllers.NoteReply"
                         }
                     },
                     "400": {
@@ -2111,7 +2233,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PermissionsReply"
+                            "$ref": "#/definitions/controllers.PermissionsReply"
                         }
                     },
                     "400": {
@@ -2153,7 +2275,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.ReplacePermissionsBody"
+                            "$ref": "#/definitions/controllers.ReplacePermissionsBody"
                         }
                     }
                 ],
@@ -2161,7 +2283,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PermissionsReply"
+                            "$ref": "#/definitions/controllers.PermissionsReply"
                         }
                     },
                     "400": {
@@ -2203,7 +2325,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.CreatePermissionBody"
+                            "$ref": "#/definitions/controllers.CreatePermissionBody"
                         }
                     }
                 ],
@@ -2211,7 +2333,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PermissionsReply"
+                            "$ref": "#/definitions/controllers.PermissionsReply"
                         }
                     },
                     "400": {
@@ -2253,7 +2375,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.DeletePermissionBody"
+                            "$ref": "#/definitions/controllers.DeletePermissionBody"
                         }
                     }
                 ],
@@ -2261,7 +2383,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PermissionsReply"
+                            "$ref": "#/definitions/controllers.PermissionsReply"
                         }
                     },
                     "400": {
@@ -2318,7 +2440,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PreferencesReply"
+                            "$ref": "#/definitions/controllers.PreferencesReply"
                         }
                     },
                     "400": {
@@ -2360,7 +2482,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PreferencesJsonBody"
+                            "$ref": "#/definitions/controllers.PreferencesJsonBody"
                         }
                     }
                 ],
@@ -2368,7 +2490,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PreferencesReply"
+                            "$ref": "#/definitions/controllers.PreferencesReply"
                         }
                     },
                     "400": {
@@ -2419,7 +2541,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.DeletePreferencesBody"
+                            "$ref": "#/definitions/controllers.DeletePreferencesBody"
                         }
                     }
                 ],
@@ -2427,7 +2549,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.DeletePreferencesReply"
+                            "$ref": "#/definitions/controllers.DeletePreferencesReply"
                         }
                     },
                     "400": {
@@ -2478,7 +2600,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PreferencesJsonBody"
+                            "$ref": "#/definitions/controllers.PreferencesJsonBody"
                         }
                     }
                 ],
@@ -2486,7 +2608,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.PreferencesReply"
+                            "$ref": "#/definitions/controllers.PreferencesReply"
                         }
                     },
                     "400": {
@@ -2552,7 +2674,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/src_controllers.RoleReply"
+                                "$ref": "#/definitions/controllers.RoleReply"
                             }
                         }
                     },
@@ -2595,7 +2717,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.CreateRoleBody"
+                            "$ref": "#/definitions/controllers.CreateRoleBody"
                         }
                     }
                 ],
@@ -2603,7 +2725,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.RoleReply"
+                            "$ref": "#/definitions/controllers.RoleReply"
                         }
                     },
                     "400": {
@@ -2664,7 +2786,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/src_controllers.RoleReply"
+                                "$ref": "#/definitions/controllers.RoleReply"
                             }
                         }
                     },
@@ -2717,7 +2839,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/src_controllers.UserRoleMembershipReply"
+                                "$ref": "#/definitions/controllers.UserRoleMembershipReply"
                             }
                         }
                     },
@@ -2760,7 +2882,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.AddUserToRoleBody"
+                            "$ref": "#/definitions/controllers.AddUserToRoleBody"
                         }
                     }
                 ],
@@ -2768,7 +2890,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.UserRoleMembershipReply"
+                            "$ref": "#/definitions/controllers.UserRoleMembershipReply"
                         }
                     },
                     "400": {
@@ -2819,7 +2941,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.RemoveUserFromRoleBody"
+                            "$ref": "#/definitions/controllers.RemoveUserFromRoleBody"
                         }
                     }
                 ],
@@ -2883,7 +3005,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.RoleReply"
+                            "$ref": "#/definitions/controllers.RoleReply"
                         }
                     },
                     "400": {
@@ -2995,7 +3117,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.UpdateRoleBody"
+                            "$ref": "#/definitions/controllers.UpdateRoleBody"
                         }
                     }
                 ],
@@ -3003,7 +3125,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.RoleReply"
+                            "$ref": "#/definitions/controllers.RoleReply"
                         }
                     },
                     "400": {
@@ -3087,7 +3209,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/src_controllers.RuleReply"
+                                "$ref": "#/definitions/controllers.RuleReply"
                             }
                         }
                     },
@@ -3130,7 +3252,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.CreateRuleBody"
+                            "$ref": "#/definitions/controllers.CreateRuleBody"
                         }
                     }
                 ],
@@ -3138,7 +3260,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.RuleReply"
+                            "$ref": "#/definitions/controllers.RuleReply"
                         }
                     },
                     "400": {
@@ -3197,7 +3319,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.RuleReply"
+                            "$ref": "#/definitions/controllers.RuleReply"
                         }
                     },
                     "400": {
@@ -3309,7 +3431,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.UpdateRuleBody"
+                            "$ref": "#/definitions/controllers.UpdateRuleBody"
                         }
                     }
                 ],
@@ -3317,7 +3439,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.RuleReply"
+                            "$ref": "#/definitions/controllers.RuleReply"
                         }
                     },
                     "400": {
@@ -3375,7 +3497,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.GetPublicShareResponse"
+                            "$ref": "#/definitions/controllers.GetPublicShareResponse"
                         }
                     },
                     "400": {
@@ -3417,7 +3539,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.CreateShareRequestBody"
+                            "$ref": "#/definitions/controllers.CreateShareRequestBody"
                         }
                     }
                 ],
@@ -3425,7 +3547,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.NoteShareReply"
+                            "$ref": "#/definitions/controllers.NoteShareReply"
                         }
                     },
                     "400": {
@@ -3467,7 +3589,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.DeleteSharesBody"
+                            "$ref": "#/definitions/controllers.DeleteSharesBody"
                         }
                     }
                 ],
@@ -3514,7 +3636,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.UpdateShareBody"
+                            "$ref": "#/definitions/controllers.UpdateShareBody"
                         }
                     }
                 ],
@@ -3522,7 +3644,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.NoteShareReply"
+                            "$ref": "#/definitions/controllers.NoteShareReply"
                         }
                     },
                     "400": {
@@ -3578,7 +3700,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/src_controllers.NoteShareReply"
+                                "$ref": "#/definitions/controllers.NoteShareReply"
                             }
                         }
                     },
@@ -3629,7 +3751,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.NoteShareReply"
+                            "$ref": "#/definitions/controllers.NoteShareReply"
                         }
                     },
                     "400": {
@@ -3701,7 +3823,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/src_controllers.ShelfReply"
+                                "$ref": "#/definitions/controllers.ShelfReply"
                             }
                         }
                     },
@@ -3744,7 +3866,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.CreateShelfBody"
+                            "$ref": "#/definitions/controllers.CreateShelfBody"
                         }
                     }
                 ],
@@ -3752,7 +3874,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.CreateShelfReply"
+                            "$ref": "#/definitions/controllers.CreateShelfReply"
                         }
                     },
                     "400": {
@@ -3803,7 +3925,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.DeleteShelfBody"
+                            "$ref": "#/definitions/controllers.DeleteShelfBody"
                         }
                     }
                 ],
@@ -3811,7 +3933,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.DeleteShelfReply"
+                            "$ref": "#/definitions/controllers.DeleteShelfReply"
                         }
                     },
                     "400": {
@@ -3862,7 +3984,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.UpdateShelfBody"
+                            "$ref": "#/definitions/controllers.UpdateShelfBody"
                         }
                     }
                 ],
@@ -3870,7 +3992,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.ShelfReply"
+                            "$ref": "#/definitions/controllers.ShelfReply"
                         }
                     },
                     "400": {
@@ -3923,7 +4045,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.SetBooksBody"
+                            "$ref": "#/definitions/controllers.SetBooksBody"
                         }
                     }
                 ],
@@ -3981,7 +4103,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.AttachBookBody"
+                            "$ref": "#/definitions/controllers.AttachBookBody"
                         }
                     }
                 ],
@@ -4039,7 +4161,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.DetachBookBody"
+                            "$ref": "#/definitions/controllers.DetachBookBody"
                         }
                     }
                 ],
@@ -4103,7 +4225,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.ShelfIdsReply"
+                            "$ref": "#/definitions/controllers.ShelfIdsReply"
                         }
                     },
                     "400": {
@@ -4147,7 +4269,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.GetShelvesBody"
+                            "$ref": "#/definitions/controllers.GetShelvesBody"
                         }
                     }
                 ],
@@ -4157,7 +4279,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/src_controllers.ShelfReply"
+                                "$ref": "#/definitions/controllers.ShelfReply"
                             }
                         }
                     },
@@ -4214,7 +4336,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.ShelfReply"
+                            "$ref": "#/definitions/controllers.ShelfReply"
                         }
                     },
                     "400": {
@@ -4273,7 +4395,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.BookIdsReply"
+                            "$ref": "#/definitions/controllers.BookIdsReply"
                         }
                     },
                     "400": {
@@ -4311,7 +4433,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/src_controllers.StatusResponse"
+                            "$ref": "#/definitions/controllers.StatusResponse"
                         }
                     }
                 }
@@ -4319,45 +4441,22 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "github_com_KuramaSyu_WerSu-Rest_src_models.JsUserAuth": {
-            "type": "object",
-            "properties": {
-                "avatar_url": {
-                    "description": "AvatarURL is the absolute avatar URL. Empty renders as JSON\nnull so the frontend can fall back to its initials avatar.",
-                    "type": "string",
-                    "example": "https://cdn.example.com/avatars/alice.png"
-                },
-                "email": {
-                    "type": "string",
-                    "example": "alice@example.com"
-                },
-                "email_verified_at": {
-                    "type": "string",
-                    "example": "2026-10-12T10:00:00Z"
-                },
-                "id": {
-                    "type": "string",
-                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
-                },
-                "is_active": {
-                    "type": "boolean",
-                    "example": true
-                },
-                "username": {
-                    "type": "string",
-                    "example": "alice"
-                }
-            }
+        "auth.Kind": {
+            "type": "string",
+            "enum": [
+                "discord",
+                "google",
+                "password",
+                "passkey"
+            ],
+            "x-enum-varnames": [
+                "KindDiscord",
+                "KindGoogle",
+                "KindPassword",
+                "KindPasskeyKind"
+            ]
         },
-        "github_com_KuramaSyu_WerSu-Rest_src_proto.DeleteAttachmentResponse": {
-            "type": "object",
-            "properties": {
-                "success": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "src_controllers.ActivityReply": {
+        "controllers.ActivityReply": {
             "type": "object",
             "properties": {
                 "accessed_as": {
@@ -4394,7 +4493,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.AddUserToRoleBody": {
+        "controllers.AddUserToRoleBody": {
             "type": "object",
             "required": [
                 "role_id",
@@ -4411,7 +4510,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.AttachBookBody": {
+        "controllers.AttachBookBody": {
             "type": "object",
             "required": [
                 "book_id",
@@ -4428,7 +4527,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.AttachmentLinkBody": {
+        "controllers.AttachmentLinkBody": {
             "type": "object",
             "required": [
                 "attachment_key"
@@ -4455,7 +4554,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.AttachmentMetadataReply": {
+        "controllers.AttachmentMetadataReply": {
             "type": "object",
             "properties": {
                 "content_type": {
@@ -4484,7 +4583,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.BookIdsReply": {
+        "controllers.BookIdsReply": {
             "type": "object",
             "properties": {
                 "book_ids": {
@@ -4495,7 +4594,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.BookstackBookImportReply": {
+        "controllers.BookstackBookImportReply": {
             "type": "object",
             "properties": {
                 "attachments_uploaded": {
@@ -4507,7 +4606,7 @@ const docTemplate = `{
                 "chapters": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/src_controllers.BookstackImportedChapterReply"
+                        "$ref": "#/definitions/controllers.BookstackImportedChapterReply"
                     }
                 },
                 "pages_imported": {
@@ -4515,7 +4614,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.BookstackImportedChapterReply": {
+        "controllers.BookstackImportedChapterReply": {
             "type": "object",
             "properties": {
                 "chapter_name": {
@@ -4529,7 +4628,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.BootstrapResultReply": {
+        "controllers.BootstrapResultReply": {
             "type": "object",
             "properties": {
                 "created_directory_ids": {
@@ -4546,7 +4645,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.ChangePasswordRequest": {
+        "controllers.ChangePasswordRequest": {
             "type": "object",
             "properties": {
                 "current_algorithm": {
@@ -4563,7 +4662,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.CheckResult": {
+        "controllers.CheckResult": {
             "type": "object",
             "properties": {
                 "address": {
@@ -4586,7 +4685,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.CreateDirectoryBody": {
+        "controllers.CreateDirectoryBody": {
             "type": "object",
             "required": [
                 "name"
@@ -4628,7 +4727,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.CreatePermissionBody": {
+        "controllers.CreatePermissionBody": {
             "type": "object",
             "required": [
                 "object_id",
@@ -4649,11 +4748,11 @@ const docTemplate = `{
                     "example": "note"
                 },
                 "relationship": {
-                    "$ref": "#/definitions/src_controllers.PermissionRelationshipRequest"
+                    "$ref": "#/definitions/controllers.PermissionRelationshipRequest"
                 }
             }
         },
-        "src_controllers.CreateRoleBody": {
+        "controllers.CreateRoleBody": {
             "type": "object",
             "required": [
                 "name"
@@ -4669,10 +4768,10 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.CreateRuleBody": {
+        "controllers.CreateRuleBody": {
             "type": "object"
         },
-        "src_controllers.CreateShareRequestBody": {
+        "controllers.CreateShareRequestBody": {
             "type": "object",
             "required": [
                 "note_id",
@@ -4706,7 +4805,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.CreateShelfBody": {
+        "controllers.CreateShelfBody": {
             "type": "object",
             "required": [
                 "slug"
@@ -4738,18 +4837,18 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.CreateShelfReply": {
+        "controllers.CreateShelfReply": {
             "type": "object",
             "properties": {
                 "bootstrap_result": {
-                    "$ref": "#/definitions/src_controllers.BootstrapResultReply"
+                    "$ref": "#/definitions/controllers.BootstrapResultReply"
                 },
                 "shelf": {
-                    "$ref": "#/definitions/src_controllers.ShelfReply"
+                    "$ref": "#/definitions/controllers.ShelfReply"
                 }
             }
         },
-        "src_controllers.DeletePermissionBody": {
+        "controllers.DeletePermissionBody": {
             "type": "object",
             "required": [
                 "object_id",
@@ -4770,11 +4869,11 @@ const docTemplate = `{
                     "example": "note"
                 },
                 "relationship": {
-                    "$ref": "#/definitions/src_controllers.PermissionRelationshipRequest"
+                    "$ref": "#/definitions/controllers.PermissionRelationshipRequest"
                 }
             }
         },
-        "src_controllers.DeletePreferencesBody": {
+        "controllers.DeletePreferencesBody": {
             "type": "object",
             "required": [
                 "scope",
@@ -4796,7 +4895,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.DeletePreferencesReply": {
+        "controllers.DeletePreferencesReply": {
             "type": "object",
             "properties": {
                 "success": {
@@ -4805,7 +4904,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.DeleteSharesBody": {
+        "controllers.DeleteSharesBody": {
             "type": "object",
             "required": [
                 "share_ids"
@@ -4822,7 +4921,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.DeleteShelfBody": {
+        "controllers.DeleteShelfBody": {
             "type": "object",
             "required": [
                 "id"
@@ -4838,7 +4937,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.DeleteShelfReply": {
+        "controllers.DeleteShelfReply": {
             "type": "object",
             "properties": {
                 "affected_book_ids": {
@@ -4855,7 +4954,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.DetachBookBody": {
+        "controllers.DetachBookBody": {
             "type": "object",
             "required": [
                 "book_id",
@@ -4872,7 +4971,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.DirectoryReply": {
+        "controllers.DirectoryReply": {
             "type": "object",
             "properties": {
                 "child_dir_ids": {
@@ -4908,7 +5007,7 @@ const docTemplate = `{
                 "relationships": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/src_controllers.PermissionRelationshipReply"
+                        "$ref": "#/definitions/controllers.PermissionRelationshipReply"
                     }
                 },
                 "shelf_ids": {
@@ -4922,7 +5021,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.GetAccessTokenReply": {
+        "controllers.GetAccessTokenReply": {
             "type": "object",
             "properties": {
                 "token": {
@@ -4930,7 +5029,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.GetPublicShareResponse": {
+        "controllers.GetPublicShareResponse": {
             "type": "object",
             "properties": {
                 "access_as": {
@@ -4956,7 +5055,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.GetShelvesBody": {
+        "controllers.GetShelvesBody": {
             "type": "object",
             "required": [
                 "ids"
@@ -4977,7 +5076,38 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.MinimalDirectory": {
+        "controllers.LoginRequest": {
+            "type": "object",
+            "properties": {
+                "algorithm": {
+                    "type": "string",
+                    "example": "argon2id"
+                },
+                "email": {
+                    "description": "Password fields",
+                    "type": "string",
+                    "example": "alice@example.com"
+                },
+                "hash": {
+                    "type": "string",
+                    "example": "$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+                },
+                "kind": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/auth.Kind"
+                        }
+                    ],
+                    "example": "password"
+                },
+                "username": {
+                    "description": "signup only",
+                    "type": "string",
+                    "example": "alice"
+                }
+            }
+        },
+        "controllers.MinimalDirectory": {
             "type": "object",
             "properties": {
                 "display_name": {
@@ -4991,7 +5121,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.MinimalNote": {
+        "controllers.MinimalNote": {
             "type": "object",
             "properties": {
                 "author_id": {
@@ -5009,7 +5139,7 @@ const docTemplate = `{
                 "permissions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/src_controllers.PermissionRelationshipReply"
+                        "$ref": "#/definitions/controllers.PermissionRelationshipReply"
                     }
                 },
                 "stripped_content": {
@@ -5030,7 +5160,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.MinimalTag": {
+        "controllers.MinimalTag": {
             "type": "object",
             "properties": {
                 "display_name": {
@@ -5044,7 +5174,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.NoteReply": {
+        "controllers.NoteReply": {
             "type": "object",
             "properties": {
                 "attachment_ids": {
@@ -5071,7 +5201,7 @@ const docTemplate = `{
                 "permissions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/src_controllers.PermissionRelationshipReply"
+                        "$ref": "#/definitions/controllers.PermissionRelationshipReply"
                     }
                 },
                 "shelf_ids": {
@@ -5100,7 +5230,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.NoteShareReply": {
+        "controllers.NoteShareReply": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -5135,7 +5265,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.NoteVersionContentReply": {
+        "controllers.NoteVersionContentReply": {
             "type": "object",
             "properties": {
                 "author_id": {
@@ -5158,7 +5288,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.NoteVersionSummaryReply": {
+        "controllers.NoteVersionSummaryReply": {
             "type": "object",
             "properties": {
                 "author_id": {
@@ -5184,30 +5314,30 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.NotesReply": {
+        "controllers.NotesReply": {
             "type": "object",
             "properties": {
                 "directories": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/src_controllers.MinimalDirectory"
+                        "$ref": "#/definitions/controllers.MinimalDirectory"
                     }
                 },
                 "notes": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/src_controllers.MinimalNote"
+                        "$ref": "#/definitions/controllers.MinimalNote"
                     }
                 },
                 "tags": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/src_controllers.MinimalTag"
+                        "$ref": "#/definitions/controllers.MinimalTag"
                     }
                 }
             }
         },
-        "src_controllers.PasskeyCeremonyBeginReply": {
+        "controllers.PasskeyCeremonyBeginReply": {
             "type": "object",
             "properties": {
                 "options": {
@@ -5219,7 +5349,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.PasskeyCeremonyFinishReply": {
+        "controllers.PasskeyCeremonyFinishReply": {
             "type": "object",
             "properties": {
                 "credential_id": {
@@ -5227,7 +5357,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.PasskeyCeremonyFinishRequest": {
+        "controllers.PasskeyCeremonyFinishRequest": {
             "type": "object",
             "properties": {
                 "authenticator_data": {
@@ -5262,7 +5392,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.PatchAttachmentMetadataRequest": {
+        "controllers.PatchAttachmentMetadataRequest": {
             "type": "object",
             "required": [
                 "key"
@@ -5279,7 +5409,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.PatchDirectoryBody": {
+        "controllers.PatchDirectoryBody": {
             "type": "object",
             "required": [
                 "id"
@@ -5325,7 +5455,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.PatchNoteRequest": {
+        "controllers.PatchNoteRequest": {
             "type": "object",
             "required": [
                 "id"
@@ -5363,7 +5493,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.PatchUserRequest": {
+        "controllers.PatchUserRequest": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -5400,21 +5530,21 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.PermissionRelationshipReply": {
+        "controllers.PermissionRelationshipReply": {
             "type": "object",
             "properties": {
                 "relation": {
                     "type": "string"
                 },
                 "resource": {
-                    "$ref": "#/definitions/src_controllers.PermissionResourceReply"
+                    "$ref": "#/definitions/controllers.PermissionResourceReply"
                 },
                 "subject": {
-                    "$ref": "#/definitions/src_controllers.PermissionSubjectReply"
+                    "$ref": "#/definitions/controllers.PermissionSubjectReply"
                 }
             }
         },
-        "src_controllers.PermissionRelationshipRequest": {
+        "controllers.PermissionRelationshipRequest": {
             "type": "object",
             "required": [
                 "relation"
@@ -5433,14 +5563,14 @@ const docTemplate = `{
                     "example": "reader"
                 },
                 "resource": {
-                    "$ref": "#/definitions/src_controllers.PermissionResourceRequest"
+                    "$ref": "#/definitions/controllers.PermissionResourceRequest"
                 },
                 "subject": {
-                    "$ref": "#/definitions/src_controllers.PermissionSubjectRequest"
+                    "$ref": "#/definitions/controllers.PermissionSubjectRequest"
                 }
             }
         },
-        "src_controllers.PermissionResourceReply": {
+        "controllers.PermissionResourceReply": {
             "type": "object",
             "properties": {
                 "object_id": {
@@ -5451,7 +5581,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.PermissionResourceRequest": {
+        "controllers.PermissionResourceRequest": {
             "type": "object",
             "required": [
                 "object_id",
@@ -5472,7 +5602,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.PermissionSubjectReply": {
+        "controllers.PermissionSubjectReply": {
             "type": "object",
             "properties": {
                 "object_id": {
@@ -5483,7 +5613,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.PermissionSubjectRequest": {
+        "controllers.PermissionSubjectRequest": {
             "type": "object",
             "required": [
                 "object_id",
@@ -5504,7 +5634,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.PermissionsReply": {
+        "controllers.PermissionsReply": {
             "type": "object",
             "properties": {
                 "object_id": {
@@ -5521,12 +5651,12 @@ const docTemplate = `{
                 "relationships": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/src_controllers.PermissionRelationshipReply"
+                        "$ref": "#/definitions/controllers.PermissionRelationshipReply"
                     }
                 }
             }
         },
-        "src_controllers.PostNoteRequest": {
+        "controllers.PostNoteRequest": {
             "type": "object",
             "required": [
                 "content",
@@ -5557,7 +5687,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.PostUserRequest": {
+        "controllers.PostUserRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -5583,7 +5713,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.PreferencesJsonBody": {
+        "controllers.PreferencesJsonBody": {
             "type": "object",
             "required": [
                 "preferences_json",
@@ -5610,7 +5740,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.PreferencesReply": {
+        "controllers.PreferencesReply": {
             "type": "object",
             "properties": {
                 "preferences_json": {
@@ -5619,7 +5749,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.RemoveUserFromRoleBody": {
+        "controllers.RemoveUserFromRoleBody": {
             "type": "object",
             "required": [
                 "role_id",
@@ -5636,7 +5766,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.ReplacePermissionsBody": {
+        "controllers.ReplacePermissionsBody": {
             "type": "object",
             "required": [
                 "object_id",
@@ -5659,12 +5789,12 @@ const docTemplate = `{
                 "relationships": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/src_controllers.PermissionRelationshipRequest"
+                        "$ref": "#/definitions/controllers.PermissionRelationshipRequest"
                     }
                 }
             }
         },
-        "src_controllers.RoleReply": {
+        "controllers.RoleReply": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -5681,7 +5811,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.RuleReply": {
+        "controllers.RuleReply": {
             "type": "object",
             "properties": {
                 "action_context": {
@@ -5721,7 +5851,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.ServiceStatus": {
+        "controllers.ServiceStatus": {
             "type": "object",
             "properties": {
                 "address": {
@@ -5731,7 +5861,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "dns": {
-                    "$ref": "#/definitions/src_controllers.CheckResult"
+                    "$ref": "#/definitions/controllers.CheckResult"
                 },
                 "error": {
                     "description": "Error is a convenience field that mirrors the first non-empty error\nfrom DNS or Service, so monitoring can read the top-level state\nwithout traversing the nested checks.",
@@ -5741,11 +5871,11 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "service": {
-                    "$ref": "#/definitions/src_controllers.CheckResult"
+                    "$ref": "#/definitions/controllers.CheckResult"
                 }
             }
         },
-        "src_controllers.SetBooksBody": {
+        "controllers.SetBooksBody": {
             "type": "object",
             "required": [
                 "book_ids",
@@ -5767,7 +5897,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.ShelfIdsReply": {
+        "controllers.ShelfIdsReply": {
             "type": "object",
             "properties": {
                 "shelf_ids": {
@@ -5778,7 +5908,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.ShelfReply": {
+        "controllers.ShelfReply": {
             "type": "object",
             "properties": {
                 "book_ids": {
@@ -5807,33 +5937,54 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.StatusResponse": {
+        "controllers.SignupRequest": {
+            "type": "object",
+            "properties": {
+                "algorithm": {
+                    "type": "string",
+                    "example": "argon2id"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "alice@example.com"
+                },
+                "hash": {
+                    "type": "string",
+                    "example": "$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "alice"
+                }
+            }
+        },
+        "controllers.StatusResponse": {
             "type": "object",
             "properties": {
                 "checked_at": {
                     "type": "string"
                 },
                 "garage": {
-                    "$ref": "#/definitions/src_controllers.ServiceStatus"
+                    "$ref": "#/definitions/controllers.ServiceStatus"
                 },
                 "imgproxy": {
-                    "$ref": "#/definitions/src_controllers.ServiceStatus"
+                    "$ref": "#/definitions/controllers.ServiceStatus"
                 },
                 "overall_ok": {
                     "type": "boolean"
                 },
                 "postgres": {
-                    "$ref": "#/definitions/src_controllers.ServiceStatus"
+                    "$ref": "#/definitions/controllers.ServiceStatus"
                 },
                 "spicedb": {
-                    "$ref": "#/definitions/src_controllers.ServiceStatus"
+                    "$ref": "#/definitions/controllers.ServiceStatus"
                 },
                 "wersu": {
-                    "$ref": "#/definitions/src_controllers.ServiceStatus"
+                    "$ref": "#/definitions/controllers.ServiceStatus"
                 }
             }
         },
-        "src_controllers.UpdateRoleBody": {
+        "controllers.UpdateRoleBody": {
             "type": "object",
             "properties": {
                 "description": {
@@ -5846,7 +5997,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.UpdateRuleBody": {
+        "controllers.UpdateRuleBody": {
             "type": "object",
             "properties": {
                 "action_context": {
@@ -5879,7 +6030,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.UpdateShareBody": {
+        "controllers.UpdateShareBody": {
             "type": "object",
             "required": [
                 "id",
@@ -5918,7 +6069,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.UpdateShelfBody": {
+        "controllers.UpdateShelfBody": {
             "type": "object",
             "required": [
                 "id"
@@ -5950,7 +6101,7 @@ const docTemplate = `{
                 }
             }
         },
-        "src_controllers.UserRoleMembershipReply": {
+        "controllers.UserRoleMembershipReply": {
             "type": "object",
             "properties": {
                 "granted_at": {
@@ -5961,6 +6112,44 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "string"
+                }
+            }
+        },
+        "models.JsUserAuth": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "description": "AvatarURL is the absolute avatar URL. Empty renders as JSON\nnull so the frontend can fall back to its initials avatar.",
+                    "type": "string",
+                    "example": "https://cdn.example.com/avatars/alice.png"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "alice@example.com"
+                },
+                "email_verified_at": {
+                    "type": "string",
+                    "example": "2026-10-12T10:00:00Z"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                },
+                "is_active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "username": {
+                    "type": "string",
+                    "example": "alice"
+                }
+            }
+        },
+        "proto.DeleteAttachmentResponse": {
+            "type": "object",
+            "properties": {
+                "success": {
+                    "type": "boolean"
                 }
             }
         }

@@ -166,28 +166,28 @@ type PasswordSignupRequest struct {
 	Algorithm string `json:"algorithm"`
 }
 
-// LoginRequest is the unified entry point for non-OAuth login flows.
-// OAuth flows keep their dedicated routes (Discord at /auth/discord/*
-// and Google at /auth/google/*); passkey login goes through the
-// /auth/passkey/login/{begin,finish} endpoints, not here.
+// LoginRequest is the body of POST /api/auth/login. Today the
+// controller only accepts `kind: "password"`; passkey login goes
+// through the /auth/passkey/login/{begin,finish} endpoints and
+// OAuth flows (Discord, Google) keep their dedicated routes.
 type LoginRequest struct {
-	Kind auth.Kind `json:"kind"`
+	Kind auth.Kind `json:"kind" example:"password"`
 
 	// Password fields
-	Email     string `json:"email,omitempty"`
-	Hash      string `json:"hash,omitempty"`
-	Algorithm string `json:"algorithm,omitempty"`
-	Username  string `json:"username,omitempty"` // signup only
+	Email     string `json:"email,omitempty" example:"alice@example.com"`
+	Hash      string `json:"hash,omitempty" example:"$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"`
+	Algorithm string `json:"algorithm,omitempty" example:"argon2id"`
+	Username  string `json:"username,omitempty" example:"alice"` // signup only
 }
 
-// SignupRequest is the dedicated entry point for password signup.
-// Splitting signup from login keeps the controller's branching
-// explicit (signup is a separate code path on the gRPC side too).
+// SignupRequest is the body of POST /api/auth/signup. Splitting
+// signup from login keeps the controller's branching explicit
+// (signup is a separate code path on the gRPC side too).
 type SignupRequest struct {
-	Email     string `json:"email"`
-	Username  string `json:"username"`
-	Hash      string `json:"hash"`
-	Algorithm string `json:"algorithm"`
+	Email     string `json:"email" example:"alice@example.com"`
+	Username  string `json:"username" example:"alice"`
+	Hash      string `json:"hash" example:"$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"`
+	Algorithm string `json:"algorithm" example:"argon2id"`
 }
 
 // loginUser is the post-strategy hook that wires the verified user
@@ -603,12 +603,27 @@ func (ac *AuthController) GetPublicAccessToken(c *gin.Context) {
 
 // ------------ New login flows -------------
 
-// PostLogin handles non-OAuth login flows. The browser POSTs a
-// `LoginRequest` with `kind: "password"` or `kind: "passkey"`. The
-// controller dispatches to the matching strategy.
-//
-// OAuth flows (Discord, Google) keep their own /auth/<provider>/login
-// routes so the browser can be redirected to the OAuth screen.
+// PostLogin godoc
+// @Summary      Sign in with a password
+// @Description  Authenticates an existing user via password. The client
+// @Description  precomputes the argon2id PHC hash; the server never sees
+// @Description  plaintext. On success, a session cookie is set and the
+// @Description  canonical UserAuth is returned.
+// @Description
+// @Description  Passkey login uses the dedicated
+// @Description  /auth/passkey/login/{begin,finish} endpoints instead.
+// @Description  OAuth flows (Discord, Google) keep their own
+// @Description  /auth/<provider>/login routes so the browser can be
+// @Description  redirected to the provider.
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Param        payload  body      LoginRequest  true  "Login payload (kind: \"password\")"
+// @Success      200      {object}  models.JsUserAuth  "Login successful - session cookie set"
+// @Failure      400      {object}  map[string]string   "Bad Request - Invalid body, unknown kind, or missing fields"
+// @Failure      401      {object}  map[string]string   "Unauthorized - Invalid credentials"
+// @Failure      500      {object}  map[string]string   "Internal Server Error - gRPC service failure"
+// @Router       /api/auth/login [post]
 func (ac *AuthController) PostLogin(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -654,11 +669,23 @@ func (ac *AuthController) PostLogin(c *gin.Context) {
 	ac.loginUser(c, user)
 }
 
-// PostSignup handles password signup. The body is a SignupRequest
-// (email, username, hash, algorithm). The server never sees the
-// plaintext password; the client precomputes the argon2id hash.
-// On success, the user is logged in (session cookie is set) and
-// the canonical UserAuth is returned.
+// PostSignup godoc
+// @Summary      Sign up with a password
+// @Description  Creates a new user via password signup. The client
+// @Description  precomputes the argon2id PHC hash; the server never sees
+// @Description  plaintext. On success, a session cookie is set and the
+// @Description  canonical UserAuth is returned.
+// @Description
+// @Description  Returns 409 if the email is already in use.
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Param        payload  body      SignupRequest  true  "Signup payload"
+// @Success      200      {object}  models.JsUserAuth  "User created and signed in - session cookie set"
+// @Failure      400      {object}  map[string]string   "Bad Request - Invalid body, missing fields, or unsupported algorithm"
+// @Failure      409      {object}  map[string]string   "Conflict - Email already in use"
+// @Failure      500      {object}  map[string]string   "Internal Server Error - gRPC service failure"
+// @Router       /api/auth/signup [post]
 func (ac *AuthController) PostSignup(c *gin.Context) {
 	var req SignupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

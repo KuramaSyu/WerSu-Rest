@@ -1,34 +1,17 @@
 definitions:
-  github_com_KuramaSyu_WerSu-Rest_src_models.JsUserAuth:
-    properties:
-      avatar_url:
-        description: |-
-          AvatarURL is the absolute avatar URL. Empty renders as JSON
-          null so the frontend can fall back to its initials avatar.
-        example: https://cdn.example.com/avatars/alice.png
-        type: string
-      email:
-        example: alice@example.com
-        type: string
-      email_verified_at:
-        example: "2026-10-12T10:00:00Z"
-        type: string
-      id:
-        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
-        type: string
-      is_active:
-        example: true
-        type: boolean
-      username:
-        example: alice
-        type: string
-    type: object
-  github_com_KuramaSyu_WerSu-Rest_src_proto.DeleteAttachmentResponse:
-    properties:
-      success:
-        type: boolean
-    type: object
-  src_controllers.ActivityReply:
+  auth.Kind:
+    enum:
+    - discord
+    - google
+    - password
+    - passkey
+    type: string
+    x-enum-varnames:
+    - KindDiscord
+    - KindGoogle
+    - KindPassword
+    - KindPasskeyKind
+  controllers.ActivityReply:
     properties:
       accessed_as:
         enum:
@@ -53,7 +36,7 @@ definitions:
       role_id:
         type: string
     type: object
-  src_controllers.AddUserToRoleBody:
+  controllers.AddUserToRoleBody:
     properties:
       role_id:
         example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4ca
@@ -65,7 +48,7 @@ definitions:
     - role_id
     - subject_user_id
     type: object
-  src_controllers.AttachBookBody:
+  controllers.AttachBookBody:
     properties:
       book_id:
         example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
@@ -77,7 +60,7 @@ definitions:
     - book_id
     - shelf_id
     type: object
-  src_controllers.AttachmentLinkBody:
+  controllers.AttachmentLinkBody:
     properties:
       attachment_key:
         type: string
@@ -96,7 +79,7 @@ definitions:
     required:
     - attachment_key
     type: object
-  src_controllers.AttachmentMetadataReply:
+  controllers.AttachmentMetadataReply:
     properties:
       content_type:
         type: string
@@ -115,14 +98,14 @@ definitions:
       updated_at:
         type: string
     type: object
-  src_controllers.BookIdsReply:
+  controllers.BookIdsReply:
     properties:
       book_ids:
         items:
           type: string
         type: array
     type: object
-  src_controllers.BookstackBookImportReply:
+  controllers.BookstackBookImportReply:
     properties:
       attachments_uploaded:
         type: integer
@@ -130,12 +113,12 @@ definitions:
         type: string
       chapters:
         items:
-          $ref: '#/definitions/src_controllers.BookstackImportedChapterReply'
+          $ref: '#/definitions/controllers.BookstackImportedChapterReply'
         type: array
       pages_imported:
         type: integer
     type: object
-  src_controllers.BookstackImportedChapterReply:
+  controllers.BookstackImportedChapterReply:
     properties:
       chapter_name:
         type: string
@@ -144,7 +127,7 @@ definitions:
       pages_imported:
         type: integer
     type: object
-  src_controllers.BootstrapResultReply:
+  controllers.BootstrapResultReply:
     properties:
       created_directory_ids:
         items:
@@ -155,7 +138,7 @@ definitions:
       description:
         type: string
     type: object
-  src_controllers.ChangePasswordRequest:
+  controllers.ChangePasswordRequest:
     properties:
       current_algorithm:
         type: string
@@ -166,7 +149,7 @@ definitions:
       new_hash:
         type: string
     type: object
-  src_controllers.CheckResult:
+  controllers.CheckResult:
     properties:
       address:
         description: |-
@@ -188,7 +171,7 @@ definitions:
       reachable:
         type: boolean
     type: object
-  src_controllers.CreateDirectoryBody:
+  controllers.CreateDirectoryBody:
     properties:
       description:
         example: Shared notes for engineering team
@@ -217,7 +200,7 @@ definitions:
     required:
     - name
     type: object
-  src_controllers.CreatePermissionBody:
+  controllers.CreatePermissionBody:
     properties:
       object_id:
         example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
@@ -229,13 +212,13 @@ definitions:
         example: note
         type: string
       relationship:
-        $ref: '#/definitions/src_controllers.PermissionRelationshipRequest'
+        $ref: '#/definitions/controllers.PermissionRelationshipRequest'
     required:
     - object_id
     - object_type
     - relationship
     type: object
-  src_controllers.CreateRoleBody:
+  controllers.CreateRoleBody:
     properties:
       description:
         example: All engineers
@@ -246,9 +229,9 @@ definitions:
     required:
     - name
     type: object
-  src_controllers.CreateRuleBody:
+  controllers.CreateRuleBody:
     type: object
-  src_controllers.CreateShareRequestBody:
+  controllers.CreateShareRequestBody:
     properties:
       description:
         example: Shared with the engineering team
@@ -273,7 +256,7 @@ definitions:
     - note_id
     - permission
     type: object
-  src_controllers.CreateShelfBody:
+  controllers.CreateShelfBody:
     properties:
       bootstrap_strategy:
         example: BOOTSTRAP_STRATEGY_NONE
@@ -296,14 +279,14 @@ definitions:
     required:
     - slug
     type: object
-  src_controllers.CreateShelfReply:
+  controllers.CreateShelfReply:
     properties:
       bootstrap_result:
-        $ref: '#/definitions/src_controllers.BootstrapResultReply'
+        $ref: '#/definitions/controllers.BootstrapResultReply'
       shelf:
-        $ref: '#/definitions/src_controllers.ShelfReply'
+        $ref: '#/definitions/controllers.ShelfReply'
     type: object
-  src_controllers.DeletePermissionBody:
+  controllers.DeletePermissionBody:
     properties:
       object_id:
         example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
@@ -315,13 +298,13 @@ definitions:
         example: note
         type: string
       relationship:
-        $ref: '#/definitions/src_controllers.PermissionRelationshipRequest'
+        $ref: '#/definitions/controllers.PermissionRelationshipRequest'
     required:
     - object_id
     - object_type
     - relationship
     type: object
-  src_controllers.DeletePreferencesBody:
+  controllers.DeletePreferencesBody:
     properties:
       scope:
         enum:
@@ -337,13 +320,13 @@ definitions:
     - scope
     - target_id
     type: object
-  src_controllers.DeletePreferencesReply:
+  controllers.DeletePreferencesReply:
     properties:
       success:
         example: true
         type: boolean
     type: object
-  src_controllers.DeleteSharesBody:
+  controllers.DeleteSharesBody:
     properties:
       share_ids:
         example:
@@ -354,7 +337,7 @@ definitions:
     required:
     - share_ids
     type: object
-  src_controllers.DeleteShelfBody:
+  controllers.DeleteShelfBody:
     properties:
       dry:
         example: false
@@ -365,7 +348,7 @@ definitions:
     required:
     - id
     type: object
-  src_controllers.DeleteShelfReply:
+  controllers.DeleteShelfReply:
     properties:
       affected_book_ids:
         items:
@@ -376,7 +359,7 @@ definitions:
       dry:
         type: boolean
     type: object
-  src_controllers.DetachBookBody:
+  controllers.DetachBookBody:
     properties:
       book_id:
         example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
@@ -388,7 +371,7 @@ definitions:
     - book_id
     - shelf_id
     type: object
-  src_controllers.DirectoryReply:
+  controllers.DirectoryReply:
     properties:
       child_dir_ids:
         items:
@@ -412,7 +395,7 @@ definitions:
         type: array
       relationships:
         items:
-          $ref: '#/definitions/src_controllers.PermissionRelationshipReply'
+          $ref: '#/definitions/controllers.PermissionRelationshipReply'
         type: array
       shelf_ids:
         items:
@@ -421,12 +404,12 @@ definitions:
       slug:
         type: string
     type: object
-  src_controllers.GetAccessTokenReply:
+  controllers.GetAccessTokenReply:
     properties:
       token:
         type: string
     type: object
-  src_controllers.GetPublicShareResponse:
+  controllers.GetPublicShareResponse:
     properties:
       access_as:
         type: string
@@ -444,7 +427,7 @@ definitions:
         example: SHARE_PERMISSION_READ
         type: string
     type: object
-  src_controllers.GetShelvesBody:
+  controllers.GetShelvesBody:
     properties:
       ids:
         example:
@@ -458,7 +441,28 @@ definitions:
     required:
     - ids
     type: object
-  src_controllers.MinimalDirectory:
+  controllers.LoginRequest:
+    properties:
+      algorithm:
+        example: argon2id
+        type: string
+      email:
+        description: Password fields
+        example: alice@example.com
+        type: string
+      hash:
+        example: $argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+        type: string
+      kind:
+        allOf:
+        - $ref: '#/definitions/auth.Kind'
+        example: password
+      username:
+        description: signup only
+        example: alice
+        type: string
+    type: object
+  controllers.MinimalDirectory:
     properties:
       display_name:
         type: string
@@ -467,7 +471,7 @@ definitions:
       slug:
         type: string
     type: object
-  src_controllers.MinimalNote:
+  controllers.MinimalNote:
     properties:
       author_id:
         type: string
@@ -479,7 +483,7 @@ definitions:
         type: string
       permissions:
         items:
-          $ref: '#/definitions/src_controllers.PermissionRelationshipReply'
+          $ref: '#/definitions/controllers.PermissionRelationshipReply'
         type: array
       stripped_content:
         type: string
@@ -493,7 +497,7 @@ definitions:
         description: ISO 8601 format
         type: string
     type: object
-  src_controllers.MinimalTag:
+  controllers.MinimalTag:
     properties:
       display_name:
         type: string
@@ -502,7 +506,7 @@ definitions:
       slug:
         type: string
     type: object
-  src_controllers.NoteReply:
+  controllers.NoteReply:
     properties:
       attachment_ids:
         items:
@@ -520,7 +524,7 @@ definitions:
         type: string
       permissions:
         items:
-          $ref: '#/definitions/src_controllers.PermissionRelationshipReply'
+          $ref: '#/definitions/controllers.PermissionRelationshipReply'
         type: array
       shelf_ids:
         items:
@@ -539,7 +543,7 @@ definitions:
       updated_at:
         type: string
     type: object
-  src_controllers.NoteShareReply:
+  controllers.NoteShareReply:
     properties:
       created_at:
         type: string
@@ -563,7 +567,7 @@ definitions:
         example: SHARE_PERMISSION_READ
         type: string
     type: object
-  src_controllers.NoteVersionContentReply:
+  controllers.NoteVersionContentReply:
     properties:
       author_id:
         type: string
@@ -578,7 +582,7 @@ definitions:
       version_index:
         type: integer
     type: object
-  src_controllers.NoteVersionSummaryReply:
+  controllers.NoteVersionSummaryReply:
     properties:
       author_id:
         type: string
@@ -595,22 +599,22 @@ definitions:
       version_index:
         type: integer
     type: object
-  src_controllers.NotesReply:
+  controllers.NotesReply:
     properties:
       directories:
         items:
-          $ref: '#/definitions/src_controllers.MinimalDirectory'
+          $ref: '#/definitions/controllers.MinimalDirectory'
         type: array
       notes:
         items:
-          $ref: '#/definitions/src_controllers.MinimalNote'
+          $ref: '#/definitions/controllers.MinimalNote'
         type: array
       tags:
         items:
-          $ref: '#/definitions/src_controllers.MinimalTag'
+          $ref: '#/definitions/controllers.MinimalTag'
         type: array
     type: object
-  src_controllers.PasskeyCeremonyBeginReply:
+  controllers.PasskeyCeremonyBeginReply:
     properties:
       options:
         additionalProperties: {}
@@ -618,12 +622,12 @@ definitions:
       session_key:
         type: string
     type: object
-  src_controllers.PasskeyCeremonyFinishReply:
+  controllers.PasskeyCeremonyFinishReply:
     properties:
       credential_id:
         type: string
     type: object
-  src_controllers.PasskeyCeremonyFinishRequest:
+  controllers.PasskeyCeremonyFinishRequest:
     properties:
       authenticator_data:
         items:
@@ -646,7 +650,7 @@ definitions:
           type: integer
         type: array
     type: object
-  src_controllers.PatchAttachmentMetadataRequest:
+  controllers.PatchAttachmentMetadataRequest:
     properties:
       content_type:
         type: string
@@ -657,7 +661,7 @@ definitions:
     required:
     - key
     type: object
-  src_controllers.PatchDirectoryBody:
+  controllers.PatchDirectoryBody:
     properties:
       description:
         example: Shared notes for engineering team
@@ -689,7 +693,7 @@ definitions:
     required:
     - id
     type: object
-  src_controllers.PatchNoteRequest:
+  controllers.PatchNoteRequest:
     properties:
       content:
         example: This is the updated content of my note.
@@ -715,7 +719,7 @@ definitions:
     required:
     - id
     type: object
-  src_controllers.PatchUserRequest:
+  controllers.PatchUserRequest:
     properties:
       avatar_url:
         example: https://cdn.example.com/avatars/alice.png
@@ -742,16 +746,16 @@ definitions:
         example: false
         type: boolean
     type: object
-  src_controllers.PermissionRelationshipReply:
+  controllers.PermissionRelationshipReply:
     properties:
       relation:
         type: string
       resource:
-        $ref: '#/definitions/src_controllers.PermissionResourceReply'
+        $ref: '#/definitions/controllers.PermissionResourceReply'
       subject:
-        $ref: '#/definitions/src_controllers.PermissionSubjectReply'
+        $ref: '#/definitions/controllers.PermissionSubjectReply'
     type: object
-  src_controllers.PermissionRelationshipRequest:
+  controllers.PermissionRelationshipRequest:
     properties:
       relation:
         enum:
@@ -764,20 +768,20 @@ definitions:
         example: reader
         type: string
       resource:
-        $ref: '#/definitions/src_controllers.PermissionResourceRequest'
+        $ref: '#/definitions/controllers.PermissionResourceRequest'
       subject:
-        $ref: '#/definitions/src_controllers.PermissionSubjectRequest'
+        $ref: '#/definitions/controllers.PermissionSubjectRequest'
     required:
     - relation
     type: object
-  src_controllers.PermissionResourceReply:
+  controllers.PermissionResourceReply:
     properties:
       object_id:
         type: string
       object_type:
         type: string
     type: object
-  src_controllers.PermissionResourceRequest:
+  controllers.PermissionResourceRequest:
     properties:
       object_id:
         example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
@@ -792,14 +796,14 @@ definitions:
     - object_id
     - object_type
     type: object
-  src_controllers.PermissionSubjectReply:
+  controllers.PermissionSubjectReply:
     properties:
       object_id:
         type: string
       object_type:
         type: string
     type: object
-  src_controllers.PermissionSubjectRequest:
+  controllers.PermissionSubjectRequest:
     properties:
       object_id:
         example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
@@ -814,7 +818,7 @@ definitions:
     - object_id
     - object_type
     type: object
-  src_controllers.PermissionsReply:
+  controllers.PermissionsReply:
     properties:
       object_id:
         type: string
@@ -826,10 +830,10 @@ definitions:
         type: string
       relationships:
         items:
-          $ref: '#/definitions/src_controllers.PermissionRelationshipReply'
+          $ref: '#/definitions/controllers.PermissionRelationshipReply'
         type: array
     type: object
-  src_controllers.PostNoteRequest:
+  controllers.PostNoteRequest:
     properties:
       content:
         example: This is the content of my note.
@@ -854,7 +858,7 @@ definitions:
     - content
     - title
     type: object
-  src_controllers.PostUserRequest:
+  controllers.PostUserRequest:
     properties:
       avatar_url:
         example: https://cdn.example.com/avatars/alice.png
@@ -873,7 +877,7 @@ definitions:
     - password_hash
     - username
     type: object
-  src_controllers.PreferencesJsonBody:
+  controllers.PreferencesJsonBody:
     properties:
       preferences_json:
         example: '{"theme":"dark","language":"de"}'
@@ -893,13 +897,13 @@ definitions:
     - scope
     - target_id
     type: object
-  src_controllers.PreferencesReply:
+  controllers.PreferencesReply:
     properties:
       preferences_json:
         example: '{"theme":"dark","language":"de"}'
         type: string
     type: object
-  src_controllers.RemoveUserFromRoleBody:
+  controllers.RemoveUserFromRoleBody:
     properties:
       role_id:
         example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4ca
@@ -911,7 +915,7 @@ definitions:
     - role_id
     - subject_user_id
     type: object
-  src_controllers.ReplacePermissionsBody:
+  controllers.ReplacePermissionsBody:
     properties:
       object_id:
         example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
@@ -924,14 +928,14 @@ definitions:
         type: string
       relationships:
         items:
-          $ref: '#/definitions/src_controllers.PermissionRelationshipRequest'
+          $ref: '#/definitions/controllers.PermissionRelationshipRequest'
         type: array
     required:
     - object_id
     - object_type
     - relationships
     type: object
-  src_controllers.RoleReply:
+  controllers.RoleReply:
     properties:
       created_at:
         type: string
@@ -942,7 +946,7 @@ definitions:
       name:
         type: string
     type: object
-  src_controllers.RuleReply:
+  controllers.RuleReply:
     properties:
       action_context:
         additionalProperties: {}
@@ -969,14 +973,14 @@ definitions:
       updated_at:
         type: string
     type: object
-  src_controllers.ServiceStatus:
+  controllers.ServiceStatus:
     properties:
       address:
         type: string
       detail:
         type: string
       dns:
-        $ref: '#/definitions/src_controllers.CheckResult'
+        $ref: '#/definitions/controllers.CheckResult'
       error:
         description: |-
           Error is a convenience field that mirrors the first non-empty error
@@ -986,9 +990,9 @@ definitions:
       reachable:
         type: boolean
       service:
-        $ref: '#/definitions/src_controllers.CheckResult'
+        $ref: '#/definitions/controllers.CheckResult'
     type: object
-  src_controllers.SetBooksBody:
+  controllers.SetBooksBody:
     properties:
       book_ids:
         example:
@@ -1003,14 +1007,14 @@ definitions:
     - book_ids
     - shelf_id
     type: object
-  src_controllers.ShelfIdsReply:
+  controllers.ShelfIdsReply:
     properties:
       shelf_ids:
         items:
           type: string
         type: array
     type: object
-  src_controllers.ShelfReply:
+  controllers.ShelfReply:
     properties:
       book_ids:
         items:
@@ -1029,24 +1033,39 @@ definitions:
       slug:
         type: string
     type: object
-  src_controllers.StatusResponse:
+  controllers.SignupRequest:
+    properties:
+      algorithm:
+        example: argon2id
+        type: string
+      email:
+        example: alice@example.com
+        type: string
+      hash:
+        example: $argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+        type: string
+      username:
+        example: alice
+        type: string
+    type: object
+  controllers.StatusResponse:
     properties:
       checked_at:
         type: string
       garage:
-        $ref: '#/definitions/src_controllers.ServiceStatus'
+        $ref: '#/definitions/controllers.ServiceStatus'
       imgproxy:
-        $ref: '#/definitions/src_controllers.ServiceStatus'
+        $ref: '#/definitions/controllers.ServiceStatus'
       overall_ok:
         type: boolean
       postgres:
-        $ref: '#/definitions/src_controllers.ServiceStatus'
+        $ref: '#/definitions/controllers.ServiceStatus'
       spicedb:
-        $ref: '#/definitions/src_controllers.ServiceStatus'
+        $ref: '#/definitions/controllers.ServiceStatus'
       wersu:
-        $ref: '#/definitions/src_controllers.ServiceStatus'
+        $ref: '#/definitions/controllers.ServiceStatus'
     type: object
-  src_controllers.UpdateRoleBody:
+  controllers.UpdateRoleBody:
     properties:
       description:
         example: All engineers
@@ -1055,7 +1074,7 @@ definitions:
         example: engineering
         type: string
     type: object
-  src_controllers.UpdateRuleBody:
+  controllers.UpdateRuleBody:
     properties:
       action_context:
         additionalProperties: {}
@@ -1079,7 +1098,7 @@ definitions:
         example: note_created
         type: string
     type: object
-  src_controllers.UpdateShareBody:
+  controllers.UpdateShareBody:
     properties:
       description:
         example: Updated share description
@@ -1108,7 +1127,7 @@ definitions:
     - note_id
     - permission
     type: object
-  src_controllers.UpdateShelfBody:
+  controllers.UpdateShelfBody:
     properties:
       description:
         example: Shared notes for engineering team
@@ -1131,7 +1150,7 @@ definitions:
     required:
     - id
     type: object
-  src_controllers.UserRoleMembershipReply:
+  controllers.UserRoleMembershipReply:
     properties:
       granted_at:
         type: string
@@ -1140,11 +1159,137 @@ definitions:
       user_id:
         type: string
     type: object
+  models.JsUserAuth:
+    properties:
+      avatar_url:
+        description: |-
+          AvatarURL is the absolute avatar URL. Empty renders as JSON
+          null so the frontend can fall back to its initials avatar.
+        example: https://cdn.example.com/avatars/alice.png
+        type: string
+      email:
+        example: alice@example.com
+        type: string
+      email_verified_at:
+        example: "2026-10-12T10:00:00Z"
+        type: string
+      id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        type: string
+      is_active:
+        example: true
+        type: boolean
+      username:
+        example: alice
+        type: string
+    type: object
+  proto.DeleteAttachmentResponse:
+    properties:
+      success:
+        type: boolean
+    type: object
 info:
   contact: {}
   description: Provides all methods to persist data for GoToHell
   title: GoToHell Gin REST API
 paths:
+  /api/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Authenticates an existing user via password. The client
+        precomputes the argon2id PHC hash; the server never sees
+        plaintext. On success, a session cookie is set and the
+        canonical UserAuth is returned.
+
+        Passkey login uses the dedicated
+        /auth/passkey/login/{begin,finish} endpoints instead.
+        OAuth flows (Discord, Google) keep their own
+        /auth/<provider>/login routes so the browser can be
+        redirected to the provider.
+      parameters:
+      - description: 'Login payload (kind: \'
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful - session cookie set
+          schema:
+            $ref: '#/definitions/models.JsUserAuth'
+        "400":
+          description: Bad Request - Invalid body, unknown kind, or missing fields
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized - Invalid credentials
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error - gRPC service failure
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Sign in with a password
+      tags:
+      - Authentication
+  /api/auth/signup:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Creates a new user via password signup. The client
+        precomputes the argon2id PHC hash; the server never sees
+        plaintext. On success, a session cookie is set and the
+        canonical UserAuth is returned.
+
+        Returns 409 if the email is already in use.
+      parameters:
+      - description: Signup payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.SignupRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User created and signed in - session cookie set
+          schema:
+            $ref: '#/definitions/models.JsUserAuth'
+        "400":
+          description: Bad Request - Invalid body, missing fields, or unsupported
+            algorithm
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict - Email already in use
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error - gRPC service failure
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Sign up with a password
+      tags:
+      - Authentication
   /api/users:
     post:
       consumes:
@@ -1164,14 +1309,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.PostUserRequest'
+          $ref: '#/definitions/controllers.PostUserRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Created user
           schema:
-            $ref: '#/definitions/github_com_KuramaSyu_WerSu-Rest_src_models.JsUserAuth'
+            $ref: '#/definitions/models.JsUserAuth'
         "400":
           description: Bad Request - missing fields, malformed hash, or invalid argument
           schema:
@@ -1214,14 +1359,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.PatchUserRequest'
+          $ref: '#/definitions/controllers.PatchUserRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Updated user
           schema:
-            $ref: '#/definitions/github_com_KuramaSyu_WerSu-Rest_src_models.JsUserAuth'
+            $ref: '#/definitions/models.JsUserAuth'
         "400":
           description: Bad Request - invalid id, bad JSON, or set/clear conflict
           schema:
@@ -1267,7 +1412,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.AttachmentLinkBody'
+          $ref: '#/definitions/controllers.AttachmentLinkBody'
       responses:
         "204":
           description: No Content
@@ -1283,7 +1428,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.AttachmentLinkBody'
+          $ref: '#/definitions/controllers.AttachmentLinkBody'
       responses:
         "204":
           description: No Content
@@ -1337,7 +1482,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.AttachmentMetadataReply'
+            $ref: '#/definitions/controllers.AttachmentMetadataReply'
       summary: Create attachment
       tags:
       - attachments
@@ -1355,7 +1500,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_KuramaSyu_WerSu-Rest_src_proto.DeleteAttachmentResponse'
+            $ref: '#/definitions/proto.DeleteAttachmentResponse'
       summary: Delete attachment
       tags:
       - attachments
@@ -1390,7 +1535,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.AttachmentMetadataReply'
+            $ref: '#/definitions/controllers.AttachmentMetadataReply'
       summary: Get attachment metadata
       tags:
       - attachments
@@ -1404,14 +1549,14 @@ paths:
         name: metadata
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.PatchAttachmentMetadataRequest'
+          $ref: '#/definitions/controllers.PatchAttachmentMetadataRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.AttachmentMetadataReply'
+            $ref: '#/definitions/controllers.AttachmentMetadataReply'
       summary: Update attachment metadata
       tags:
       - attachments
@@ -1436,7 +1581,7 @@ paths:
         "200":
           description: WebAuthn registration options
           schema:
-            $ref: '#/definitions/src_controllers.PasskeyCeremonyBeginReply'
+            $ref: '#/definitions/controllers.PasskeyCeremonyBeginReply'
         "401":
           description: Unauthorized - User is not authenticated via session
           schema:
@@ -1477,14 +1622,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.PasskeyCeremonyFinishRequest'
+          $ref: '#/definitions/controllers.PasskeyCeremonyFinishRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Passkey linked to account
           schema:
-            $ref: '#/definitions/src_controllers.PasskeyCeremonyFinishReply'
+            $ref: '#/definitions/controllers.PasskeyCeremonyFinishReply'
         "400":
           description: Bad Request - Invalid request body or malformed attestation
           schema:
@@ -1531,7 +1676,7 @@ paths:
         "200":
           description: WebAuthn assertion options
           schema:
-            $ref: '#/definitions/src_controllers.PasskeyCeremonyBeginReply'
+            $ref: '#/definitions/controllers.PasskeyCeremonyBeginReply'
         "503":
           description: Service Unavailable - Passkey support not configured
           schema:
@@ -1562,14 +1707,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.PasskeyCeremonyFinishRequest'
+          $ref: '#/definitions/controllers.PasskeyCeremonyFinishRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Login successful - session cookie set
           schema:
-            $ref: '#/definitions/github_com_KuramaSyu_WerSu-Rest_src_models.JsUserAuth'
+            $ref: '#/definitions/models.JsUserAuth'
         "400":
           description: Bad Request - Invalid request body or expired ceremony
           schema:
@@ -1613,7 +1758,7 @@ paths:
         "200":
           description: WebAuthn registration options
           schema:
-            $ref: '#/definitions/src_controllers.PasskeyCeremonyBeginReply'
+            $ref: '#/definitions/controllers.PasskeyCeremonyBeginReply'
         "400":
           description: Bad Request - Invalid request body
           schema:
@@ -1650,14 +1795,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.PasskeyCeremonyFinishRequest'
+          $ref: '#/definitions/controllers.PasskeyCeremonyFinishRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Passkey registered
           schema:
-            $ref: '#/definitions/src_controllers.PasskeyCeremonyFinishReply'
+            $ref: '#/definitions/controllers.PasskeyCeremonyFinishReply'
         "400":
           description: Bad Request - Invalid request body or expired ceremony
           schema:
@@ -1690,7 +1835,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.ChangePasswordRequest'
+          $ref: '#/definitions/controllers.ChangePasswordRequest'
       produces:
       - application/json
       responses:
@@ -1729,7 +1874,7 @@ paths:
         "200":
           description: Successfully generated and returned access token
           schema:
-            $ref: '#/definitions/src_controllers.GetAccessTokenReply'
+            $ref: '#/definitions/controllers.GetAccessTokenReply'
         "401":
           description: Unauthorized - User is not authenticated via session
           schema:
@@ -1758,7 +1903,7 @@ paths:
         "200":
           description: Successfully generated and returned access token
           schema:
-            $ref: '#/definitions/src_controllers.GetAccessTokenReply'
+            $ref: '#/definitions/controllers.GetAccessTokenReply'
         "401":
           description: Unauthorized - User is not authenticated via session
           schema:
@@ -1816,7 +1961,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/src_controllers.DirectoryReply'
+              $ref: '#/definitions/controllers.DirectoryReply'
             type: array
         "400":
           description: Bad Request
@@ -1843,14 +1988,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.PatchDirectoryBody'
+          $ref: '#/definitions/controllers.PatchDirectoryBody'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.DirectoryReply'
+            $ref: '#/definitions/controllers.DirectoryReply'
         "400":
           description: Bad Request
           schema:
@@ -1876,14 +2021,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.CreateDirectoryBody'
+          $ref: '#/definitions/controllers.CreateDirectoryBody'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.DirectoryReply'
+            $ref: '#/definitions/controllers.DirectoryReply'
         "400":
           description: Bad Request
           schema:
@@ -1916,7 +2061,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.DirectoryReply'
+            $ref: '#/definitions/controllers.DirectoryReply'
         "400":
           description: Bad Request
           schema:
@@ -1964,7 +2109,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.DirectoryReply'
+            $ref: '#/definitions/controllers.DirectoryReply'
         "400":
           description: Bad Request
           schema:
@@ -2014,7 +2159,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/src_controllers.NoteVersionSummaryReply'
+              $ref: '#/definitions/controllers.NoteVersionSummaryReply'
             type: array
         "400":
           description: Bad Request
@@ -2062,7 +2207,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.NotesReply'
+            $ref: '#/definitions/controllers.NotesReply'
         "400":
           description: Bad Request
           schema:
@@ -2108,7 +2253,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/src_controllers.NoteVersionSummaryReply'
+              $ref: '#/definitions/controllers.NoteVersionSummaryReply'
             type: array
         "400":
           description: Bad Request
@@ -2213,7 +2358,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/src_controllers.ActivityReply'
+              $ref: '#/definitions/controllers.ActivityReply'
             type: array
         "400":
           description: Bad Request
@@ -2249,7 +2394,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.BookstackBookImportReply'
+            $ref: '#/definitions/controllers.BookstackBookImportReply'
         "400":
           description: Bad Request
           schema:
@@ -2290,14 +2435,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.PatchNoteRequest'
+          $ref: '#/definitions/controllers.PatchNoteRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.NoteReply'
+            $ref: '#/definitions/controllers.NoteReply'
         "400":
           description: Bad Request
           schema:
@@ -2323,14 +2468,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.PostNoteRequest'
+          $ref: '#/definitions/controllers.PostNoteRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.NoteReply'
+            $ref: '#/definitions/controllers.NoteReply'
         "400":
           description: Bad Request
           schema:
@@ -2357,7 +2502,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.NoteReply'
+            $ref: '#/definitions/controllers.NoteReply'
         "400":
           description: Bad Request
           schema:
@@ -2389,7 +2534,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.NoteReply'
+            $ref: '#/definitions/controllers.NoteReply'
         "400":
           description: Bad Request
           schema:
@@ -2425,7 +2570,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/src_controllers.NoteVersionSummaryReply'
+              $ref: '#/definitions/controllers.NoteVersionSummaryReply'
             type: array
         "400":
           description: Bad Request
@@ -2458,7 +2603,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.NoteVersionContentReply'
+            $ref: '#/definitions/controllers.NoteVersionContentReply'
         "400":
           description: Bad Request
           schema:
@@ -2490,7 +2635,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.NoteReply'
+            $ref: '#/definitions/controllers.NoteReply'
         "400":
           description: Bad Request
           schema:
@@ -2584,7 +2729,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.NotesReply'
+            $ref: '#/definitions/controllers.NotesReply'
         "400":
           description: Bad Request
           schema:
@@ -2605,14 +2750,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.DeletePermissionBody'
+          $ref: '#/definitions/controllers.DeletePermissionBody'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.PermissionsReply'
+            $ref: '#/definitions/controllers.PermissionsReply'
         "400":
           description: Bad Request
           schema:
@@ -2652,7 +2797,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.PermissionsReply'
+            $ref: '#/definitions/controllers.PermissionsReply'
         "400":
           description: Bad Request
           schema:
@@ -2678,14 +2823,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.CreatePermissionBody'
+          $ref: '#/definitions/controllers.CreatePermissionBody'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.PermissionsReply'
+            $ref: '#/definitions/controllers.PermissionsReply'
         "400":
           description: Bad Request
           schema:
@@ -2711,14 +2856,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.ReplacePermissionsBody'
+          $ref: '#/definitions/controllers.ReplacePermissionsBody'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.PermissionsReply'
+            $ref: '#/definitions/controllers.PermissionsReply'
         "400":
           description: Bad Request
           schema:
@@ -2746,14 +2891,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.DeletePreferencesBody'
+          $ref: '#/definitions/controllers.DeletePreferencesBody'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.DeletePreferencesReply'
+            $ref: '#/definitions/controllers.DeletePreferencesReply'
         "400":
           description: Bad Request
           schema:
@@ -2797,7 +2942,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.PreferencesReply'
+            $ref: '#/definitions/controllers.PreferencesReply'
         "400":
           description: Bad Request
           schema:
@@ -2825,14 +2970,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.PreferencesJsonBody'
+          $ref: '#/definitions/controllers.PreferencesJsonBody'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.PreferencesReply'
+            $ref: '#/definitions/controllers.PreferencesReply'
         "400":
           description: Bad Request
           schema:
@@ -2864,14 +3009,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.PreferencesJsonBody'
+          $ref: '#/definitions/controllers.PreferencesJsonBody'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.PreferencesReply'
+            $ref: '#/definitions/controllers.PreferencesReply'
         "400":
           description: Bad Request
           schema:
@@ -2914,7 +3059,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/src_controllers.RoleReply'
+              $ref: '#/definitions/controllers.RoleReply'
             type: array
         "400":
           description: Bad Request
@@ -2943,14 +3088,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.CreateRoleBody'
+          $ref: '#/definitions/controllers.CreateRoleBody'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.RoleReply'
+            $ref: '#/definitions/controllers.RoleReply'
         "400":
           description: Bad Request
           schema:
@@ -3029,7 +3174,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.RoleReply'
+            $ref: '#/definitions/controllers.RoleReply'
         "400":
           description: Bad Request
           schema:
@@ -3068,14 +3213,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.UpdateRoleBody'
+          $ref: '#/definitions/controllers.UpdateRoleBody'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.RoleReply'
+            $ref: '#/definitions/controllers.RoleReply'
         "400":
           description: Bad Request
           schema:
@@ -3115,7 +3260,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/src_controllers.RoleReply'
+              $ref: '#/definitions/controllers.RoleReply'
             type: array
         "400":
           description: Bad Request
@@ -3145,7 +3290,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.RemoveUserFromRoleBody'
+          $ref: '#/definitions/controllers.RemoveUserFromRoleBody'
       produces:
       - application/json
       responses:
@@ -3189,7 +3334,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/src_controllers.UserRoleMembershipReply'
+              $ref: '#/definitions/controllers.UserRoleMembershipReply'
             type: array
         "400":
           description: Bad Request
@@ -3218,14 +3363,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.AddUserToRoleBody'
+          $ref: '#/definitions/controllers.AddUserToRoleBody'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.UserRoleMembershipReply'
+            $ref: '#/definitions/controllers.UserRoleMembershipReply'
         "400":
           description: Bad Request
           schema:
@@ -3280,7 +3425,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/src_controllers.RuleReply'
+              $ref: '#/definitions/controllers.RuleReply'
             type: array
         "400":
           description: Bad Request
@@ -3307,14 +3452,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.CreateRuleBody'
+          $ref: '#/definitions/controllers.CreateRuleBody'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.RuleReply'
+            $ref: '#/definitions/controllers.RuleReply'
         "400":
           description: Bad Request
           schema:
@@ -3389,7 +3534,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.RuleReply'
+            $ref: '#/definitions/controllers.RuleReply'
         "400":
           description: Bad Request
           schema:
@@ -3426,14 +3571,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.UpdateRuleBody'
+          $ref: '#/definitions/controllers.UpdateRuleBody'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.RuleReply'
+            $ref: '#/definitions/controllers.RuleReply'
         "400":
           description: Bad Request
           schema:
@@ -3466,7 +3611,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.DeleteSharesBody'
+          $ref: '#/definitions/controllers.DeleteSharesBody'
       produces:
       - application/json
       responses:
@@ -3502,7 +3647,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.GetPublicShareResponse'
+            $ref: '#/definitions/controllers.GetPublicShareResponse'
         "400":
           description: Bad Request
           schema:
@@ -3528,14 +3673,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.UpdateShareBody'
+          $ref: '#/definitions/controllers.UpdateShareBody'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.NoteShareReply'
+            $ref: '#/definitions/controllers.NoteShareReply'
         "400":
           description: Bad Request
           schema:
@@ -3561,14 +3706,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.CreateShareRequestBody'
+          $ref: '#/definitions/controllers.CreateShareRequestBody'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.NoteShareReply'
+            $ref: '#/definitions/controllers.NoteShareReply'
         "400":
           description: Bad Request
           schema:
@@ -3601,7 +3746,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.NoteShareReply'
+            $ref: '#/definitions/controllers.NoteShareReply'
         "400":
           description: Bad Request
           schema:
@@ -3644,7 +3789,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/src_controllers.NoteShareReply'
+              $ref: '#/definitions/controllers.NoteShareReply'
             type: array
         "400":
           description: Bad Request
@@ -3674,14 +3819,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.DeleteShelfBody'
+          $ref: '#/definitions/controllers.DeleteShelfBody'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.DeleteShelfReply'
+            $ref: '#/definitions/controllers.DeleteShelfReply'
         "400":
           description: Bad Request
           schema:
@@ -3727,7 +3872,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/src_controllers.ShelfReply'
+              $ref: '#/definitions/controllers.ShelfReply'
             type: array
         "400":
           description: Bad Request
@@ -3754,14 +3899,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.UpdateShelfBody'
+          $ref: '#/definitions/controllers.UpdateShelfBody'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.ShelfReply'
+            $ref: '#/definitions/controllers.ShelfReply'
         "400":
           description: Bad Request
           schema:
@@ -3795,14 +3940,14 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.CreateShelfBody'
+          $ref: '#/definitions/controllers.CreateShelfBody'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.CreateShelfReply'
+            $ref: '#/definitions/controllers.CreateShelfReply'
         "400":
           description: Bad Request
           schema:
@@ -3845,7 +3990,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.ShelfReply'
+            $ref: '#/definitions/controllers.ShelfReply'
         "400":
           description: Bad Request
           schema:
@@ -3884,7 +4029,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.BookIdsReply'
+            $ref: '#/definitions/controllers.BookIdsReply'
         "400":
           description: Bad Request
           schema:
@@ -3911,7 +4056,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.SetBooksBody'
+          $ref: '#/definitions/controllers.SetBooksBody'
       produces:
       - application/json
       responses:
@@ -3949,7 +4094,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.AttachBookBody'
+          $ref: '#/definitions/controllers.AttachBookBody'
       produces:
       - application/json
       responses:
@@ -3987,7 +4132,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.DetachBookBody'
+          $ref: '#/definitions/controllers.DetachBookBody'
       produces:
       - application/json
       responses:
@@ -4031,7 +4176,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.ShelfIdsReply'
+            $ref: '#/definitions/controllers.ShelfIdsReply'
         "400":
           description: Bad Request
           schema:
@@ -4058,7 +4203,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/src_controllers.GetShelvesBody'
+          $ref: '#/definitions/controllers.GetShelvesBody'
       produces:
       - application/json
       responses:
@@ -4066,7 +4211,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/src_controllers.ShelfReply'
+              $ref: '#/definitions/controllers.ShelfReply'
             type: array
         "400":
           description: Bad Request
@@ -4097,7 +4242,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/src_controllers.StatusResponse'
+            $ref: '#/definitions/controllers.StatusResponse'
       summary: Service reachability status
       tags:
       - Status
