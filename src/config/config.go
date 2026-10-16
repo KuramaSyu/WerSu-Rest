@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"net/url"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -11,8 +12,17 @@ import (
 // Config holds application configuration
 type Config struct {
 	DiscordOAuthConfig *oauth2.Config
-	GoogleOAuthConfig  *oauth2.Config
-	WebAuthnRPID       string
+	// DiscordLinkOAuthConfig is the OAuth config used by the popup
+	// link flow (`/api/auth/link/discord/*`). When nil the link
+	// endpoint returns 503 -- this lets operators deploy login
+	// first and roll out the link flow separately by configuring
+	// the link redirect URL at the provider app.
+	DiscordLinkOAuthConfig *oauth2.Config
+	GoogleOAuthConfig      *oauth2.Config
+	// GoogleLinkOAuthConfig mirrors DiscordLinkOAuthConfig for the
+	// Google provider.
+	GoogleLinkOAuthConfig *oauth2.Config
+	WebAuthnRPID          string
 	WebAuthnRPName     string
 	SessionSecret      string
 	FrontendURL        string
@@ -64,12 +74,24 @@ func Load() *Config {
 	googleClientSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
 	googleRedirectURL := os.Getenv("GOOGLE_REDIRECT_URI")
 
+	// Link OAuth redirect URLs. These point to
+	// `/api/auth/link/<p>/callback` and must be registered at the
+	// provider app alongside the regular login redirect URL. When
+	// unset, the popup-based link flow returns 503 ("link OAuth is
+	// not configured"); the SPA then falls back to the existing
+	// `POST /api/auth/link/<p>` route.
+	discordLinkRedirectURL := os.Getenv("DISCORD_LINK_REDIRECT_URI")
+	googleLinkRedirectURL := os.Getenv("GOOGLE_LINK_REDIRECT_URI")
+
 	// WebAuthn relying party. RPID is the registrable domain
-	// (e.g. "iwillfind.it"). RP_NAME is shown to the user in the
-	// authenticator prompt. The browser's origin is verified against
-	// the RP ID by the strategy layer.
-	webAuthnRPID := os.Getenv("WEBAUTHN_RP_ID")
+	// (e.g. "iwillfind.it"); RP_NAME is the human-readable party
+	// name shown in the authenticator prompt. The RP ID is derived
+	// from FrontendURL -- scheme, port and path are stripped, so
+	// "https://iwillfind.it/app" yields "iwillfind.it". When
+	// FrontendURL is unset or unparseable, RPID stays empty and the
+	// passkey endpoints return 503.
 	webAuthnRPName := os.Getenv("WEBAUTHN_RP_NAME")
+	webAuthnRPID := deriveWebAuthnRPID(frontendURL)
 
 	// Validate required configuration
 
@@ -158,10 +180,38 @@ func Load() *Config {
 		}
 	}
 
+	// Link OAuth configs reuse the regular OAuth config's ClientID /
+	// Secret / Endpoint but use a separate RedirectURL that points
+	// at `/api/auth/link/<p>/callback`. Without it, the popup link
+	// flow is disabled (returns 503); the SPA can still use the
+	// existing `POST /api/auth/link/<p>` fallback.
+	var discordLinkOAuthConfig *oauth2.Config
+	if clientID != "" && clientSecret != "" && discordLinkRedirectURL != "" {
+		discordLinkOAuthConfig = &oauth2.Config{
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
+			RedirectURL:  discordLinkRedirectURL,
+			Scopes:       []string{"identify", "email"},
+			Endpoint:     discordOAuthConfig.Endpoint,
+		}
+	}
+	var googleLinkOAuthConfig *oauth2.Config
+	if googleOAuthConfig != nil && googleLinkRedirectURL != "" {
+		googleLinkOAuthConfig = &oauth2.Config{
+			ClientID:     googleClientID,
+			ClientSecret: googleClientSecret,
+			RedirectURL:  googleLinkRedirectURL,
+			Scopes:       []string{"openid", "email", "profile"},
+			Endpoint:     googleOAuthConfig.Endpoint,
+		}
+	}
+
 	AppConfig = &Config{
-		DiscordOAuthConfig: discordOAuthConfig,
-		GoogleOAuthConfig:  googleOAuthConfig,
-		WebAuthnRPID:       webAuthnRPID,
+		DiscordOAuthConfig:      discordOAuthConfig,
+		DiscordLinkOAuthConfig:  discordLinkOAuthConfig,
+		GoogleOAuthConfig:       googleOAuthConfig,
+		GoogleLinkOAuthConfig:   googleLinkOAuthConfig,
+		WebAuthnRPID:            webAuthnRPID,
 		WebAuthnRPName:     webAuthnRPName,
 		SessionSecret:      sessionSecret,
 		FrontendURL:        frontendURL,
@@ -187,12 +237,22 @@ func PrintConfig(cfg *Config) {
 	log.Println("  ClientID:      ", cfg.DiscordOAuthConfig.ClientID) // Consider masking in production
 	log.Println("  RedirectURL:   ", cfg.DiscordOAuthConfig.RedirectURL)
 	log.Println("  Scopes:        ", cfg.DiscordOAuthConfig.Scopes)
+	if cfg.DiscordLinkOAuthConfig != nil {
+		log.Println("Discord Link OAuth RedirectURL:", cfg.DiscordLinkOAuthConfig.RedirectURL)
+	} else {
+		log.Println("Discord Link OAuth: (not configured)")
+	}
 	if cfg.GoogleOAuthConfig != nil {
 		log.Println("Google OAuth Config:")
 		log.Println("  ClientID:      ", cfg.GoogleOAuthConfig.ClientID)
 		log.Println("  RedirectURL:   ", cfg.GoogleOAuthConfig.RedirectURL)
 	} else {
 		log.Println("Google OAuth:    (not configured)")
+	}
+	if cfg.GoogleLinkOAuthConfig != nil {
+		log.Println("Google Link OAuth RedirectURL:", cfg.GoogleLinkOAuthConfig.RedirectURL)
+	} else {
+		log.Println("Google Link OAuth: (not configured)")
 	}
 	if cfg.WebAuthnRPID != "" {
 		log.Println("WebAuthn RP ID:  ", cfg.WebAuthnRPID)
@@ -224,4 +284,19 @@ func maskSensitiveValue(value string) string {
 		return "****"
 	}
 	return value[:2] + "****" + value[len(value)-2:]
+}
+
+// deriveWebAuthnRPID strips the scheme, port and path off
+// frontendURL and returns the bare host (e.g. "iwillfind.it"). It
+// returns an empty string when frontendURL is empty or unparseable,
+// so callers can treat that as "passkey support not configured".
+func deriveWebAuthnRPID(frontendURL string) string {
+	if frontendURL == "" {
+		return ""
+	}
+	u, err := url.Parse(frontendURL)
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	return u.Hostname()
 }
