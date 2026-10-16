@@ -440,15 +440,12 @@ func TestPasswordStrategySignup(t *testing.T) {
 		},
 	}
 
-	clientHash, _ := (Argon2Hasher{}).Hash("correct horse battery staple")
-
 	s := &PasswordStrategy{
-		Auth:      fake,
-		Email:     "alice@example.com",
-		Username:  "alice",
-		Hash:      clientHash,
-		Algorithm: "argon2id",
-		Signup:    true,
+		Auth:     fake,
+		Email:    "alice@example.com",
+		Username: "alice",
+		Password: "correct horse battery staple",
+		Signup:   true,
 	}
 	got, err := s.Login(context.Background())
 	if err != nil {
@@ -469,8 +466,8 @@ func TestPasswordStrategySignup(t *testing.T) {
 	if storedHash == "" {
 		t.Fatal("password hash was empty")
 	}
-	if storedHash == clientHash {
-		// expected: the strategy passes the client hash through.
+	if storedHash == "correct horse battery staple" {
+		t.Fatal("plaintext password leaked to gRPC")
 	}
 	// Verify the stored hash reproduces the original plaintext.
 	ok, err := (Argon2Hasher{}).Verify("correct horse battery staple", storedHash)
@@ -483,18 +480,16 @@ func TestPasswordStrategySignup(t *testing.T) {
 }
 
 func TestPasswordStrategySignupAlreadyExists(t *testing.T) {
-	hash, _ := (Argon2Hasher{}).Hash("anything")
 	fake := &FakeAuthClient{
 		OnCreateUserAuth: func(*proto.CreateUserAuthRequest) (*proto.CreateUserAuthResponse, error) {
 			return nil, alreadyExistsErr()
 		},
 	}
 	s := &PasswordStrategy{
-		Auth:      fake,
-		Email:     "taken@example.com",
-		Hash:      hash,
-		Algorithm: "argon2id",
-		Signup:    true,
+		Auth:     fake,
+		Email:    "taken@example.com",
+		Password: "anything",
+		Signup:   true,
 	}
 	_, err := s.Login(context.Background())
 	if !isAlreadyExists(err) {
@@ -502,8 +497,23 @@ func TestPasswordStrategySignupAlreadyExists(t *testing.T) {
 	}
 }
 
+func TestPasswordStrategySignupEmptyPassword(t *testing.T) {
+	// Empty password must be rejected before reaching gRPC; the
+	// hasher itself rejects empty input, so the strategy surfaces
+	// it as InvalidCredentialsError.
+	s := &PasswordStrategy{
+		Auth:     &FakeAuthClient{},
+		Email:    "alice@example.com",
+		Password: "",
+		Signup:   true,
+	}
+	if _, err := s.Login(context.Background()); err == nil {
+		t.Fatal("expected error for empty password")
+	}
+}
+
 func TestPasswordStrategySigninSuccess(t *testing.T) {
-	clientHash, err := (Argon2Hasher{}).Hash("correctpw")
+	storedHash, err := (Argon2Hasher{}).Hash("correctpw")
 	if err != nil {
 		t.Fatalf("Hash: %v", err)
 	}
@@ -518,17 +528,16 @@ func TestPasswordStrategySigninSuccess(t *testing.T) {
 				t.Errorf("email = %q, want alice@example.com", in.GetEmail())
 			}
 			return &proto.FindCredentialByProviderResponse{
-				Credential: &proto.Credential{Id: "c-1", UserId: "u-1", Kind: proto.CredentialKind_CREDENTIAL_KIND_PASSWORD, Payload: &proto.Credential_PasswordHash{PasswordHash: clientHash}},
+				Credential: &proto.Credential{Id: "c-1", UserId: "u-1", Kind: proto.CredentialKind_CREDENTIAL_KIND_PASSWORD, Payload: &proto.Credential_PasswordHash{PasswordHash: storedHash}},
 				User:       want,
 			}, nil
 		},
 	}
 
 	s := &PasswordStrategy{
-		Auth:      fake,
-		Email:     "alice@example.com",
-		Hash:      clientHash,
-		Algorithm: "argon2id",
+		Auth:     fake,
+		Email:    "alice@example.com",
+		Password: "correctpw",
 	}
 	got, err := s.Login(context.Background())
 	if err != nil {
@@ -541,7 +550,6 @@ func TestPasswordStrategySigninSuccess(t *testing.T) {
 
 func TestPasswordStrategySigninWrongPassword(t *testing.T) {
 	storedHash, _ := (Argon2Hasher{}).Hash("correctpw")
-	wrongHash, _ := (Argon2Hasher{}).Hash("wrongpw")
 
 	fake := &FakeAuthClient{
 		OnFindCredentialByProv: func(*proto.FindCredentialByProviderRequest) (*proto.FindCredentialByProviderResponse, error) {
@@ -553,10 +561,9 @@ func TestPasswordStrategySigninWrongPassword(t *testing.T) {
 	}
 
 	s := &PasswordStrategy{
-		Auth:      fake,
-		Email:     "alice@example.com",
-		Hash:      wrongHash,
-		Algorithm: "argon2id",
+		Auth:     fake,
+		Email:    "alice@example.com",
+		Password: "wrongpw",
 	}
 	_, err := s.Login(context.Background())
 	if !errors.Is(err, InvalidCredentialsError) {
@@ -565,10 +572,9 @@ func TestPasswordStrategySigninWrongPassword(t *testing.T) {
 }
 
 func TestPasswordStrategySigninUserNotFound(t *testing.T) {
-	// When the user doesn't exist, the strategy should still do a
-	// dummy compare to keep timing constant, and return
-	// InvalidCredentialsError (no leak about whether the email exists).
-	clientHash, _ := (Argon2Hasher{}).Hash("anything")
+	// When the user doesn't exist, the strategy should still hash
+	// to keep timing constant, and return InvalidCredentialsError
+	// (no leak about whether the email exists).
 	fake := &FakeAuthClient{
 		OnFindCredentialByProv: func(*proto.FindCredentialByProviderRequest) (*proto.FindCredentialByProviderResponse, error) {
 			return nil, notFoundErr()
@@ -576,10 +582,9 @@ func TestPasswordStrategySigninUserNotFound(t *testing.T) {
 	}
 
 	s := &PasswordStrategy{
-		Auth:      fake,
-		Email:     "ghost@example.com",
-		Hash:      clientHash,
-		Algorithm: "argon2id",
+		Auth:     fake,
+		Email:    "ghost@example.com",
+		Password: "anything",
 	}
 	_, err := s.Login(context.Background())
 	if !errors.Is(err, InvalidCredentialsError) {
@@ -588,15 +593,23 @@ func TestPasswordStrategySigninUserNotFound(t *testing.T) {
 }
 
 func TestPasswordStrategySigninEmptyEmail(t *testing.T) {
-	// Both hidden from the /auth/login endpoint and the strategy
-	// itself: empty email is invalidated to avoid leaking whether
-	// the field was even supplied.
-	clientHash, _ := (Argon2Hasher{}).Hash("x")
+	// Empty email is invalidated to avoid leaking whether the
+	// field was even supplied.
 	s := &PasswordStrategy{
-		Auth:      &FakeAuthClient{},
-		Email:     "",
-		Hash:      clientHash,
-		Algorithm: "argon2id",
+		Auth:     &FakeAuthClient{},
+		Email:    "",
+		Password: "x",
+	}
+	if _, err := s.Login(context.Background()); !errors.Is(err, InvalidCredentialsError) {
+		t.Fatalf("expected InvalidCredentialsError, got %v", err)
+	}
+}
+
+func TestPasswordStrategySigninEmptyPassword(t *testing.T) {
+	s := &PasswordStrategy{
+		Auth:     &FakeAuthClient{},
+		Email:    "a@b.c",
+		Password: "",
 	}
 	if _, err := s.Login(context.Background()); !errors.Is(err, InvalidCredentialsError) {
 		t.Fatalf("expected InvalidCredentialsError, got %v", err)
@@ -604,41 +617,13 @@ func TestPasswordStrategySigninEmptyEmail(t *testing.T) {
 }
 
 func TestPasswordStrategyNilAuth(t *testing.T) {
-	clientHash, _ := (Argon2Hasher{}).Hash("x")
 	s := &PasswordStrategy{
-		Auth:      nil,
-		Email:     "a@b.c",
-		Hash:      clientHash,
-		Algorithm: "argon2id",
+		Auth:     nil,
+		Email:    "a@b.c",
+		Password: "x",
 	}
 	if _, err := s.Login(context.Background()); err == nil {
 		t.Fatal("expected error when Auth is nil")
-	}
-}
-
-func TestPasswordStrategyRejectsBadAlgorithm(t *testing.T) {
-	// Client claimed bcrypt, but server only accepts argon2id.
-	s := &PasswordStrategy{
-		Auth:      &FakeAuthClient{},
-		Email:     "a@b.c",
-		Hash:      "$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
-		Algorithm: "bcrypt",
-	}
-	if _, err := s.Login(context.Background()); !errors.Is(err, InvalidCredentialsError) {
-		t.Fatalf("expected InvalidCredentialsError, got %v", err)
-	}
-}
-
-func TestPasswordStrategyRejectsMalformedHash(t *testing.T) {
-	// Hash does not start with the expected argon2id prefix.
-	s := &PasswordStrategy{
-		Auth:      &FakeAuthClient{},
-		Email:     "a@b.c",
-		Hash:      "not-a-phc-string",
-		Algorithm: "argon2id",
-	}
-	if _, err := s.Login(context.Background()); !errors.Is(err, InvalidCredentialsError) {
-		t.Fatalf("expected InvalidCredentialsError, got %v", err)
 	}
 }
 

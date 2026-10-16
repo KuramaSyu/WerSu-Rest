@@ -20,13 +20,16 @@ const (
 	argonHashLen     uint32 = 32
 )
 
-// Argon2Hasher is the small client-side helper that produces the
-// PHC-encoded argon2id hash the REST API accepts. The REST server
-// never hashes itself; clients send the hash directly.
+// Argon2Hasher is the server-side helper that hashes plaintext
+// passwords into the PHC-encoded argon2id string the gRPC backend
+// stores. Clients send plaintext over the wire; the server hashes
+// before reaching gRPC.
+//
+// Format: $argon2id$v=19$m=65536,t=3,p=4$<salt-b64>$<hash-b64>
 type Argon2Hasher struct{}
 
-// Hash returns a PHC-encoded argon2id hash of plaintext.
-// Format: $argon2id$v=19$m=65536,t=3,p=4$<salt-b64>$<hash-b64>
+// Hash returns a PHC-encoded argon2id hash of plaintext. Empty
+// input is rejected so trivial passwords never reach the store.
 func (Argon2Hasher) Hash(plaintext string) (string, error) {
 	if plaintext == "" {
 		return "", errors.New("empty password")
@@ -37,8 +40,8 @@ func (Argon2Hasher) Hash(plaintext string) (string, error) {
 }
 
 // Verify recomputes the hash from the encoded PHC string and
-// constant-time compares it. Kept for client-side flows and tests;
-// the server never calls it.
+// constant-time compares it. Kept for tests and future server-side
+// re-verification flows.
 func (Argon2Hasher) Verify(plaintext, encoded string) (bool, error) {
 	mode, _, m, t, p, salt, want, err := DecodePHC(encoded)
 	if err != nil {
@@ -52,17 +55,16 @@ func (Argon2Hasher) Verify(plaintext, encoded string) (bool, error) {
 }
 
 // PasswordStrategy is the dual-purpose strategy for password auth.
-// The REST API never sees plaintext: the client sends a precomputed
-// PHC-encoded hash and the server treats it as opaque bytes.
-// Signup=false: look up the user by email and string-compare the
-// submitted hash against the stored hash. Returns InvalidCredentials
-// on any mismatch. Signup=true: create the user with the supplied
-// hash as-is.
+// Clients send plaintext; the strategy hashes before reaching gRPC.
+//
+// Signup=false: look up the user by email, hash the submitted
+// plaintext, constant-time-compare against the stored hash. Returns
+// InvalidCredentials on any mismatch. Signup=true: hash the
+// plaintext, create the user with the resulting hash.
 type PasswordStrategy struct {
 	Auth      AuthServiceClientIface
 	Email     string
-	Hash      string
-	Algorithm string // must be argon2id when set; the prefix is also checked
+	Password  string // plaintext; hashed by the strategy before gRPC
 	Username  string // signup only
 	Signup    bool
 	AvatarUrl string
@@ -73,13 +75,14 @@ type PasswordStrategy struct {
 var InvalidCredentialsError = errors.New("invalid email or password")
 
 // Login implements LoginStrategy. For signup, it calls CreateUserAuth
-// with the client-provided hash. For signin, it looks up the user
-// by email and constant-time-compares against the stored hash.
+// with the strategy-hashed plaintext. For signin, it looks up the
+// user by email and constant-time-compares the hashed plaintext
+// against the stored hash.
 func (s *PasswordStrategy) Login(ctx context.Context) (*proto.UserAuth, error) {
 	if s.Auth == nil {
 		return nil, errors.New("auth service not configured")
 	}
-	if s.Email == "" || !ValidatePasswordHash(s.Hash, s.Algorithm) {
+	if s.Email == "" || s.Password == "" {
 		return nil, InvalidCredentialsError
 	}
 
@@ -90,10 +93,14 @@ func (s *PasswordStrategy) Login(ctx context.Context) (*proto.UserAuth, error) {
 }
 
 func (s *PasswordStrategy) signup(ctx context.Context) (*proto.UserAuth, error) {
+	hash, err := (Argon2Hasher{}).Hash(s.Password)
+	if err != nil {
+		return nil, err
+	}
 	createResp, err := s.Auth.CreateUserAuth(ctx, &proto.CreateUserAuthRequest{
 		Email:        s.Email,
 		Username:     s.Username,
-		PasswordHash: s.Hash,
+		PasswordHash: hash,
 		AvatarUrl:    s.AvatarUrl,
 	})
 	if err != nil {
@@ -111,15 +118,17 @@ func (s *PasswordStrategy) signin(ctx context.Context) (*proto.UserAuth, error) 
 	})
 	if err != nil {
 		if IsNotFound(err) {
-			// No user with this email -- do a dummy compare to keep
-			// timing on par with a real one (no leak of existence).
-			constantTimeEqual([]byte(s.Hash), []byte(s.Hash))
+			// No user with this email -- still hash against the
+			// submitted plaintext to keep timing on par with a real
+			// compare (no leak of existence).
+			_, _ = (Argon2Hasher{}).Hash(s.Password)
 			return nil, InvalidCredentialsError
 		}
 		return nil, err
 	}
 	stored := resp.GetCredential().GetPasswordHash()
-	if !constantTimeEqual([]byte(s.Hash), []byte(stored)) {
+	ok, verr := (Argon2Hasher{}).Verify(s.Password, stored)
+	if verr != nil || !ok {
 		return nil, InvalidCredentialsError
 	}
 	return resp.GetUser(), nil
