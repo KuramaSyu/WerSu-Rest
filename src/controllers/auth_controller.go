@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -47,9 +49,27 @@ type PostAccessTokenRequest struct {
 type AuthController struct {
 	OAuthConfig  *oauth2.Config
 	GoogleOAuth  *oauth2.Config
-	authService  auth.AuthServiceClientIface
-	shareService *proto.SharingServiceClient
-	JWTSecret    string
+	// OAuthLinkConfig is the OAuth config used by the popup-based
+	// link flow (`/api/auth/link/discord/*`). It uses a separate
+	// RedirectURL that points to the link callback. Nil when the
+	// link OAuth is not configured; the link endpoints then
+	// return 503 so the SPA can fall back to `POST /api/auth/link/<p>`.
+	OAuthLinkConfig *oauth2.Config
+	// GoogleLinkOAuth mirrors OAuthLinkConfig for Google.
+	GoogleLinkOAuth *oauth2.Config
+
+	// DiscordUserinfoURL is the absolute URL the Discord link
+	// callback hits to fetch the user's profile after exchanging
+	// the code. Defaults to https://discord.com/api/users/@me
+	// when empty. Exposed so tests can redirect it at a mock
+	// httptest server.
+	DiscordUserinfoURL string
+	// GoogleUserinfoURL is the equivalent for Google. Defaults to
+	// https://openidconnect.googleapis.com/v1/userinfo.
+	GoogleUserinfoURL string
+	authService     auth.AuthServiceClientIface
+	shareService    *proto.SharingServiceClient
+	JWTSecret       string
 
 	// webauthn runs the WebAuthn ceremony. Nil when RP ID is unset
 	// (the six passkey endpoints then return 503).
@@ -68,6 +88,13 @@ type ceremonyEntry struct {
 
 // NewAuthController wires the controller. When rpID is empty the
 // WebAuthn instance is left nil and the passkey endpoints return 503.
+//
+// The discordLinkOAuthConfig and googleLinkOAuthConfig are the OAuth
+// configs used by the popup-based link flow. They typically share the
+// ClientID / Secret / Endpoint of the login configs but use a separate
+// RedirectURL that points at `/api/auth/link/<p>/callback`. When a
+// link config is nil, the matching link endpoints return 503 and the
+// SPA falls back to the existing `POST /api/auth/link/<p>` route.
 func NewAuthController(
 	discordOAuthConfig *oauth2.Config,
 	googleOAuthConfig *oauth2.Config,
@@ -77,13 +104,17 @@ func NewAuthController(
 	rpID string,
 	rpName string,
 	rpOrigins []string,
+	discordLinkOAuthConfig *oauth2.Config,
+	googleLinkOAuthConfig *oauth2.Config,
 ) *AuthController {
 	ac := &AuthController{
-		OAuthConfig:  discordOAuthConfig,
-		GoogleOAuth:  googleOAuthConfig,
-		authService:  authService,
-		shareService: shareService,
-		JWTSecret:    jwtSecret,
+		OAuthConfig:     discordOAuthConfig,
+		OAuthLinkConfig: discordLinkOAuthConfig,
+		GoogleOAuth:     googleOAuthConfig,
+		GoogleLinkOAuth: googleLinkOAuthConfig,
+		authService:     authService,
+		shareService:    shareService,
+		JWTSecret:       jwtSecret,
 	}
 	if rpID != "" {
 		w, err := webauthn.New(&webauthn.Config{
@@ -150,44 +181,28 @@ func (ac *AuthController) webauthnConfigured() bool {
 
 // ------------ Login / signup requests -------------
 
-// PasswordLoginRequest carries a precomputed hash for signin.
-// The server never sees plaintext.
-type PasswordLoginRequest struct {
-	Email     string `json:"email"`
-	Hash      string `json:"hash"`
-	Algorithm string `json:"algorithm"`
-}
-
-// PasswordSignupRequest carries a precomputed hash for signup.
-type PasswordSignupRequest struct {
-	Email     string `json:"email"`
-	Username  string `json:"username"`
-	Hash      string `json:"hash"`
-	Algorithm string `json:"algorithm"`
-}
-
 // LoginRequest is the body of POST /api/auth/login. Today the
 // controller only accepts `kind: "password"`; passkey login goes
 // through the /auth/passkey/login/{begin,finish} endpoints and
 // OAuth flows (Discord, Google) keep their dedicated routes.
+//
+// The password is sent in plaintext over the wire (HTTPS in front)
+// and hashed server-side before reaching gRPC.
 type LoginRequest struct {
 	Kind auth.Kind `json:"kind" example:"password"`
 
 	// Password fields
-	Email     string `json:"email,omitempty" example:"alice@example.com"`
-	Hash      string `json:"hash,omitempty" example:"$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"`
-	Algorithm string `json:"algorithm,omitempty" example:"argon2id"`
-	Username  string `json:"username,omitempty" example:"alice"` // signup only
+	Email    string `json:"email,omitempty" example:"alice@example.com"`
+	Password string `json:"password,omitempty" example:"correct horse battery staple"`
 }
 
 // SignupRequest is the body of POST /api/auth/signup. Splitting
 // signup from login keeps the controller's branching explicit
 // (signup is a separate code path on the gRPC side too).
 type SignupRequest struct {
-	Email     string `json:"email" example:"alice@example.com"`
-	Username  string `json:"username" example:"alice"`
-	Hash      string `json:"hash" example:"$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"`
-	Algorithm string `json:"algorithm" example:"argon2id"`
+	Email    string `json:"email" example:"alice@example.com"`
+	Username string `json:"username" example:"alice"`
+	Password string `json:"password" example:"correct horse battery staple"`
 }
 
 // loginUser is the post-strategy hook that wires the verified user
@@ -344,12 +359,13 @@ func (ac *AuthController) GetUser(c *gin.Context) {
 // ------------ REST CRUD: /api/users -------------
 
 // PostUserRequest is the body for POST /api/users: clients send a
-// precomputed argon2id PHC string in password_hash, never plaintext.
+// plaintext password, the server hashes it server-side before
+// reaching the auth gRPC service.
 type PostUserRequest struct {
-	Email        string `json:"email" binding:"required" example:"alice@example.com"`
-	Username     string `json:"username" binding:"required" example:"alice"`
-	PasswordHash string `json:"password_hash" binding:"required" example:"$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"`
-	AvatarURL    string `json:"avatar_url,omitempty" example:"https://cdn.example.com/avatars/alice.png"`
+	Email     string `json:"email" binding:"required" example:"alice@example.com"`
+	Username  string `json:"username" binding:"required" example:"alice"`
+	Password  string `json:"password" binding:"required" example:"correct horse battery staple"`
+	AvatarURL string `json:"avatar_url,omitempty" example:"https://cdn.example.com/avatars/alice.png"`
 }
 
 // PatchUserRequest is the body for PATCH /api/users/:id: each field
@@ -368,19 +384,19 @@ type PatchUserRequest struct {
 // PostUser godoc
 // @Summary      Create a user
 // @Description  Creates a user via the auth gRPC service. The client
-// @Description  precomputes the argon2id PHC hash; the server never sees
-// @Description  plaintext. Unlike POST /api/auth/signup, this endpoint
-// @Description  does not set a session cookie, so it is safe for
-// @Description  admin-issued or import flows.
+// @Description  sends a plaintext password; the server hashes it
+// @Description  (argon2id) before reaching gRPC. Unlike POST
+// @Description  /api/auth/signup, this endpoint does not set a session
+// @Description  cookie, so it is safe for admin-issued or import flows.
 // @Description
-// @Description  Returns 409 on a duplicate email and 400 on a malformed
-// @Description  hash or invalid argument.
+// @Description  Returns 409 on a duplicate email and 400 on missing
+// @Description  fields or an invalid argument from gRPC.
 // @Tags         users
 // @Accept       json
 // @Produce      json
 // @Param        payload  body      PostUserRequest  true  "New user payload"
 // @Success      200      {object}  models.JsUserAuth             "Created user"
-// @Failure      400      {object}  map[string]string              "Bad Request - missing fields, malformed hash, or invalid argument"
+// @Failure      400      {object}  map[string]string              "Bad Request - missing fields or invalid argument"
 // @Failure      409      {object}  map[string]string              "Conflict - email already in use"
 // @Failure      500      {object}  map[string]string              "Internal Server Error - gRPC service failure"
 // @Router       /api/users [post]
@@ -390,19 +406,21 @@ func (ac *AuthController) PostUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
-	if req.Email == "" || req.Username == "" || req.PasswordHash == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "email, username, and password_hash are required"})
+	if req.Email == "" || req.Username == "" || req.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email, username, and password are required"})
 		return
 	}
-	if !auth.ValidatePasswordHash(req.PasswordHash, "") {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported password_hash: expected argon2id PHC string"})
+
+	hash, err := auth.Argon2Hasher{}.Hash(req.Password)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	resp, err := ac.authService.CreateUserAuth(c, &proto.CreateUserAuthRequest{
 		Email:        req.Email,
 		Username:     req.Username,
-		PasswordHash: req.PasswordHash,
+		PasswordHash: hash,
 		AvatarUrl:    req.AvatarURL,
 	})
 	if err != nil {
@@ -606,9 +624,10 @@ func (ac *AuthController) GetPublicAccessToken(c *gin.Context) {
 // PostLogin godoc
 // @Summary      Sign in with a password
 // @Description  Authenticates an existing user via password. The client
-// @Description  precomputes the argon2id PHC hash; the server never sees
-// @Description  plaintext. On success, a session cookie is set and the
-// @Description  canonical UserAuth is returned.
+// @Description  sends a plaintext password; the server hashes it
+// @Description  (argon2id) before comparing to the stored hash. On
+// @Description  success, a session cookie is set and the canonical
+// @Description  UserAuth is returned.
 // @Description
 // @Description  Passkey login uses the dedicated
 // @Description  /auth/passkey/login/{begin,finish} endpoints instead.
@@ -641,16 +660,15 @@ func (ac *AuthController) PostLogin(c *gin.Context) {
 	var strategy auth.LoginStrategy
 	switch kind {
 	case auth.KindPassword:
-		if req.Email == "" || req.Hash == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "email and hash are required"})
+		if req.Email == "" || req.Password == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "email and password are required"})
 			return
 		}
 		strategy = &auth.PasswordStrategy{
-			Auth:      ac.authService,
-			Email:     req.Email,
-			Hash:      req.Hash,
-			Algorithm: req.Algorithm,
-			Signup:    false,
+			Auth:     ac.authService,
+			Email:    req.Email,
+			Password: req.Password,
+			Signup:   false,
 		}
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Login kind requires its own route: " + string(kind)})
@@ -672,9 +690,9 @@ func (ac *AuthController) PostLogin(c *gin.Context) {
 // PostSignup godoc
 // @Summary      Sign up with a password
 // @Description  Creates a new user via password signup. The client
-// @Description  precomputes the argon2id PHC hash; the server never sees
-// @Description  plaintext. On success, a session cookie is set and the
-// @Description  canonical UserAuth is returned.
+// @Description  sends a plaintext password; the server hashes it
+// @Description  (argon2id) before reaching gRPC. On success, a session
+// @Description  cookie is set and the canonical UserAuth is returned.
 // @Description
 // @Description  Returns 409 if the email is already in use.
 // @Tags         Authentication
@@ -682,7 +700,7 @@ func (ac *AuthController) PostLogin(c *gin.Context) {
 // @Produce      json
 // @Param        payload  body      SignupRequest  true  "Signup payload"
 // @Success      200      {object}  models.JsUserAuth  "User created and signed in - session cookie set"
-// @Failure      400      {object}  map[string]string   "Bad Request - Invalid body, missing fields, or unsupported algorithm"
+// @Failure      400      {object}  map[string]string   "Bad Request - Invalid body or missing fields"
 // @Failure      409      {object}  map[string]string   "Conflict - Email already in use"
 // @Failure      500      {object}  map[string]string   "Internal Server Error - gRPC service failure"
 // @Router       /api/auth/signup [post]
@@ -692,12 +710,8 @@ func (ac *AuthController) PostSignup(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
-	if req.Email == "" || req.Username == "" || req.Hash == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "email, username, and hash are required"})
-		return
-	}
-	if !auth.ValidatePasswordHash(req.Hash, req.Algorithm) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported algorithm or malformed hash"})
+	if req.Email == "" || req.Username == "" || req.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email, username, and password are required"})
 		return
 	}
 
@@ -707,8 +721,7 @@ func (ac *AuthController) PostSignup(c *gin.Context) {
 		Auth:      ac.authService,
 		Email:     req.Email,
 		Username:  req.Username,
-		Hash:      req.Hash,
-		Algorithm: req.Algorithm,
+		Password:  req.Password,
 		Signup:    true,
 		AvatarUrl: gravatarAvatar,
 	}
@@ -812,6 +825,482 @@ func (ac *AuthController) GoogleCallback(c *gin.Context) {
 		return
 	}
 	ac.loginUser(c, user)
+}
+
+// ------------ Popup-based account linking ------------
+//
+// `GET /api/auth/link/:p/init` opens an OAuth dance in a popup so the
+// SPA can drive a Discord / Google link without leaving the Settings
+// page. The init endpoint generates a CSRF state, stores it in the
+// session, and 302s to the provider. The callback endpoint verifies
+// the state, exchanges the code, and calls `LinkCredential` on the
+// *currently authenticated* user (instead of the login strategy which
+// creates users). It then 302s to `/api/auth/link/:p/complete?payload=…`
+// which serves a tiny HTML page that posts the payload to `window.opener`.
+//
+// The session cookie is shared between the popup and the main window
+// (SameSite=Lax allows top-level navigations to send it), so the
+// session doubles as the auth token AND the CSRF store. The state keys
+// (`link_state_discord`, `link_state_google`) are namespaced to avoid
+// colliding with the regular login flow's `state` / `google_state`.
+//
+// If the popup is lost (closed by user, blocked by browser), the SPA
+// falls back to `POST /api/auth/link/<p>?<provider>_id=…` which is
+// unchanged.
+
+// linkStateKey returns the session key used to store the OAuth state
+// for a link flow. Provider-scoped so simultaneous flows on different
+// providers don't collide.
+func linkStateKey(p string) string { return "link_state_" + p }
+
+// linkOAuthFor returns the OAuth config and credential kind for a
+// link flow. ok=false means the provider is unknown OR the link OAuth
+// is not configured for that provider; callers map false -> 503.
+func (ac *AuthController) linkOAuthFor(p string) (*oauth2.Config, proto.CredentialKind, bool) {
+	switch p {
+	case "discord":
+		if ac.OAuthLinkConfig == nil {
+			return nil, 0, false
+		}
+		return ac.OAuthLinkConfig, proto.CredentialKind_CREDENTIAL_KIND_DISCORD, true
+	case "google":
+		if ac.GoogleLinkOAuth == nil {
+			return nil, 0, false
+		}
+		return ac.GoogleLinkOAuth, proto.CredentialKind_CREDENTIAL_KIND_GOOGLE, true
+	}
+	return nil, 0, false
+}
+
+// encodeLinkPayload serializes a payload map to a URL-safe base64
+// string. The complete endpoint embeds it in `?payload=…` and the
+// HTML page decodes it before posting to the SPA.
+func encodeLinkPayload(payload map[string]any) (string, error) {
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+// decodeLinkPayload parses the `payload` query parameter. ok=false
+// means the payload is missing or malformed.
+func decodeLinkPayload(s string) (map[string]any, bool) {
+	if s == "" {
+		return nil, false
+	}
+	b, err := base64.RawURLEncoding.DecodeString(s)
+	if err != nil {
+		return nil, false
+	}
+	var out map[string]any
+	if err := json.Unmarshal(b, &out); err != nil {
+		return nil, false
+	}
+	return out, true
+}
+
+// frontendOrigin extracts the origin (scheme://host[:port]) from
+// FrontendURL. Falls back to the raw value when the URL doesn't
+// parse cleanly; the popup HTML page only uses it for postMessage
+// targetOrigin so an empty/malformed value becomes a literal "*"
+// after the parse fails.
+func frontendOrigin(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return raw
+	}
+	return u.Scheme + "://" + u.Host
+}
+
+// linkCompleteHTML is the tiny HTML page that the popup serves after
+// a link callback completes. It decodes the `payload` query string
+// and posts it to `window.opener` so the SPA can react (close the
+// popup, refresh the linked-credentials list, show a toast).
+//
+// When `window.opener` is missing (popup opened in a new tab, parent
+// navigated, popup blocker closed the parent), the payload is
+// rendered into the body so the user can copy the result manually.
+// The SPA's fallback flow (`POST /api/auth/link/<p>`) handles the
+// common "opener closed" case.
+const linkCompleteHTMLTmpl = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Link complete</title>
+<style>body{font-family:system-ui,sans-serif;padding:1.5rem;color:#222}</style>
+</head>
+<body>
+<p>You can close this window.</p>
+<pre id="payload" style="white-space:pre-wrap;word-break:break-all"></pre>
+<script>
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var raw = params.get('payload') || '';
+  var data;
+  try { data = JSON.parse(atob(raw)); }
+  catch (err) {
+    document.getElementById('payload').textContent = 'bad payload: ' + err.message;
+    return;
+  }
+  document.getElementById('payload').textContent = JSON.stringify(data, null, 2);
+  data.type = 'auth-link-complete';
+  if (window.opener) {
+    try {
+      window.opener.postMessage(data, %q);
+      window.close();
+    } catch (err) {
+      document.body.insertAdjacentHTML('afterbegin',
+        '<p>postMessage failed: ' + err.message + '</p>');
+    }
+  }
+})();
+</script>
+</body>
+</html>
+`
+
+// GetLinkInit godoc
+// @Summary      Start an OAuth link flow in a popup
+// @Description  Browser-driven entry point for the OAuth account-linking
+// @Description  flow used by the SPA's Security page. The SPA opens a
+// @Description  popup to `GET /api/auth/link/{provider}/init`, which:
+// @Description  1. Requires an active session cookie (the popup and the
+// @Description     main window share the same session).
+// @Description  2. Generates a CSRF `state` and stores it under the
+// @Description     provider-scoped session key, bound to the current
+// @Description     user id so the matching /callback cannot link into
+// @Description     a different account.
+// @Description  3. 302-redirects the popup to the provider's authorize
+// @Description     URL with that `state` as the `state` query parameter.
+// @Description
+// @Description  Returns 503 when the link OAuth is not configured for
+// @Description  the provider (operator did not set the matching
+// @Description  `*_LINK_REDIRECT_URI` env var). When the SPA sees 503
+// @Description  it falls back to the non-popup route:
+// @Description  `POST /api/auth/link/discord` or
+// @Description  `POST /api/auth/link/google` (literal paths, not
+// @Description  templated).
+// @Tags         Authentication
+// @Produce      json
+// @Security     CookieAuth
+// @Param        p  path  string  true  "Provider: discord or google"
+// @Success      307  "Redirect to provider authorize URL"
+// @Failure      401  {object}  map[string]string  "Unauthorized - no session"
+// @Failure      503  {object}  map[string]string  "Service Unavailable - link OAuth not configured for this provider"
+// @Router       /auth/link/{p}/init [get]
+func (ac *AuthController) GetLinkInit(c *gin.Context) {
+	user, code, err := utils.UserFromContext(c)
+	if user == nil {
+		utils.SetGinError(c, code, err)
+		return
+	}
+	p := c.Param("p")
+	cfg, _, ok := ac.linkOAuthFor(p)
+	if !ok {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": fmt.Sprintf("OAuth linking for %q is not configured", p),
+		})
+		return
+	}
+
+	state, err := ac.GenerateState()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate state"})
+		return
+	}
+	session := sessions.Default(c)
+	session.Set(linkStateKey(p), state)
+	// Bind the state to the current user so a callback from a
+	// different session can't link into this user's account.
+	session.Set(linkStateKey(p)+"_user", user.ID)
+	if err := session.Save(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save session"})
+		return
+	}
+	c.Redirect(http.StatusTemporaryRedirect, cfg.AuthCodeURL(state))
+}
+
+// GetLinkCallback godoc
+// @Summary      OAuth link callback (server-side)
+// @Description  Server-side endpoint the OAuth provider redirects to
+// @Description  after the user finishes the popup-based link flow.
+// @Description  This endpoint never returns JSON; it only:
+// @Description  1. Verifies the CSRF `state` against the one stored in
+// @Description     the session during /init, and confirms the session
+// @Description     user still matches the user bound to that state.
+// @Description  2. Exchanges the `code` against the provider's token
+// @Description     endpoint.
+// @Description  3. Fetches the provider's userinfo and calls
+// @Description     `AuthService.LinkCredential` against the currently
+// @Description     authenticated user (no new user is ever created).
+// @Description  4. If the provider returned an avatar URL, refreshes
+// @Description     the user's `avatar_url`.
+// @Description  5. 302-redirects the popup to
+// @Description     `/api/auth/link/{provider}/complete?payload=…`,
+// @Description     where the payload is a base64url-encoded JSON
+// @Description     object the SPA's main window receives via
+// @Description     `postMessage`.
+// @Description
+// @Description  On any error in steps 1-4 the response is still a 307
+// @Description  to /complete with an error payload (so the SPA can
+// @Description  surface a toast instead of staring at a closed popup),
+// @Description  EXCEPT for: missing `code` or state mismatch (400),
+// @Description  no session (401), or link OAuth not configured (503).
+// @Description
+// @Description  Note: `LinkCredential` returns ALREADY_EXISTS when the
+// @Description  provider id is already linked to a different user
+// @Description  account. The callback surfaces this as an error
+// @Description  payload on /complete; the SPA should refresh its
+// @Description  linked-credentials list and show the failure.
+// @Tags         Authentication
+// @Produce      json
+// @Security     CookieAuth
+// @Param        p      path   string  true   "Provider: discord or google"
+// @Param        code   query  string  true   "Authorization code returned by the provider"
+// @Param        state  query  string  true   "CSRF state echoed from /init"
+// @Success      307  "Redirect to /complete?payload=… (success or error payload)"
+// @Failure      400  {object}  map[string]string  "Bad Request - missing code, state mismatch, or state bound to a different user"
+// @Failure      401  {object}  map[string]string  "Unauthorized - no session"
+// @Failure      500  {object}  map[string]string  "Internal Server Error - code exchange / userinfo failure when /complete cannot be reached"
+// @Failure      503  {object}  map[string]string  "Service Unavailable - link OAuth not configured for this provider"
+// @Router       /auth/link/{p}/callback [get]
+func (ac *AuthController) GetLinkCallback(c *gin.Context) {
+	user, code, err := utils.UserFromContext(c)
+	if user == nil {
+		utils.SetGinError(c, code, err)
+		return
+	}
+	p := c.Param("p")
+	cfg, kind, ok := ac.linkOAuthFor(p)
+	if !ok {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": fmt.Sprintf("OAuth linking for %q is not configured", p),
+		})
+		return
+	}
+
+	session := sessions.Default(c)
+	savedState, _ := session.Get(linkStateKey(p)).(string)
+	if savedState == "" || savedState != c.Query("state") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid state parameter"})
+		return
+	}
+	savedUser, _ := session.Get(linkStateKey(p) + "_user").(string)
+	session.Delete(linkStateKey(p))
+	session.Delete(linkStateKey(p) + "_user")
+	_ = session.Save()
+	if savedUser != "" && savedUser != user.ID {
+		// The state was minted for a different session user.
+		// Reject so a flow started by user A can't link into B.
+		c.JSON(http.StatusBadRequest, gin.H{"error": "state does not match session user"})
+		return
+	}
+
+	codeStr := c.Query("code")
+	if codeStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Code not found"})
+		return
+	}
+
+	token, err := cfg.Exchange(c, codeStr)
+	if err != nil {
+		utils.SetGinError(c, http.StatusInternalServerError,
+			fmt.Errorf("%s code exchange failed: %w", p, err))
+		return
+	}
+
+	// Build the postMessage payload. Errors during the link dance
+	// still serve the complete page so the SPA can react to a
+	// failure instead of staring at a closed popup.
+	payload, linkErr := ac.linkFromOAuth(c, p, kind, cfg, token, user.ID)
+	if linkErr != nil {
+		log.Printf("link %s: %v", p, linkErr)
+		payload = map[string]any{
+			"provider": p,
+			"error":    linkErr.Error(),
+		}
+	}
+	encoded, err := encodeLinkPayload(payload)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to encode payload"})
+		return
+	}
+	c.Redirect(http.StatusTemporaryRedirect, "/api/auth/link/"+p+"/complete?payload="+encoded)
+}
+
+// linkFromOAuth runs the provider-specific part of the link callback:
+// fetches the provider profile, calls LinkCredential against the
+// currently authenticated user, optionally refreshes the avatar,
+// and returns the postMessage payload.
+//
+// Errors are returned with enough context for the caller to log them;
+// the payload sent to the SPA on success contains `provider`, `id`,
+// `username`, and (for Discord) `avatar` / (for Google) `picture`.
+func (ac *AuthController) linkFromOAuth(
+	c *gin.Context,
+	p string,
+	kind proto.CredentialKind,
+	cfg *oauth2.Config,
+	token *oauth2.Token,
+	userID string,
+) (map[string]any, error) {
+	switch kind {
+	case proto.CredentialKind_CREDENTIAL_KIND_DISCORD:
+		client := cfg.Client(c, token)
+		userinfoURL := ac.DiscordUserinfoURL
+		if userinfoURL == "" {
+			userinfoURL = "https://discord.com/api/users/@me"
+		}
+		resp, err := client.Get(userinfoURL)
+		if err != nil {
+			return nil, fmt.Errorf("discord userinfo fetch failed: %w", err)
+		}
+		defer resp.Body.Close()
+		var d models.DiscordUser
+		if err := json.NewDecoder(resp.Body).Decode(&d); err != nil {
+			return nil, fmt.Errorf("discord userinfo parse: %w", err)
+		}
+		did := strconv.FormatInt(int64(d.DiscordId), 10)
+		if _, err := ac.authService.LinkCredential(c, &proto.LinkCredentialRequest{
+			UserId:      userID,
+			RequesterId: userID,
+			Kind:        proto.CredentialKind_CREDENTIAL_KIND_DISCORD,
+			Payload:     &proto.LinkCredentialRequest_DiscordId{DiscordId: did},
+		}); err != nil {
+			return nil, fmt.Errorf("link discord failed: %w", err)
+		}
+		if avatarURL := auth.DiscordAvatarURL(int64(d.DiscordId), d.Avatar); avatarURL != "" {
+			if _, err := ac.authService.UpdateUserAuth(c, &proto.UpdateUserAuthRequest{
+				UserId:      userID,
+				RequesterId: userID,
+				AvatarUrlChange: &proto.UpdateUserAuthRequest_AvatarUrlSet{
+					AvatarUrlSet: avatarURL,
+				},
+			}); err != nil {
+				// Non-fatal: the credential is linked, but the
+				// avatar didn't update. The SPA will see the old
+				// avatar until the next refresh.
+				log.Printf("link discord: avatar update failed: %v", err)
+			}
+		}
+		return map[string]any{
+			"provider": "discord",
+			"id":       did,
+			"username": d.Username,
+			"avatar":   d.Avatar,
+		}, nil
+
+	case proto.CredentialKind_CREDENTIAL_KIND_GOOGLE:
+		client := cfg.Client(c, token)
+		userinfoURL := ac.GoogleUserinfoURL
+		if userinfoURL == "" {
+			userinfoURL = "https://openidconnect.googleapis.com/v1/userinfo"
+		}
+		resp, err := client.Get(userinfoURL)
+		if err != nil {
+			return nil, fmt.Errorf("google userinfo fetch failed: %w", err)
+		}
+		defer resp.Body.Close()
+		var gu struct {
+			Sub           string `json:"sub"`
+			Email         string `json:"email"`
+			EmailVerified bool   `json:"email_verified"`
+			Name          string `json:"name"`
+			Picture       string `json:"picture"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&gu); err != nil {
+			return nil, fmt.Errorf("google userinfo parse: %w", err)
+		}
+		if gu.Sub == "" {
+			return nil, fmt.Errorf("google userinfo returned empty sub")
+		}
+		if _, err := ac.authService.LinkCredential(c, &proto.LinkCredentialRequest{
+			UserId:      userID,
+			RequesterId: userID,
+			Kind:        proto.CredentialKind_CREDENTIAL_KIND_GOOGLE,
+			Payload:     &proto.LinkCredentialRequest_GoogleId{GoogleId: gu.Sub},
+		}); err != nil {
+			return nil, fmt.Errorf("link google failed: %w", err)
+		}
+		if avatarURL := auth.GoogleAvatarURL(gu.Picture); avatarURL != "" {
+			if _, err := ac.authService.UpdateUserAuth(c, &proto.UpdateUserAuthRequest{
+				UserId:      userID,
+				RequesterId: userID,
+				AvatarUrlChange: &proto.UpdateUserAuthRequest_AvatarUrlSet{
+					AvatarUrlSet: avatarURL,
+				},
+			}); err != nil {
+				log.Printf("link google: avatar update failed: %v", err)
+			}
+		}
+		return map[string]any{
+			"provider": "google",
+			"id":       gu.Sub,
+			"email":    gu.Email,
+			"username": gu.Name,
+			"picture":  gu.Picture,
+		}, nil
+	}
+	return nil, fmt.Errorf("unsupported link provider %q", p)
+}
+
+// GetLinkComplete godoc
+// @Summary      Serve the link-complete HTML page
+// @Description  Serves a tiny self-contained HTML page that the popup
+// @Description  loads after `/api/auth/link/{provider}/callback`
+// @Description  302-redirects into it. The page:
+// @Description  1. Decodes the `payload` query parameter (a
+// @Description     base64url-encoded JSON object, see the payload
+// @Description     schema below).
+// @Description  2. Calls `window.opener.postMessage(payload,
+// @Description     FRONTEND_URL_ORIGIN)` so the SPA's main window can
+// @Description     react (close the popup, refresh linked credentials,
+// @Description     show a toast).
+// @Description  3. Calls `window.close()`.
+// @Description
+// @Description  If `window.opener` is missing (popup opened in a new
+// @Description  tab, parent navigated away, popup blocker closed the
+// parent), the payload is rendered into the visible `<pre>` element so
+// the user can copy it manually. The SPA should treat a missing
+// postMessage as a fallback trigger and re-run the link via
+// @Description  `POST /api/auth/link/{provider}` (literal path).
+// @Description
+// @Description  Payload schema (JSON object):
+// @Description  - `provider` (string): "discord" or "google".
+// @Description  - `id` (string): Discord snowflake or Google `sub`.
+// @Description  - `username` (string): provider-side display name.
+// @Description  - `avatar` (string, Discord only): Discord avatar hash.
+// @Description  - `picture` (string, Google only): Google picture URL.
+// @Description  - `email` (string, Google only): email from userinfo.
+// @Description  - `error` (string): present iff linking errored; the
+// @Description    rest of the fields are omitted.
+// @Tags         Authentication
+// @Produce      html
+// @Param        p        path   string  true   "Provider: discord or google"
+// @Param        payload  query  string  true   "Base64url-encoded JSON payload produced by /callback"
+// @Success      200  "HTML page that postMessages the payload to window.opener"
+// @Failure      400  {object}  map[string]string  "Bad Request - payload missing or not valid base64url JSON"
+// @Failure      404  {object}  map[string]string  "Not Found - unknown provider"
+// @Router       /auth/link/{p}/complete [get]
+func (ac *AuthController) GetLinkComplete(c *gin.Context) {
+	p := c.Param("p")
+	if p != "discord" && p != "google" {
+		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("unknown provider %q", p)})
+		return
+	}
+	if _, ok := decodeLinkPayload(c.Query("payload")); !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing or malformed payload"})
+		return
+	}
+	origin := frontendOrigin(config.AppConfig.FrontendURL)
+	html := fmt.Sprintf(linkCompleteHTMLTmpl, origin)
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	c.Status(http.StatusOK)
+	_, _ = c.Writer.WriteString(html)
 }
 
 // ------------ Passkey ceremony endpoints (stubs) ------------
@@ -1142,17 +1631,31 @@ func ceremonyOptionsJSON(v any) map[string]any {
 // `LinkCredential` RPC (with the existing user's id as the
 // `requester_id`).
 
-// LinkPasswordRequest carries a precomputed argon2id hash.
-// The server stores the hash directly; no plaintext is accepted.
+// LinkPasswordRequest carries a plaintext password; the server
+// hashes it (argon2id) before reaching gRPC.
 type LinkPasswordRequest struct {
-	Hash      string `json:"hash"`
-	Algorithm string `json:"algorithm,omitempty"`
+	Password string `json:"password"`
 }
 
-// PostLinkDiscord: link a discord_id to the authenticated user.
-// The discord_id is supplied as a query parameter (?discord_id=...
-// &username=... &avatar=...). The controller passes the values to
-// the gRPC backend via AuthService.LinkCredential.
+// PostLinkDiscord godoc
+// @Summary      Link a Discord account to the authenticated user
+// @Description  Attaches a Discord credential to the currently
+// @Description  authenticated user via AuthService.LinkCredential.
+// @Description  The frontend performs the OAuth code exchange
+// @Description  itself, then POSTs the resolved `discord_id`
+// @Description  (and optional `avatar_hash`) as query parameters.
+// @Description  On success the user's `avatar_url` is refreshed
+// @Description  from the Discord CDN when `avatar_hash` is given.
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Security     CookieAuth
+// @Param        discord_id   query     string  true   "Discord snowflake id returned from the OAuth userinfo"
+// @Param        avatar_hash  query     string  false  "Discord avatar hash; when set, the avatar is refreshed"
+// @Success      200  {object}  map[string]string  "linked"
+// @Failure      400  {object}  map[string]string  "missing or non-integer discord_id"
+// @Failure      401  {object}  map[string]string  "unauthenticated"
+// @Router       /auth/link/discord [post]
 func (ac *AuthController) PostLinkDiscord(c *gin.Context) {
 	user, _, err := utils.UserFromContext(c)
 	if user == nil {
@@ -1200,7 +1703,25 @@ func (ac *AuthController) PostLinkDiscord(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"linked": "discord"})
 }
 
-// PostLinkGoogle: link a google_id to the authenticated user.
+// PostLinkGoogle godoc
+// @Summary      Link a Google account to the authenticated user
+// @Description  Attaches a Google credential to the currently
+// @Description  authenticated user via AuthService.LinkCredential.
+// @Description  The frontend performs the OAuth code exchange
+// @Description  itself, then POSTs the resolved `google_id`
+// @Description  (and optional `picture` URL) as query parameters.
+// @Description  On success the user's `avatar_url` is refreshed
+// @Description  from the submitted `picture` when present.
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Security     CookieAuth
+// @Param        google_id  query     string  true   "Google stable user id from the `sub` claim"
+// @Param        picture    query     string  false  "Absolute picture URL from Google userinfo; when set, the avatar is refreshed"
+// @Success      200  {object}  map[string]string  "linked"
+// @Failure      400  {object}  map[string]string  "missing google_id"
+// @Failure      401  {object}  map[string]string  "unauthenticated"
+// @Router       /auth/link/google [post]
 func (ac *AuthController) PostLinkGoogle(c *gin.Context) {
 	user, _, err := utils.UserFromContext(c)
 	if user == nil {
@@ -1241,31 +1762,30 @@ func (ac *AuthController) PostLinkGoogle(c *gin.Context) {
 }
 
 // ChangePasswordRequest is the body of POST /auth/password/change.
-// Both hashes are precomputed by the client; the server constant-time
-// compares current_hash to the stored hash, then unlinks the old
-// credential and links the new one.
+// Both passwords are plaintext, hashed server-side. The current
+// password is hashed and constant-time-compared against the stored
+// hash; the new password replaces the credential on success.
 type ChangePasswordRequest struct {
-	CurrentHash      string `json:"current_hash"`
-	CurrentAlgorithm string `json:"current_algorithm,omitempty"`
-	NewHash          string `json:"new_hash"`
-	NewAlgorithm     string `json:"new_algorithm,omitempty"`
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
 }
 
 // PostChangePassword godoc
 // @Summary      Change the authenticated user's password
-// @Description  Constant-time-compares the submitted current hash to
-// the stored hash, then unlinks the old password credential and
-// links a new one. Returns 401 on a wrong current hash and 400 if
-// the account has no password credential yet (OAuth-only signups
-// should use /auth/link/password first).
+// @Description  Hashes the submitted current password and compares it
+// @Description  in constant time against the stored hash. On match,
+// the old credential is unlinked and the new (hashed) credential is
+// @Description  linked. Returns 401 on a wrong current password and
+// @Description  400 if the account has no password credential yet
+// @Description  (OAuth-only signups should use /auth/link/password first).
 // @Tags         Authentication
 // @Accept       json
 // @Produce      json
 // @Security     CookieAuth
-// @Param        payload  body      ChangePasswordRequest  true  "current and new hash"
+// @Param        payload  body      ChangePasswordRequest  true  "current and new password"
 // @Success      200      {object}  map[string]string      "password changed"
-// @Failure      400      {object}  map[string]string      "missing fields, no password set, or bad hash format"
-// @Failure      401      {object}  map[string]string      "unauthenticated or wrong current hash"
+// @Failure      400      {object}  map[string]string      "missing fields or no password set"
+// @Failure      401      {object}  map[string]string      "unauthenticated or wrong current password"
 // @Router       /auth/password/change [post]
 func (ac *AuthController) PostChangePassword(c *gin.Context) {
 	user, _, err := utils.UserFromContext(c)
@@ -1275,24 +1795,12 @@ func (ac *AuthController) PostChangePassword(c *gin.Context) {
 	}
 	var req ChangePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil ||
-		req.CurrentHash == "" || req.NewHash == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "current_hash and new_hash are required"})
+		req.CurrentPassword == "" || req.NewPassword == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "current_password and new_password are required"})
 		return
 	}
-	if req.CurrentHash == req.NewHash {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "new_hash must differ from current_hash"})
-		return
-	}
-	if req.CurrentAlgorithm != "" && req.CurrentAlgorithm != "argon2id" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported current_algorithm"})
-		return
-	}
-	if !auth.ValidatePasswordHash(req.CurrentHash, req.CurrentAlgorithm) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported current_algorithm or malformed current_hash"})
-		return
-	}
-	if !auth.ValidatePasswordHash(req.NewHash, req.NewAlgorithm) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported new_algorithm or malformed new_hash"})
+	if req.CurrentPassword == req.NewPassword {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "new_password must differ from current_password"})
 		return
 	}
 
@@ -1315,8 +1823,15 @@ func (ac *AuthController) PostChangePassword(c *gin.Context) {
 		return
 	}
 
-	if !auth.ConstantTimeEqual([]byte(req.CurrentHash), []byte(storedHash)) {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid current hash"})
+	ok, verr := auth.Argon2Hasher{}.Verify(req.CurrentPassword, storedHash)
+	if verr != nil || !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid current password"})
+		return
+	}
+
+	newHash, err := auth.Argon2Hasher{}.Hash(req.NewPassword)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -1335,7 +1850,7 @@ func (ac *AuthController) PostChangePassword(c *gin.Context) {
 		UserId:      user.ID,
 		RequesterId: user.ID,
 		Kind:        proto.CredentialKind_CREDENTIAL_KIND_PASSWORD,
-		Payload:     &proto.LinkCredentialRequest_PasswordHash{PasswordHash: req.NewHash},
+		Payload:     &proto.LinkCredentialRequest_PasswordHash{PasswordHash: newHash},
 	}); err != nil {
 		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("link new password credential: %w", err))
 		return
@@ -1344,8 +1859,22 @@ func (ac *AuthController) PostChangePassword(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"changed": "password"})
 }
 
-// PostLinkPassword: link a password to the authenticated user.
-// The body carries a precomputed hash; the server never sees plaintext.
+// PostLinkPassword godoc
+// @Summary      Link a password to the authenticated user
+// @Description  Sets a password credential on the currently
+// @Description  authenticated user. The body carries the new
+// @Description  plaintext password; the server hashes it (argon2id)
+// @Description  before reaching gRPC. OAuth-only signups should use
+// @Description  this endpoint to add a password fallback.
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Security     CookieAuth
+// @Param        payload  body      LinkPasswordRequest  true  "new plaintext password"
+// @Success      200  {object}  map[string]string  "linked"
+// @Failure      400  {object}  map[string]string  "missing or invalid password"
+// @Failure      401  {object}  map[string]string  "unauthenticated"
+// @Router       /auth/link/password [post]
 func (ac *AuthController) PostLinkPassword(c *gin.Context) {
 	user, _, err := utils.UserFromContext(c)
 	if user == nil {
@@ -1353,19 +1882,20 @@ func (ac *AuthController) PostLinkPassword(c *gin.Context) {
 		return
 	}
 	var req LinkPasswordRequest
-	if err := c.ShouldBindJSON(&req); err != nil || req.Hash == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "hash is required"})
+	if err := c.ShouldBindJSON(&req); err != nil || req.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "password is required"})
 		return
 	}
-	if !auth.ValidatePasswordHash(req.Hash, req.Algorithm) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported algorithm or malformed hash"})
+	hash, err := auth.Argon2Hasher{}.Hash(req.Password)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	if _, err := ac.authService.LinkCredential(c, &proto.LinkCredentialRequest{
 		UserId:      user.ID,
 		RequesterId: user.ID,
 		Kind:        proto.CredentialKind_CREDENTIAL_KIND_PASSWORD,
-		Payload:     &proto.LinkCredentialRequest_PasswordHash{PasswordHash: req.Hash},
+		Payload:     &proto.LinkCredentialRequest_PasswordHash{PasswordHash: hash},
 	}); err != nil {
 		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("link password failed: %w", err))
 		return
@@ -1521,4 +2051,67 @@ func (ac *AuthController) GetLinkedCredentials(c *gin.Context) {
 		"credentials": resp.GetCredentials(),
 		"passkeys":    resp.GetPasskeys(),
 	})
+}
+
+// GetPasskeysForMe godoc
+// @Summary      List my passkeys
+// @Description  Returns the passkeys owned by the currently authenticated
+// @Description  user. Revoked rows are excluded unless `include_revoked=true`.
+// @Tags         Authentication
+// @Produce      json
+// @Param        include_revoked  query     bool  false  "Include revoked passkeys"
+// @Success      200              {object}  map[string]interface{}  "passkeys array"
+// @Failure      401              {object}  map[string]string      "Unauthorized - no session"
+// @Router       /auth/passkey/list [get]
+func (ac *AuthController) GetPasskeysForMe(c *gin.Context) {
+	user, _, err := utils.UserFromContext(c)
+	if user == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+	includeRevoked := strings.EqualFold(c.Query("include_revoked"), "true")
+	resp, err := ac.authService.ListPasskeys(c.Request.Context(), &proto.ListPasskeysRequest{
+		UserId:         user.ID,
+		IncludeRevoked: includeRevoked,
+	})
+	if err != nil {
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("list passkeys failed: %w", err))
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"passkeys": resp.GetPasskeys()})
+}
+
+// DeletePasskey godoc
+// @Summary      Revoke one of my passkeys
+// @Description  Revokes the passkey identified by `:id`. The actor must
+// @Description  own it -- cross-user revoke attempts are rejected as 404
+// @Description  so we do not leak existence of passkeys owned by other
+// @Description  users.
+// @Tags         Authentication
+// @Param        id  path  string  true  "Passkey ID"
+// @Success      204  "No Content"
+// @Failure      400  {object}  map[string]string  "Bad Request - missing id"
+// @Failure      401  {object}  map[string]string  "Unauthorized - no session"
+// @Failure      404  {object}  map[string]string  "Not Found - passkey not owned by caller"
+// @Router       /auth/passkey/{id} [delete]
+func (ac *AuthController) DeletePasskey(c *gin.Context) {
+	user, _, err := utils.UserFromContext(c)
+	if user == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+	passkeyID := strings.TrimSpace(c.Param("id"))
+	if passkeyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "passkey id is required"})
+		return
+	}
+	if _, err := ac.authService.RevokePasskey(c.Request.Context(), &proto.RevokePasskeyRequest{
+		PasskeyId:   passkeyID,
+		UserId:      user.ID,
+		RequesterId: user.ID,
+	}); err != nil {
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("revoke passkey failed: %w", err))
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
