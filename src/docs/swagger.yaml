@@ -226,6 +226,39 @@ definitions:
     - name
     type: object
   controllers.CreateRuleBody:
+    properties:
+      action_context:
+        additionalProperties: {}
+        type: object
+      action_type:
+        example: add_to_directory
+        type: string
+      attached_entity_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        type: string
+      attached_entity_type:
+        example: directory
+        type: string
+      condition:
+        additionalProperties: {}
+        type: object
+      creator_id:
+        description: CreatorId defaults to the requesting user when omitted.
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        type: string
+      enabled:
+        example: true
+        type: boolean
+      event_type:
+        example: note_created
+        type: string
+    required:
+    - action_context
+    - action_type
+    - attached_entity_id
+    - attached_entity_type
+    - condition
+    - event_type
     type: object
   controllers.CreateShareRequestBody:
     properties:
@@ -610,10 +643,16 @@ definitions:
     type: object
   controllers.PasskeyCeremonyBeginReply:
     properties:
+      challenge:
+        type: string
       options:
         additionalProperties: {}
         type: object
       session_key:
+        type: string
+      user_id:
+        type: string
+      user_name:
         type: string
     type: object
   controllers.PasskeyCeremonyFinishReply:
@@ -719,6 +758,16 @@ definitions:
         example: https://cdn.example.com/avatars/alice.png
         type: string
       avatar_url_clear:
+        example: false
+        type: boolean
+      display_name:
+        description: |-
+          DisplayName is the optional human-friendly, non-unique name
+          the user picked for themselves. Pass an empty string with
+          DisplayNameClear=true to reset it to NULL.
+        example: Alice
+        type: string
+      display_name_clear:
         example: false
         type: boolean
       email:
@@ -1157,6 +1206,13 @@ definitions:
           AvatarURL is the absolute avatar URL. Empty renders as JSON
           null so the frontend can fall back to its initials avatar.
         example: https://cdn.example.com/avatars/alice.png
+        type: string
+      display_name:
+        description: |-
+          DisplayName is the human-friendly, non-unique name the user
+          picked for themselves (optional). Empty means the user has
+          not picked one.
+        example: Alice
         type: string
       email:
         example: alice@example.com
@@ -1854,7 +1910,11 @@ paths:
 
         The server returns ceremony options
         (`PublicKeyCredentialCreationOptions`) that the browser
-        uses to invoke the platform authenticator.
+        uses to invoke the platform authenticator. The reply also
+        carries the server-supplied `user_id` (base64url of the
+        user's stable DB id, matching the encoding inside
+        `options.user.id`) and `user_name` so the frontend does not
+        have to read those values from a client-side cache.
 
         Returns 503 if passkey support is not configured.
       produces:
@@ -1978,13 +2038,46 @@ paths:
       summary: Link a password to the authenticated user
       tags:
       - Authentication
+  /auth/me/credentials:
+    get:
+      description: |-
+        Returns every credential linked to the currently
+        authenticated user (Discord, Google, password) and
+        every passkey registered on their account.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: credentials array and passkeys array
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized - no session
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error - gRPC service failure
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: List my linked credentials and passkeys
+      tags:
+      - Authentication
   /auth/passkey/{id}:
     delete:
       description: |-
         Revokes the passkey identified by `:id`. The actor must
         own it -- cross-user revoke attempts are rejected as 404
         so we do not leak existence of passkeys owned by other
-        users.
+        users. Revoke is idempotent: a row that is already revoked
+        resolves to 204 No Content so a flaky network that
+        double-fires still resolves cleanly.
       parameters:
       - description: Passkey ID
         in: path
@@ -2007,7 +2100,8 @@ paths:
               type: string
             type: object
         "404":
-          description: Not Found - passkey not owned by caller
+          description: Not Found - passkey not owned by caller or already revoked
+            cross-user
           schema:
             additionalProperties:
               type: string
@@ -2220,9 +2314,13 @@ paths:
       description: |-
         Hashes the submitted current password and compares it
         in constant time against the stored hash. On match,
-        linked. Returns 401 on a wrong current password and
-        400 if the account has no password credential yet
-        (OAuth-only signups should use /auth/link/password first).
+        linked.
+
+        If the account has no password credential yet,
+        `current_password` may be omitted and the endpoint
+        acts as a first-time password setup.
+
+        Returns 401 on a wrong current password.
       parameters:
       - description: current and new password
         in: body
@@ -2253,7 +2351,7 @@ paths:
             type: object
       security:
       - CookieAuth: []
-      summary: Change the authenticated user's password
+      summary: Change or set the authenticated user's password
       tags:
       - Authentication
   /auth/public-access-token:

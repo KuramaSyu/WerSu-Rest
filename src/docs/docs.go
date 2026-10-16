@@ -668,7 +668,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Starts a WebAuthn registration ceremony for the currently\nauthenticated user. The challenge is keyed against the\nuser's session so it cannot be replayed against a\ndifferent account.\n\nThe server returns ceremony options\n(` + "`" + `PublicKeyCredentialCreationOptions` + "`" + `) that the browser\nuses to invoke the platform authenticator.\n\nReturns 503 if passkey support is not configured.",
+                "description": "Starts a WebAuthn registration ceremony for the currently\nauthenticated user. The challenge is keyed against the\nuser's session so it cannot be replayed against a\ndifferent account.\n\nThe server returns ceremony options\n(` + "`" + `PublicKeyCredentialCreationOptions` + "`" + `) that the browser\nuses to invoke the platform authenticator. The reply also\ncarries the server-supplied ` + "`" + `user_id` + "`" + ` (base64url of the\nuser's stable DB id, matching the encoding inside\n` + "`" + `options.user.id` + "`" + `) and ` + "`" + `user_name` + "`" + ` so the frontend does not\nhave to read those values from a client-side cache.\n\nReturns 503 if passkey support is not configured.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1014,6 +1014,50 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/me/credentials": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Returns every credential linked to the currently\nauthenticated user (Discord, Google, password) and\nevery passkey registered on their account.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "List my linked credentials and passkeys",
+                "responses": {
+                    "200": {
+                        "description": "credentials array and passkeys array",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - no session",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - gRPC service failure",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/auth/passkey/list": {
             "get": {
                 "description": "Returns the passkeys owned by the currently authenticated\nuser. Revoked rows are excluded unless ` + "`" + `include_revoked=true` + "`" + `.",
@@ -1249,7 +1293,7 @@ const docTemplate = `{
         },
         "/auth/passkey/{id}": {
             "delete": {
-                "description": "Revokes the passkey identified by ` + "`" + `:id` + "`" + `. The actor must\nown it -- cross-user revoke attempts are rejected as 404\nso we do not leak existence of passkeys owned by other\nusers.",
+                "description": "Revokes the passkey identified by ` + "`" + `:id` + "`" + `. The actor must\nown it -- cross-user revoke attempts are rejected as 404\nso we do not leak existence of passkeys owned by other\nusers. Revoke is idempotent: a row that is already revoked\nresolves to 204 No Content so a flaky network that\ndouble-fires still resolves cleanly.",
                 "tags": [
                     "Authentication"
                 ],
@@ -1286,7 +1330,7 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "Not Found - passkey not owned by caller",
+                        "description": "Not Found - passkey not owned by caller or already revoked cross-user",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1304,7 +1348,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Hashes the submitted current password and compares it\nin constant time against the stored hash. On match,\nlinked. Returns 401 on a wrong current password and\n400 if the account has no password credential yet\n(OAuth-only signups should use /auth/link/password first).",
+                "description": "Hashes the submitted current password and compares it\nin constant time against the stored hash. On match,\nlinked.\n\nIf the account has no password credential yet,\n` + "`" + `current_password` + "`" + ` may be omitted and the endpoint\nacts as a first-time password setup.\n\nReturns 401 on a wrong current password.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1314,7 +1358,7 @@ const docTemplate = `{
                 "tags": [
                     "Authentication"
                 ],
-                "summary": "Change the authenticated user's password",
+                "summary": "Change or set the authenticated user's password",
                 "parameters": [
                     {
                         "description": "current and new password",
@@ -5220,7 +5264,50 @@ const docTemplate = `{
             }
         },
         "controllers.CreateRuleBody": {
-            "type": "object"
+            "type": "object",
+            "required": [
+                "action_context",
+                "action_type",
+                "attached_entity_id",
+                "attached_entity_type",
+                "condition",
+                "event_type"
+            ],
+            "properties": {
+                "action_context": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "action_type": {
+                    "type": "string",
+                    "example": "add_to_directory"
+                },
+                "attached_entity_id": {
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                },
+                "attached_entity_type": {
+                    "type": "string",
+                    "example": "directory"
+                },
+                "condition": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "creator_id": {
+                    "description": "CreatorId defaults to the requesting user when omitted.",
+                    "type": "string",
+                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "event_type": {
+                    "type": "string",
+                    "example": "note_created"
+                }
+            }
         },
         "controllers.CreateShareRequestBody": {
             "type": "object",
@@ -5790,11 +5877,20 @@ const docTemplate = `{
         "controllers.PasskeyCeremonyBeginReply": {
             "type": "object",
             "properties": {
+                "challenge": {
+                    "type": "string"
+                },
                 "options": {
                     "type": "object",
                     "additionalProperties": {}
                 },
                 "session_key": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "user_name": {
                     "type": "string"
                 }
             }
@@ -5951,6 +6047,15 @@ const docTemplate = `{
                     "example": "https://cdn.example.com/avatars/alice.png"
                 },
                 "avatar_url_clear": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "display_name": {
+                    "description": "DisplayName is the optional human-friendly, non-unique name\nthe user picked for themselves. Pass an empty string with\nDisplayNameClear=true to reset it to NULL.",
+                    "type": "string",
+                    "example": "Alice"
+                },
+                "display_name_clear": {
                     "type": "boolean",
                     "example": false
                 },
@@ -6568,6 +6673,11 @@ const docTemplate = `{
                     "description": "AvatarURL is the absolute avatar URL. Empty renders as JSON\nnull so the frontend can fall back to its initials avatar.",
                     "type": "string",
                     "example": "https://cdn.example.com/avatars/alice.png"
+                },
+                "display_name": {
+                    "description": "DisplayName is the human-friendly, non-unique name the user\npicked for themselves (optional). Empty means the user has\nnot picked one.",
+                    "type": "string",
+                    "example": "Alice"
                 },
                 "email": {
                     "type": "string",
