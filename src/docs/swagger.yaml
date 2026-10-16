@@ -140,13 +140,9 @@ definitions:
     type: object
   controllers.ChangePasswordRequest:
     properties:
-      current_algorithm:
+      current_password:
         type: string
-      current_hash:
-        type: string
-      new_algorithm:
-        type: string
-      new_hash:
+      new_password:
         type: string
     type: object
   controllers.CheckResult:
@@ -441,25 +437,23 @@ definitions:
     required:
     - ids
     type: object
+  controllers.LinkPasswordRequest:
+    properties:
+      password:
+        type: string
+    type: object
   controllers.LoginRequest:
     properties:
-      algorithm:
-        example: argon2id
-        type: string
       email:
         description: Password fields
         example: alice@example.com
-        type: string
-      hash:
-        example: $argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
         type: string
       kind:
         allOf:
         - $ref: '#/definitions/auth.Kind'
         example: password
-      username:
-        description: signup only
-        example: alice
+      password:
+        example: correct horse battery staple
         type: string
     type: object
   controllers.MinimalDirectory:
@@ -866,15 +860,15 @@ definitions:
       email:
         example: alice@example.com
         type: string
-      password_hash:
-        example: $argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+      password:
+        example: correct horse battery staple
         type: string
       username:
         example: alice
         type: string
     required:
     - email
-    - password_hash
+    - password
     - username
     type: object
   controllers.PreferencesJsonBody:
@@ -1035,14 +1029,11 @@ definitions:
     type: object
   controllers.SignupRequest:
     properties:
-      algorithm:
-        example: argon2id
-        type: string
       email:
         example: alice@example.com
         type: string
-      hash:
-        example: $argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+      password:
+        example: correct horse battery staple
         type: string
       username:
         example: alice
@@ -1199,9 +1190,10 @@ paths:
       - application/json
       description: |-
         Authenticates an existing user via password. The client
-        precomputes the argon2id PHC hash; the server never sees
-        plaintext. On success, a session cookie is set and the
-        canonical UserAuth is returned.
+        sends a plaintext password; the server hashes it
+        (argon2id) before comparing to the stored hash. On
+        success, a session cookie is set and the canonical
+        UserAuth is returned.
 
         Passkey login uses the dedicated
         /auth/passkey/login/{begin,finish} endpoints instead.
@@ -1249,9 +1241,9 @@ paths:
       - application/json
       description: |-
         Creates a new user via password signup. The client
-        precomputes the argon2id PHC hash; the server never sees
-        plaintext. On success, a session cookie is set and the
-        canonical UserAuth is returned.
+        sends a plaintext password; the server hashes it
+        (argon2id) before reaching gRPC. On success, a session
+        cookie is set and the canonical UserAuth is returned.
 
         Returns 409 if the email is already in use.
       parameters:
@@ -1269,8 +1261,7 @@ paths:
           schema:
             $ref: '#/definitions/models.JsUserAuth'
         "400":
-          description: Bad Request - Invalid body, missing fields, or unsupported
-            algorithm
+          description: Bad Request - Invalid body or missing fields
           schema:
             additionalProperties:
               type: string
@@ -1296,13 +1287,13 @@ paths:
       - application/json
       description: |-
         Creates a user via the auth gRPC service. The client
-        precomputes the argon2id PHC hash; the server never sees
-        plaintext. Unlike POST /api/auth/signup, this endpoint
-        does not set a session cookie, so it is safe for
-        admin-issued or import flows.
+        sends a plaintext password; the server hashes it
+        (argon2id) before reaching gRPC. Unlike POST
+        /api/auth/signup, this endpoint does not set a session
+        cookie, so it is safe for admin-issued or import flows.
 
-        Returns 409 on a duplicate email and 400 on a malformed
-        hash or invalid argument.
+        Returns 409 on a duplicate email and 400 on missing
+        fields or an invalid argument from gRPC.
       parameters:
       - description: New user payload
         in: body
@@ -1318,7 +1309,7 @@ paths:
           schema:
             $ref: '#/definitions/models.JsUserAuth'
         "400":
-          description: Bad Request - missing fields, malformed hash, or invalid argument
+          description: Bad Request - missing fields or invalid argument
           schema:
             additionalProperties:
               type: string
@@ -1560,6 +1551,297 @@ paths:
       summary: Update attachment metadata
       tags:
       - attachments
+  /auth/link/{p}/callback:
+    get:
+      description: |-
+        Server-side endpoint the OAuth provider redirects to
+        after the user finishes the popup-based link flow.
+        This endpoint never returns JSON; it only:
+        1. Verifies the CSRF `state` against the one stored in
+        the session during /init, and confirms the session
+        user still matches the user bound to that state.
+        2. Exchanges the `code` against the provider's token
+        endpoint.
+        3. Fetches the provider's userinfo and calls
+        `AuthService.LinkCredential` against the currently
+        authenticated user (no new user is ever created).
+        4. If the provider returned an avatar URL, refreshes
+        the user's `avatar_url`.
+        5. 302-redirects the popup to
+        `/api/auth/link/{provider}/complete?payload=…`,
+        where the payload is a base64url-encoded JSON
+        object the SPA's main window receives via
+        `postMessage`.
+
+        On any error in steps 1-4 the response is still a 307
+        to /complete with an error payload (so the SPA can
+        surface a toast instead of staring at a closed popup),
+        EXCEPT for: missing `code` or state mismatch (400),
+        no session (401), or link OAuth not configured (503).
+
+        Note: `LinkCredential` returns ALREADY_EXISTS when the
+        provider id is already linked to a different user
+        account. The callback surfaces this as an error
+        payload on /complete; the SPA should refresh its
+        linked-credentials list and show the failure.
+      parameters:
+      - description: 'Provider: discord or google'
+        in: path
+        name: p
+        required: true
+        type: string
+      - description: Authorization code returned by the provider
+        in: query
+        name: code
+        required: true
+        type: string
+      - description: CSRF state echoed from /init
+        in: query
+        name: state
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "307":
+          description: Redirect to /complete?payload=… (success or error payload)
+        "400":
+          description: Bad Request - missing code, state mismatch, or state bound
+            to a different user
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized - no session
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error - code exchange / userinfo failure when
+            /complete cannot be reached
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable - link OAuth not configured for this provider
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: OAuth link callback (server-side)
+      tags:
+      - Authentication
+  /auth/link/{p}/complete:
+    get:
+      description: |-
+        Serves a tiny self-contained HTML page that the popup
+        loads after `/api/auth/link/{provider}/callback`
+        302-redirects into it. The page:
+        1. Decodes the `payload` query parameter (a
+        base64url-encoded JSON object, see the payload
+        schema below).
+        2. Calls `window.opener.postMessage(payload,
+        FRONTEND_URL_ORIGIN)` so the SPA's main window can
+        react (close the popup, refresh linked credentials,
+        show a toast).
+        3. Calls `window.close()`.
+
+        If `window.opener` is missing (popup opened in a new
+        tab, parent navigated away, popup blocker closed the
+        `POST /api/auth/link/{provider}` (literal path).
+
+        Payload schema (JSON object):
+        - `provider` (string): "discord" or "google".
+        - `id` (string): Discord snowflake or Google `sub`.
+        - `username` (string): provider-side display name.
+        - `avatar` (string, Discord only): Discord avatar hash.
+        - `picture` (string, Google only): Google picture URL.
+        - `email` (string, Google only): email from userinfo.
+        - `error` (string): present iff linking errored; the
+        rest of the fields are omitted.
+      parameters:
+      - description: 'Provider: discord or google'
+        in: path
+        name: p
+        required: true
+        type: string
+      - description: Base64url-encoded JSON payload produced by /callback
+        in: query
+        name: payload
+        required: true
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: HTML page that postMessages the payload to window.opener
+        "400":
+          description: Bad Request - payload missing or not valid base64url JSON
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found - unknown provider
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Serve the link-complete HTML page
+      tags:
+      - Authentication
+  /auth/link/{p}/init:
+    get:
+      description: |-
+        Browser-driven entry point for the OAuth account-linking
+        flow used by the SPA's Security page. The SPA opens a
+        popup to `GET /api/auth/link/{provider}/init`, which:
+        1. Requires an active session cookie (the popup and the
+        main window share the same session).
+        2. Generates a CSRF `state` and stores it under the
+        provider-scoped session key, bound to the current
+        user id so the matching /callback cannot link into
+        a different account.
+        3. 302-redirects the popup to the provider's authorize
+        URL with that `state` as the `state` query parameter.
+
+        Returns 503 when the link OAuth is not configured for
+        the provider (operator did not set the matching
+        `*_LINK_REDIRECT_URI` env var). When the SPA sees 503
+        it falls back to the non-popup route:
+        `POST /api/auth/link/discord` or
+        `POST /api/auth/link/google` (literal paths, not
+        templated).
+      parameters:
+      - description: 'Provider: discord or google'
+        in: path
+        name: p
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "307":
+          description: Redirect to provider authorize URL
+        "401":
+          description: Unauthorized - no session
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable - link OAuth not configured for this provider
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Start an OAuth link flow in a popup
+      tags:
+      - Authentication
+  /auth/link/discord:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Attaches a Discord credential to the currently
+        authenticated user via AuthService.LinkCredential.
+        The frontend performs the OAuth code exchange
+        itself, then POSTs the resolved `discord_id`
+        (and optional `avatar_hash`) as query parameters.
+        On success the user's `avatar_url` is refreshed
+        from the Discord CDN when `avatar_hash` is given.
+      parameters:
+      - description: Discord snowflake id returned from the OAuth userinfo
+        in: query
+        name: discord_id
+        required: true
+        type: string
+      - description: Discord avatar hash; when set, the avatar is refreshed
+        in: query
+        name: avatar_hash
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: linked
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: missing or non-integer discord_id
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: unauthenticated
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Link a Discord account to the authenticated user
+      tags:
+      - Authentication
+  /auth/link/google:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Attaches a Google credential to the currently
+        authenticated user via AuthService.LinkCredential.
+        The frontend performs the OAuth code exchange
+        itself, then POSTs the resolved `google_id`
+        (and optional `picture` URL) as query parameters.
+        On success the user's `avatar_url` is refreshed
+        from the submitted `picture` when present.
+      parameters:
+      - description: Google stable user id from the `sub` claim
+        in: query
+        name: google_id
+        required: true
+        type: string
+      - description: Absolute picture URL from Google userinfo; when set, the avatar
+          is refreshed
+        in: query
+        name: picture
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: linked
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: missing google_id
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: unauthenticated
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Link a Google account to the authenticated user
+      tags:
+      - Authentication
   /auth/link/passkey/begin:
     post:
       consumes:
@@ -1651,6 +1933,113 @@ paths:
       security:
       - CookieAuth: []
       summary: Finish linking a passkey to the authenticated account
+      tags:
+      - Authentication
+  /auth/link/password:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Sets a password credential on the currently
+        authenticated user. The body carries the new
+        plaintext password; the server hashes it (argon2id)
+        before reaching gRPC. OAuth-only signups should use
+        this endpoint to add a password fallback.
+      parameters:
+      - description: new plaintext password
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.LinkPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: linked
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: missing or invalid password
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: unauthenticated
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Link a password to the authenticated user
+      tags:
+      - Authentication
+  /auth/passkey/{id}:
+    delete:
+      description: |-
+        Revokes the passkey identified by `:id`. The actor must
+        own it -- cross-user revoke attempts are rejected as 404
+        so we do not leak existence of passkeys owned by other
+        users.
+      parameters:
+      - description: Passkey ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request - missing id
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized - no session
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found - passkey not owned by caller
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Revoke one of my passkeys
+      tags:
+      - Authentication
+  /auth/passkey/list:
+    get:
+      description: |-
+        Returns the passkeys owned by the currently authenticated
+        user. Revoked rows are excluded unless `include_revoked=true`.
+      parameters:
+      - description: Include revoked passkeys
+        in: query
+        name: include_revoked
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: passkeys array
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized - no session
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List my passkeys
       tags:
       - Authentication
   /auth/passkey/login/begin:
@@ -1828,9 +2217,14 @@ paths:
     post:
       consumes:
       - application/json
-      description: Constant-time-compares the submitted current hash to
+      description: |-
+        Hashes the submitted current password and compares it
+        in constant time against the stored hash. On match,
+        linked. Returns 401 on a wrong current password and
+        400 if the account has no password credential yet
+        (OAuth-only signups should use /auth/link/password first).
       parameters:
-      - description: current and new hash
+      - description: current and new password
         in: body
         name: payload
         required: true
@@ -1846,13 +2240,13 @@ paths:
               type: string
             type: object
         "400":
-          description: missing fields, no password set, or bad hash format
+          description: missing fields or no password set
           schema:
             additionalProperties:
               type: string
             type: object
         "401":
-          description: unauthenticated or wrong current hash
+          description: unauthenticated or wrong current password
           schema:
             additionalProperties:
               type: string

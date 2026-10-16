@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/api/auth/login": {
             "post": {
-                "description": "Authenticates an existing user via password. The client\nprecomputes the argon2id PHC hash; the server never sees\nplaintext. On success, a session cookie is set and the\ncanonical UserAuth is returned.\n\nPasskey login uses the dedicated\n/auth/passkey/login/{begin,finish} endpoints instead.\nOAuth flows (Discord, Google) keep their own\n/auth/\u003cprovider\u003e/login routes so the browser can be\nredirected to the provider.",
+                "description": "Authenticates an existing user via password. The client\nsends a plaintext password; the server hashes it\n(argon2id) before comparing to the stored hash. On\nsuccess, a session cookie is set and the canonical\nUserAuth is returned.\n\nPasskey login uses the dedicated\n/auth/passkey/login/{begin,finish} endpoints instead.\nOAuth flows (Discord, Google) keep their own\n/auth/\u003cprovider\u003e/login routes so the browser can be\nredirected to the provider.",
                 "consumes": [
                     "application/json"
                 ],
@@ -78,7 +78,7 @@ const docTemplate = `{
         },
         "/api/auth/signup": {
             "post": {
-                "description": "Creates a new user via password signup. The client\nprecomputes the argon2id PHC hash; the server never sees\nplaintext. On success, a session cookie is set and the\ncanonical UserAuth is returned.\n\nReturns 409 if the email is already in use.",
+                "description": "Creates a new user via password signup. The client\nsends a plaintext password; the server hashes it\n(argon2id) before reaching gRPC. On success, a session\ncookie is set and the canonical UserAuth is returned.\n\nReturns 409 if the email is already in use.",
                 "consumes": [
                     "application/json"
                 ],
@@ -108,7 +108,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Bad Request - Invalid body, missing fields, or unsupported algorithm",
+                        "description": "Bad Request - Invalid body or missing fields",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -139,7 +139,7 @@ const docTemplate = `{
         },
         "/api/users": {
             "post": {
-                "description": "Creates a user via the auth gRPC service. The client\nprecomputes the argon2id PHC hash; the server never sees\nplaintext. Unlike POST /api/auth/signup, this endpoint\ndoes not set a session cookie, so it is safe for\nadmin-issued or import flows.\n\nReturns 409 on a duplicate email and 400 on a malformed\nhash or invalid argument.",
+                "description": "Creates a user via the auth gRPC service. The client\nsends a plaintext password; the server hashes it\n(argon2id) before reaching gRPC. Unlike POST\n/api/auth/signup, this endpoint does not set a session\ncookie, so it is safe for admin-issued or import flows.\n\nReturns 409 on a duplicate email and 400 on missing\nfields or an invalid argument from gRPC.",
                 "consumes": [
                     "application/json"
                 ],
@@ -169,7 +169,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Bad Request - missing fields, malformed hash, or invalid argument",
+                        "description": "Bad Request - missing fields or invalid argument",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -533,6 +533,134 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/link/discord": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Attaches a Discord credential to the currently\nauthenticated user via AuthService.LinkCredential.\nThe frontend performs the OAuth code exchange\nitself, then POSTs the resolved ` + "`" + `discord_id` + "`" + `\n(and optional ` + "`" + `avatar_hash` + "`" + `) as query parameters.\nOn success the user's ` + "`" + `avatar_url` + "`" + ` is refreshed\nfrom the Discord CDN when ` + "`" + `avatar_hash` + "`" + ` is given.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Link a Discord account to the authenticated user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Discord snowflake id returned from the OAuth userinfo",
+                        "name": "discord_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Discord avatar hash; when set, the avatar is refreshed",
+                        "name": "avatar_hash",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "linked",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "missing or non-integer discord_id",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "unauthenticated",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/link/google": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Attaches a Google credential to the currently\nauthenticated user via AuthService.LinkCredential.\nThe frontend performs the OAuth code exchange\nitself, then POSTs the resolved ` + "`" + `google_id` + "`" + `\n(and optional ` + "`" + `picture` + "`" + ` URL) as query parameters.\nOn success the user's ` + "`" + `avatar_url` + "`" + ` is refreshed\nfrom the submitted ` + "`" + `picture` + "`" + ` when present.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Link a Google account to the authenticated user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Google stable user id from the ` + "`" + `sub` + "`" + ` claim",
+                        "name": "google_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Absolute picture URL from Google userinfo; when set, the avatar is refreshed",
+                        "name": "picture",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "linked",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "missing google_id",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "unauthenticated",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/auth/link/passkey/begin": {
             "post": {
                 "security": [
@@ -635,6 +763,285 @@ const docTemplate = `{
                     },
                     "503": {
                         "description": "Service Unavailable - Passkey support not configured",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/link/password": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Sets a password credential on the currently\nauthenticated user. The body carries the new\nplaintext password; the server hashes it (argon2id)\nbefore reaching gRPC. OAuth-only signups should use\nthis endpoint to add a password fallback.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Link a password to the authenticated user",
+                "parameters": [
+                    {
+                        "description": "new plaintext password",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.LinkPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "linked",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "missing or invalid password",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "unauthenticated",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/link/{p}/callback": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Server-side endpoint the OAuth provider redirects to\nafter the user finishes the popup-based link flow.\nThis endpoint never returns JSON; it only:\n1. Verifies the CSRF ` + "`" + `state` + "`" + ` against the one stored in\nthe session during /init, and confirms the session\nuser still matches the user bound to that state.\n2. Exchanges the ` + "`" + `code` + "`" + ` against the provider's token\nendpoint.\n3. Fetches the provider's userinfo and calls\n` + "`" + `AuthService.LinkCredential` + "`" + ` against the currently\nauthenticated user (no new user is ever created).\n4. If the provider returned an avatar URL, refreshes\nthe user's ` + "`" + `avatar_url` + "`" + `.\n5. 302-redirects the popup to\n` + "`" + `/api/auth/link/{provider}/complete?payload=…` + "`" + `,\nwhere the payload is a base64url-encoded JSON\nobject the SPA's main window receives via\n` + "`" + `postMessage` + "`" + `.\n\nOn any error in steps 1-4 the response is still a 307\nto /complete with an error payload (so the SPA can\nsurface a toast instead of staring at a closed popup),\nEXCEPT for: missing ` + "`" + `code` + "`" + ` or state mismatch (400),\nno session (401), or link OAuth not configured (503).\n\nNote: ` + "`" + `LinkCredential` + "`" + ` returns ALREADY_EXISTS when the\nprovider id is already linked to a different user\naccount. The callback surfaces this as an error\npayload on /complete; the SPA should refresh its\nlinked-credentials list and show the failure.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "OAuth link callback (server-side)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Provider: discord or google",
+                        "name": "p",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorization code returned by the provider",
+                        "name": "code",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "CSRF state echoed from /init",
+                        "name": "state",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "307": {
+                        "description": "Redirect to /complete?payload=… (success or error payload)"
+                    },
+                    "400": {
+                        "description": "Bad Request - missing code, state mismatch, or state bound to a different user",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - no session",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - code exchange / userinfo failure when /complete cannot be reached",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable - link OAuth not configured for this provider",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/link/{p}/complete": {
+            "get": {
+                "description": "Serves a tiny self-contained HTML page that the popup\nloads after ` + "`" + `/api/auth/link/{provider}/callback` + "`" + `\n302-redirects into it. The page:\n1. Decodes the ` + "`" + `payload` + "`" + ` query parameter (a\nbase64url-encoded JSON object, see the payload\nschema below).\n2. Calls ` + "`" + `window.opener.postMessage(payload,\nFRONTEND_URL_ORIGIN)` + "`" + ` so the SPA's main window can\nreact (close the popup, refresh linked credentials,\nshow a toast).\n3. Calls ` + "`" + `window.close()` + "`" + `.\n\nIf ` + "`" + `window.opener` + "`" + ` is missing (popup opened in a new\ntab, parent navigated away, popup blocker closed the\n` + "`" + `POST /api/auth/link/{provider}` + "`" + ` (literal path).\n\nPayload schema (JSON object):\n- ` + "`" + `provider` + "`" + ` (string): \"discord\" or \"google\".\n- ` + "`" + `id` + "`" + ` (string): Discord snowflake or Google ` + "`" + `sub` + "`" + `.\n- ` + "`" + `username` + "`" + ` (string): provider-side display name.\n- ` + "`" + `avatar` + "`" + ` (string, Discord only): Discord avatar hash.\n- ` + "`" + `picture` + "`" + ` (string, Google only): Google picture URL.\n- ` + "`" + `email` + "`" + ` (string, Google only): email from userinfo.\n- ` + "`" + `error` + "`" + ` (string): present iff linking errored; the\nrest of the fields are omitted.",
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Serve the link-complete HTML page",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Provider: discord or google",
+                        "name": "p",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Base64url-encoded JSON payload produced by /callback",
+                        "name": "payload",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "HTML page that postMessages the payload to window.opener"
+                    },
+                    "400": {
+                        "description": "Bad Request - payload missing or not valid base64url JSON",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found - unknown provider",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/link/{p}/init": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Browser-driven entry point for the OAuth account-linking\nflow used by the SPA's Security page. The SPA opens a\npopup to ` + "`" + `GET /api/auth/link/{provider}/init` + "`" + `, which:\n1. Requires an active session cookie (the popup and the\nmain window share the same session).\n2. Generates a CSRF ` + "`" + `state` + "`" + ` and stores it under the\nprovider-scoped session key, bound to the current\nuser id so the matching /callback cannot link into\na different account.\n3. 302-redirects the popup to the provider's authorize\nURL with that ` + "`" + `state` + "`" + ` as the ` + "`" + `state` + "`" + ` query parameter.\n\nReturns 503 when the link OAuth is not configured for\nthe provider (operator did not set the matching\n` + "`" + `*_LINK_REDIRECT_URI` + "`" + ` env var). When the SPA sees 503\nit falls back to the non-popup route:\n` + "`" + `POST /api/auth/link/discord` + "`" + ` or\n` + "`" + `POST /api/auth/link/google` + "`" + ` (literal paths, not\ntemplated).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Start an OAuth link flow in a popup",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Provider: discord or google",
+                        "name": "p",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "307": {
+                        "description": "Redirect to provider authorize URL"
+                    },
+                    "401": {
+                        "description": "Unauthorized - no session",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable - link OAuth not configured for this provider",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/passkey/list": {
+            "get": {
+                "description": "Returns the passkeys owned by the currently authenticated\nuser. Revoked rows are excluded unless ` + "`" + `include_revoked=true` + "`" + `.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "List my passkeys",
+                "parameters": [
+                    {
+                        "type": "boolean",
+                        "description": "Include revoked passkeys",
+                        "name": "include_revoked",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "passkeys array",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - no session",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -840,6 +1247,56 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/passkey/{id}": {
+            "delete": {
+                "description": "Revokes the passkey identified by ` + "`" + `:id` + "`" + `. The actor must\nown it -- cross-user revoke attempts are rejected as 404\nso we do not leak existence of passkeys owned by other\nusers.",
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Revoke one of my passkeys",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Passkey ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request - missing id",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - no session",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found - passkey not owned by caller",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/auth/password/change": {
             "post": {
                 "security": [
@@ -847,7 +1304,7 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Constant-time-compares the submitted current hash to",
+                "description": "Hashes the submitted current password and compares it\nin constant time against the stored hash. On match,\nlinked. Returns 401 on a wrong current password and\n400 if the account has no password credential yet\n(OAuth-only signups should use /auth/link/password first).",
                 "consumes": [
                     "application/json"
                 ],
@@ -860,7 +1317,7 @@ const docTemplate = `{
                 "summary": "Change the authenticated user's password",
                 "parameters": [
                     {
-                        "description": "current and new hash",
+                        "description": "current and new password",
                         "name": "payload",
                         "in": "body",
                         "required": true,
@@ -880,7 +1337,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "missing fields, no password set, or bad hash format",
+                        "description": "missing fields or no password set",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -889,7 +1346,7 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "unauthenticated or wrong current hash",
+                        "description": "unauthenticated or wrong current password",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -4648,16 +5105,10 @@ const docTemplate = `{
         "controllers.ChangePasswordRequest": {
             "type": "object",
             "properties": {
-                "current_algorithm": {
+                "current_password": {
                     "type": "string"
                 },
-                "current_hash": {
-                    "type": "string"
-                },
-                "new_algorithm": {
-                    "type": "string"
-                },
-                "new_hash": {
+                "new_password": {
                     "type": "string"
                 }
             }
@@ -5076,21 +5527,21 @@ const docTemplate = `{
                 }
             }
         },
+        "controllers.LinkPasswordRequest": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
         "controllers.LoginRequest": {
             "type": "object",
             "properties": {
-                "algorithm": {
-                    "type": "string",
-                    "example": "argon2id"
-                },
                 "email": {
                     "description": "Password fields",
                     "type": "string",
                     "example": "alice@example.com"
-                },
-                "hash": {
-                    "type": "string",
-                    "example": "$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
                 },
                 "kind": {
                     "allOf": [
@@ -5100,10 +5551,9 @@ const docTemplate = `{
                     ],
                     "example": "password"
                 },
-                "username": {
-                    "description": "signup only",
+                "password": {
                     "type": "string",
-                    "example": "alice"
+                    "example": "correct horse battery staple"
                 }
             }
         },
@@ -5691,7 +6141,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "email",
-                "password_hash",
+                "password",
                 "username"
             ],
             "properties": {
@@ -5703,9 +6153,9 @@ const docTemplate = `{
                     "type": "string",
                     "example": "alice@example.com"
                 },
-                "password_hash": {
+                "password": {
                     "type": "string",
-                    "example": "$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+                    "example": "correct horse battery staple"
                 },
                 "username": {
                     "type": "string",
@@ -5940,17 +6390,13 @@ const docTemplate = `{
         "controllers.SignupRequest": {
             "type": "object",
             "properties": {
-                "algorithm": {
-                    "type": "string",
-                    "example": "argon2id"
-                },
                 "email": {
                     "type": "string",
                     "example": "alice@example.com"
                 },
-                "hash": {
+                "password": {
                     "type": "string",
-                    "example": "$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+                    "example": "correct horse battery staple"
                 },
                 "username": {
                     "type": "string",
