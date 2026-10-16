@@ -115,6 +115,8 @@ func main() {
 		appConfig.WebAuthnRPID,
 		appConfig.WebAuthnRPName,
 		[]string{appConfig.FrontendURL},
+		appConfig.DiscordLinkOAuthConfig,
+		appConfig.GoogleLinkOAuthConfig,
 	)
 	noteController := controllers.NewNoteController(&noteGrpcClient)
 	noteSearchController := controllers.NewSearchNoteController(&noteGrpcClient)
