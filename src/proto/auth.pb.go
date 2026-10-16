@@ -90,7 +90,10 @@ type UserAuth struct {
 	IsActive        bool                   `protobuf:"varint,5,opt,name=is_active,json=isActive,proto3" json:"is_active,omitempty"`
 	CreatedAt       *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	// Absolute avatar URL. Empty string means none; REST maps empty to JSON null.
-	AvatarUrl     string `protobuf:"bytes,7,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	AvatarUrl string `protobuf:"bytes,7,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	// Human-friendly display name. Optional and not unique.
+	// Empty string means the user has not picked one.
+	DisplayName   string `protobuf:"bytes,8,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -170,6 +173,13 @@ func (x *UserAuth) GetCreatedAt() *timestamppb.Timestamp {
 func (x *UserAuth) GetAvatarUrl() string {
 	if x != nil {
 		return x.AvatarUrl
+	}
+	return ""
+}
+
+func (x *UserAuth) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
 	}
 	return ""
 }
@@ -641,7 +651,10 @@ type CreateUserAuthRequest struct {
 	PasswordHash string                 `protobuf:"bytes,3,opt,name=password_hash,json=passwordHash,proto3" json:"password_hash,omitempty"`
 	// Optional. Absolute avatar URL resolved by REST via Discord/Google/Gravatar.
 	// Empty string means none; frontend maps empty to JSON null.
-	AvatarUrl     string `protobuf:"bytes,4,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	AvatarUrl string `protobuf:"bytes,4,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	// Optional. Human-friendly display name. Not unique; the user
+	// does not have to set one.
+	DisplayName   string `protobuf:"bytes,5,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -704,6 +717,13 @@ func (x *CreateUserAuthRequest) GetAvatarUrl() string {
 	return ""
 }
 
+func (x *CreateUserAuthRequest) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
 type CreateUserAuthResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	User          *UserAuth              `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
@@ -756,28 +776,48 @@ type UpdateUserAuthRequest struct {
 	UserId string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	// actor used for permission checks
 	RequesterId string `protobuf:"bytes,2,opt,name=requester_id,json=requesterId,proto3" json:"requester_id,omitempty"`
+	// Tri-state update for username: _set writes a new value, _clear NULLs it,
+	// omitting both leaves the column unchanged.
+	//
 	// Types that are valid to be assigned to UsernameChange:
 	//
 	//	*UpdateUserAuthRequest_UsernameSet
 	//	*UpdateUserAuthRequest_UsernameClear
 	UsernameChange isUpdateUserAuthRequest_UsernameChange `protobuf_oneof:"username_change"`
+	// Tri-state update for email: same set/clear/omit semantics as username.
+	//
 	// Types that are valid to be assigned to EmailChange:
 	//
 	//	*UpdateUserAuthRequest_EmailSet
 	//	*UpdateUserAuthRequest_EmailClear
 	EmailChange isUpdateUserAuthRequest_EmailChange `protobuf_oneof:"email_change"`
+	// Tri-state update for email_verified_at: _set stamps the timestamp,
+	// _clear NULLs it, omitting both leaves it unchanged.
+	//
 	// Types that are valid to be assigned to EmailVerifiedChange:
 	//
 	//	*UpdateUserAuthRequest_EmailVerifiedAtSet
 	//	*UpdateUserAuthRequest_EmailVerifiedAtClear
 	EmailVerifiedChange isUpdateUserAuthRequest_EmailVerifiedChange `protobuf_oneof:"email_verified_change"`
+	// Tri-state update for avatar_url: _set writes a new value, _clear NULLs it,
+	// omitting both leaves it unchanged.
+	//
 	// Types that are valid to be assigned to AvatarUrlChange:
 	//
 	//	*UpdateUserAuthRequest_AvatarUrlSet
 	//	*UpdateUserAuthRequest_AvatarUrlClear
 	AvatarUrlChange isUpdateUserAuthRequest_AvatarUrlChange `protobuf_oneof:"avatar_url_change"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Tri-state update for display_name: _set writes a new value,
+	// _clear NULLs it, omitting both leaves it unchanged.  Display
+	// names are NOT unique.
+	//
+	// Types that are valid to be assigned to DisplayNameChange:
+	//
+	//	*UpdateUserAuthRequest_DisplayNameSet
+	//	*UpdateUserAuthRequest_DisplayNameClear
+	DisplayNameChange isUpdateUserAuthRequest_DisplayNameChange `protobuf_oneof:"display_name_change"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *UpdateUserAuthRequest) Reset() {
@@ -924,6 +964,31 @@ func (x *UpdateUserAuthRequest) GetAvatarUrlClear() *emptypb.Empty {
 	return nil
 }
 
+func (x *UpdateUserAuthRequest) GetDisplayNameChange() isUpdateUserAuthRequest_DisplayNameChange {
+	if x != nil {
+		return x.DisplayNameChange
+	}
+	return nil
+}
+
+func (x *UpdateUserAuthRequest) GetDisplayNameSet() string {
+	if x != nil {
+		if x, ok := x.DisplayNameChange.(*UpdateUserAuthRequest_DisplayNameSet); ok {
+			return x.DisplayNameSet
+		}
+	}
+	return ""
+}
+
+func (x *UpdateUserAuthRequest) GetDisplayNameClear() *emptypb.Empty {
+	if x != nil {
+		if x, ok := x.DisplayNameChange.(*UpdateUserAuthRequest_DisplayNameClear); ok {
+			return x.DisplayNameClear
+		}
+	}
+	return nil
+}
+
 type isUpdateUserAuthRequest_UsernameChange interface {
 	isUpdateUserAuthRequest_UsernameChange()
 }
@@ -987,6 +1052,22 @@ type UpdateUserAuthRequest_AvatarUrlClear struct {
 func (*UpdateUserAuthRequest_AvatarUrlSet) isUpdateUserAuthRequest_AvatarUrlChange() {}
 
 func (*UpdateUserAuthRequest_AvatarUrlClear) isUpdateUserAuthRequest_AvatarUrlChange() {}
+
+type isUpdateUserAuthRequest_DisplayNameChange interface {
+	isUpdateUserAuthRequest_DisplayNameChange()
+}
+
+type UpdateUserAuthRequest_DisplayNameSet struct {
+	DisplayNameSet string `protobuf:"bytes,11,opt,name=display_name_set,json=displayNameSet,proto3,oneof"`
+}
+
+type UpdateUserAuthRequest_DisplayNameClear struct {
+	DisplayNameClear *emptypb.Empty `protobuf:"bytes,12,opt,name=display_name_clear,json=displayNameClear,proto3,oneof"`
+}
+
+func (*UpdateUserAuthRequest_DisplayNameSet) isUpdateUserAuthRequest_DisplayNameChange() {}
+
+func (*UpdateUserAuthRequest_DisplayNameClear) isUpdateUserAuthRequest_DisplayNameChange() {}
 
 type UpdateUserAuthResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -2054,7 +2135,7 @@ var File_src_proto_auth_proto protoreflect.FileDescriptor
 
 const file_src_proto_auth_proto_rawDesc = "" +
 	"\n" +
-	"\x14src/proto/auth.proto\x12\x05proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8b\x02\n" +
+	"\x14src/proto/auth.proto\x12\x05proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xae\x02\n" +
 	"\bUserAuth\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1a\n" +
@@ -2064,7 +2145,8 @@ const file_src_proto_auth_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"avatar_url\x18\a \x01(\tR\tavatarUrl\"\xec\x02\n" +
+	"avatar_url\x18\a \x01(\tR\tavatarUrl\x12!\n" +
+	"\fdisplay_name\x18\b \x01(\tR\vdisplayName\"\xec\x02\n" +
 	"\n" +
 	"Credential\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
@@ -2112,15 +2194,16 @@ const file_src_proto_auth_proto_rawDesc = "" +
 	"\n" +
 	"identifier\":\n" +
 	"\x13GetUserAuthResponse\x12#\n" +
-	"\x04user\x18\x01 \x01(\v2\x0f.proto.UserAuthR\x04user\"\x8d\x01\n" +
+	"\x04user\x18\x01 \x01(\v2\x0f.proto.UserAuthR\x04user\"\xb0\x01\n" +
 	"\x15CreateUserAuthRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12#\n" +
 	"\rpassword_hash\x18\x03 \x01(\tR\fpasswordHash\x12\x1d\n" +
 	"\n" +
-	"avatar_url\x18\x04 \x01(\tR\tavatarUrl\"=\n" +
+	"avatar_url\x18\x04 \x01(\tR\tavatarUrl\x12!\n" +
+	"\fdisplay_name\x18\x05 \x01(\tR\vdisplayName\"=\n" +
 	"\x16CreateUserAuthResponse\x12#\n" +
-	"\x04user\x18\x01 \x01(\v2\x0f.proto.UserAuthR\x04user\"\xf2\x04\n" +
+	"\x04user\x18\x01 \x01(\v2\x0f.proto.UserAuthR\x04user\"\xfd\x05\n" +
 	"\x15UpdateUserAuthRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12!\n" +
 	"\frequester_id\x18\x02 \x01(\tR\vrequesterId\x12#\n" +
@@ -2133,11 +2216,14 @@ const file_src_proto_auth_proto_rawDesc = "" +
 	"\x17email_verified_at_clear\x18\b \x01(\v2\x16.google.protobuf.EmptyH\x02R\x14emailVerifiedAtClear\x12&\n" +
 	"\x0eavatar_url_set\x18\t \x01(\tH\x03R\favatarUrlSet\x12B\n" +
 	"\x10avatar_url_clear\x18\n" +
-	" \x01(\v2\x16.google.protobuf.EmptyH\x03R\x0eavatarUrlClearB\x11\n" +
+	" \x01(\v2\x16.google.protobuf.EmptyH\x03R\x0eavatarUrlClear\x12*\n" +
+	"\x10display_name_set\x18\v \x01(\tH\x04R\x0edisplayNameSet\x12F\n" +
+	"\x12display_name_clear\x18\f \x01(\v2\x16.google.protobuf.EmptyH\x04R\x10displayNameClearB\x11\n" +
 	"\x0fusername_changeB\x0e\n" +
 	"\femail_changeB\x17\n" +
 	"\x15email_verified_changeB\x13\n" +
-	"\x11avatar_url_change\"=\n" +
+	"\x11avatar_url_changeB\x15\n" +
+	"\x13display_name_change\"=\n" +
 	"\x16UpdateUserAuthResponse\x12#\n" +
 	"\x04user\x18\x01 \x01(\v2\x0f.proto.UserAuthR\x04user\"\xb2\x01\n" +
 	"\x1fFindCredentialByProviderRequest\x12\x1f\n" +
@@ -2294,47 +2380,48 @@ var file_src_proto_auth_proto_depIdxs = []int32{
 	26, // 12: proto.UpdateUserAuthRequest.email_verified_at_set:type_name -> google.protobuf.Timestamp
 	27, // 13: proto.UpdateUserAuthRequest.email_verified_at_clear:type_name -> google.protobuf.Empty
 	27, // 14: proto.UpdateUserAuthRequest.avatar_url_clear:type_name -> google.protobuf.Empty
-	1,  // 15: proto.UpdateUserAuthResponse.user:type_name -> proto.UserAuth
-	0,  // 16: proto.FindCredentialByProviderRequest.kind:type_name -> proto.CredentialKind
-	2,  // 17: proto.FindCredentialByProviderResponse.credential:type_name -> proto.Credential
-	1,  // 18: proto.FindCredentialByProviderResponse.user:type_name -> proto.UserAuth
-	3,  // 19: proto.FindPasskeyResponse.passkey:type_name -> proto.Passkey
-	3,  // 20: proto.ListPasskeysResponse.passkeys:type_name -> proto.Passkey
-	3,  // 21: proto.UpdatePasskeyCounterResponse.passkey:type_name -> proto.Passkey
-	3,  // 22: proto.RegisterPasskeyResponse.passkey:type_name -> proto.Passkey
-	0,  // 23: proto.LinkCredentialRequest.kind:type_name -> proto.CredentialKind
-	2,  // 24: proto.LinkCredentialResponse.credential:type_name -> proto.Credential
-	2,  // 25: proto.ListLinkedCredentialsResponse.credentials:type_name -> proto.Credential
-	3,  // 26: proto.ListLinkedCredentialsResponse.passkeys:type_name -> proto.Passkey
-	4,  // 27: proto.AuthService.GetUserAuth:input_type -> proto.GetUserAuthRequest
-	6,  // 28: proto.AuthService.CreateUserAuth:input_type -> proto.CreateUserAuthRequest
-	8,  // 29: proto.AuthService.UpdateUserAuth:input_type -> proto.UpdateUserAuthRequest
-	10, // 30: proto.AuthService.FindCredentialByProvider:input_type -> proto.FindCredentialByProviderRequest
-	12, // 31: proto.AuthService.FindPasskey:input_type -> proto.FindPasskeyRequest
-	14, // 32: proto.AuthService.ListPasskeys:input_type -> proto.ListPasskeysRequest
-	16, // 33: proto.AuthService.UpdatePasskeyCounter:input_type -> proto.UpdatePasskeyCounterRequest
-	18, // 34: proto.AuthService.RegisterPasskey:input_type -> proto.RegisterPasskeyRequest
-	20, // 35: proto.AuthService.RevokePasskey:input_type -> proto.RevokePasskeyRequest
-	21, // 36: proto.AuthService.LinkCredential:input_type -> proto.LinkCredentialRequest
-	23, // 37: proto.AuthService.UnlinkCredential:input_type -> proto.UnlinkCredentialRequest
-	24, // 38: proto.AuthService.ListLinkedCredentials:input_type -> proto.ListLinkedCredentialsRequest
-	5,  // 39: proto.AuthService.GetUserAuth:output_type -> proto.GetUserAuthResponse
-	7,  // 40: proto.AuthService.CreateUserAuth:output_type -> proto.CreateUserAuthResponse
-	9,  // 41: proto.AuthService.UpdateUserAuth:output_type -> proto.UpdateUserAuthResponse
-	11, // 42: proto.AuthService.FindCredentialByProvider:output_type -> proto.FindCredentialByProviderResponse
-	13, // 43: proto.AuthService.FindPasskey:output_type -> proto.FindPasskeyResponse
-	15, // 44: proto.AuthService.ListPasskeys:output_type -> proto.ListPasskeysResponse
-	17, // 45: proto.AuthService.UpdatePasskeyCounter:output_type -> proto.UpdatePasskeyCounterResponse
-	19, // 46: proto.AuthService.RegisterPasskey:output_type -> proto.RegisterPasskeyResponse
-	27, // 47: proto.AuthService.RevokePasskey:output_type -> google.protobuf.Empty
-	22, // 48: proto.AuthService.LinkCredential:output_type -> proto.LinkCredentialResponse
-	27, // 49: proto.AuthService.UnlinkCredential:output_type -> google.protobuf.Empty
-	25, // 50: proto.AuthService.ListLinkedCredentials:output_type -> proto.ListLinkedCredentialsResponse
-	39, // [39:51] is the sub-list for method output_type
-	27, // [27:39] is the sub-list for method input_type
-	27, // [27:27] is the sub-list for extension type_name
-	27, // [27:27] is the sub-list for extension extendee
-	0,  // [0:27] is the sub-list for field type_name
+	27, // 15: proto.UpdateUserAuthRequest.display_name_clear:type_name -> google.protobuf.Empty
+	1,  // 16: proto.UpdateUserAuthResponse.user:type_name -> proto.UserAuth
+	0,  // 17: proto.FindCredentialByProviderRequest.kind:type_name -> proto.CredentialKind
+	2,  // 18: proto.FindCredentialByProviderResponse.credential:type_name -> proto.Credential
+	1,  // 19: proto.FindCredentialByProviderResponse.user:type_name -> proto.UserAuth
+	3,  // 20: proto.FindPasskeyResponse.passkey:type_name -> proto.Passkey
+	3,  // 21: proto.ListPasskeysResponse.passkeys:type_name -> proto.Passkey
+	3,  // 22: proto.UpdatePasskeyCounterResponse.passkey:type_name -> proto.Passkey
+	3,  // 23: proto.RegisterPasskeyResponse.passkey:type_name -> proto.Passkey
+	0,  // 24: proto.LinkCredentialRequest.kind:type_name -> proto.CredentialKind
+	2,  // 25: proto.LinkCredentialResponse.credential:type_name -> proto.Credential
+	2,  // 26: proto.ListLinkedCredentialsResponse.credentials:type_name -> proto.Credential
+	3,  // 27: proto.ListLinkedCredentialsResponse.passkeys:type_name -> proto.Passkey
+	4,  // 28: proto.AuthService.GetUserAuth:input_type -> proto.GetUserAuthRequest
+	6,  // 29: proto.AuthService.CreateUserAuth:input_type -> proto.CreateUserAuthRequest
+	8,  // 30: proto.AuthService.UpdateUserAuth:input_type -> proto.UpdateUserAuthRequest
+	10, // 31: proto.AuthService.FindCredentialByProvider:input_type -> proto.FindCredentialByProviderRequest
+	12, // 32: proto.AuthService.FindPasskey:input_type -> proto.FindPasskeyRequest
+	14, // 33: proto.AuthService.ListPasskeys:input_type -> proto.ListPasskeysRequest
+	16, // 34: proto.AuthService.UpdatePasskeyCounter:input_type -> proto.UpdatePasskeyCounterRequest
+	18, // 35: proto.AuthService.RegisterPasskey:input_type -> proto.RegisterPasskeyRequest
+	20, // 36: proto.AuthService.RevokePasskey:input_type -> proto.RevokePasskeyRequest
+	21, // 37: proto.AuthService.LinkCredential:input_type -> proto.LinkCredentialRequest
+	23, // 38: proto.AuthService.UnlinkCredential:input_type -> proto.UnlinkCredentialRequest
+	24, // 39: proto.AuthService.ListLinkedCredentials:input_type -> proto.ListLinkedCredentialsRequest
+	5,  // 40: proto.AuthService.GetUserAuth:output_type -> proto.GetUserAuthResponse
+	7,  // 41: proto.AuthService.CreateUserAuth:output_type -> proto.CreateUserAuthResponse
+	9,  // 42: proto.AuthService.UpdateUserAuth:output_type -> proto.UpdateUserAuthResponse
+	11, // 43: proto.AuthService.FindCredentialByProvider:output_type -> proto.FindCredentialByProviderResponse
+	13, // 44: proto.AuthService.FindPasskey:output_type -> proto.FindPasskeyResponse
+	15, // 45: proto.AuthService.ListPasskeys:output_type -> proto.ListPasskeysResponse
+	17, // 46: proto.AuthService.UpdatePasskeyCounter:output_type -> proto.UpdatePasskeyCounterResponse
+	19, // 47: proto.AuthService.RegisterPasskey:output_type -> proto.RegisterPasskeyResponse
+	27, // 48: proto.AuthService.RevokePasskey:output_type -> google.protobuf.Empty
+	22, // 49: proto.AuthService.LinkCredential:output_type -> proto.LinkCredentialResponse
+	27, // 50: proto.AuthService.UnlinkCredential:output_type -> google.protobuf.Empty
+	25, // 51: proto.AuthService.ListLinkedCredentials:output_type -> proto.ListLinkedCredentialsResponse
+	40, // [40:52] is the sub-list for method output_type
+	28, // [28:40] is the sub-list for method input_type
+	28, // [28:28] is the sub-list for extension type_name
+	28, // [28:28] is the sub-list for extension extendee
+	0,  // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_src_proto_auth_proto_init() }
@@ -2362,6 +2449,8 @@ func file_src_proto_auth_proto_init() {
 		(*UpdateUserAuthRequest_EmailVerifiedAtClear)(nil),
 		(*UpdateUserAuthRequest_AvatarUrlSet)(nil),
 		(*UpdateUserAuthRequest_AvatarUrlClear)(nil),
+		(*UpdateUserAuthRequest_DisplayNameSet)(nil),
+		(*UpdateUserAuthRequest_DisplayNameClear)(nil),
 	}
 	file_src_proto_auth_proto_msgTypes[9].OneofWrappers = []any{
 		(*FindCredentialByProviderRequest_DiscordId)(nil),
