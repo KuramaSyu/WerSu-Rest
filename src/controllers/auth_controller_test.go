@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/gob"
 	"encoding/json"
 	"errors"
@@ -14,6 +15,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+	"github.com/go-webauthn/webauthn/webauthn"
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -558,6 +560,82 @@ func TestDeletePasskeySuccess(t *testing.T) {
 	}
 	if revoked.PasskeyId != "pk-1" || revoked.UserId != "u-1" || revoked.RequesterId != "u-1" {
 		t.Errorf("revoke = %+v", revoked)
+	}
+}
+
+func TestDeletePasskeyPasskeyMissingReturns404(t *testing.T) {
+	// gRPC returns NotFound when the row does not exist (or belongs to a
+	// different user, after the server's permission filter). The controller
+	// surfaces that as 404 so the frontend never sees a difference.
+	fake := &auth.FakeAuthClient{
+		OnRevokePasskey: func(*proto.RevokePasskeyRequest) (*emptypb.Empty, error) {
+			return nil, status.Error(codes.NotFound, "passkey not found")
+		},
+	}
+	r := newAuthTestRouter(t, fake)
+	rec := httptest.NewRecorder()
+	runWithSession(nil, rec, r, func(c *gin.Context) {
+		s := sessions.Default(c)
+		s.Set("user", models.User{ID: "u-1"})
+		_ = s.Save()
+	})
+	req := httptest.NewRequest(http.MethodDelete, "/auth/passkey/pk-missing", nil)
+	req.Header.Set("Cookie", rec.Result().Header.Get("Set-Cookie"))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404 for missing passkey", w.Code)
+	}
+}
+
+func TestDeletePasskeyCrossUserHidesAs404(t *testing.T) {
+	// gRPC may translate a "not the owner's passkey" check into
+	// PermissionDenied (the actor has no rights on this row) or NotFound.
+	// Both must surface as 404 to keep the endpoint an existence-unaware
+	// black box.
+	fake := &auth.FakeAuthClient{
+		OnRevokePasskey: func(*proto.RevokePasskeyRequest) (*emptypb.Empty, error) {
+			return nil, status.Error(codes.PermissionDenied, "passkey not owned by caller")
+		},
+	}
+	r := newAuthTestRouter(t, fake)
+	rec := httptest.NewRecorder()
+	runWithSession(nil, rec, r, func(c *gin.Context) {
+		s := sessions.Default(c)
+		s.Set("user", models.User{ID: "u-1"})
+		_ = s.Save()
+	})
+	req := httptest.NewRequest(http.MethodDelete, "/auth/passkey/pk-other-user", nil)
+	req.Header.Set("Cookie", rec.Result().Header.Get("Set-Cookie"))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404 (PermissionDenied must collapse to 404)", w.Code)
+	}
+}
+
+func TestDeletePasskeyAlreadyRevokedIs204(t *testing.T) {
+	// Idempotent revoke: if gRPC says the row is already revoked we
+	// surface 204 instead of 500 so a flaky network that double-fires
+	// the request still resolves cleanly.
+	fake := &auth.FakeAuthClient{
+		OnRevokePasskey: func(*proto.RevokePasskeyRequest) (*emptypb.Empty, error) {
+			return nil, status.Error(codes.AlreadyExists, "already revoked")
+		},
+	}
+	r := newAuthTestRouter(t, fake)
+	rec := httptest.NewRecorder()
+	runWithSession(nil, rec, r, func(c *gin.Context) {
+		s := sessions.Default(c)
+		s.Set("user", models.User{ID: "u-1"})
+		_ = s.Save()
+	})
+	req := httptest.NewRequest(http.MethodDelete, "/auth/passkey/pk-1", nil)
+	req.Header.Set("Cookie", rec.Result().Header.Get("Set-Cookie"))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204 for already-revoked passkey", w.Code)
 	}
 }
 
@@ -1717,6 +1795,148 @@ func TestPostLinkPasskeyBeginLoggedInButNotConfigured(t *testing.T) {
 	}
 }
 
+func TestPostLinkPasskeyBeginPopulatesUserHandle(t *testing.T) {
+	// On the success path the controller lifts `user_id` and
+	// `user_name` to the top level so the frontend does not have
+	// to dig into the nested options or hit a client-side cache.
+	// `user_id` must be base64url(no padding) of the raw id bytes,
+	// matching the encoding go-webauthn uses inside options.user.id.
+	const userID = "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+	fake := &auth.FakeAuthClient{
+		OnGetUserAuth: func(*proto.GetUserAuthRequest) (*proto.GetUserAuthResponse, error) {
+			return &proto.GetUserAuthResponse{
+				User: &proto.UserAuth{
+					Id:       userID,
+					Username: "alice",
+					Email:    "alice@example.com",
+				},
+			}, nil
+		},
+		OnListPasskeys: func(*proto.ListPasskeysRequest) (*proto.ListPasskeysResponse, error) {
+			return &proto.ListPasskeysResponse{}, nil
+		},
+	}
+	r := newAuthTestRouterWithLinkOAuth(t, fake, nil, nil, func(ac *AuthController) {
+		w, err := webauthn.New(&webauthn.Config{
+			RPID:          "localhost",
+			RPDisplayName: "Test RP",
+			RPOrigins:     []string{"http://localhost"},
+		})
+		if err != nil {
+			t.Fatalf("webauthn.New: %v", err)
+		}
+		ac.webauthn = w
+	})
+
+	rec := httptest.NewRecorder()
+	runWithSession(nil, rec, r, func(c *gin.Context) {
+		s := sessions.Default(c)
+		s.Set("user", models.User{ID: userID, Email: "alice@example.com"})
+		_ = s.Save()
+	})
+	req := httptest.NewRequest(http.MethodPost, "/auth/link/passkey/begin", nil)
+	req.Header.Set("Cookie", rec.Result().Header.Get("Set-Cookie"))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, body=%s", w.Code, w.Body.String())
+	}
+	var got map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	wantUserID := base64.RawURLEncoding.EncodeToString([]byte(userID))
+	if got["user_id"] != wantUserID {
+		t.Errorf("user_id = %v, want %s", got["user_id"], wantUserID)
+	}
+	if got["user_name"] != "alice" {
+		t.Errorf("user_name = %v, want alice", got["user_name"])
+	}
+	if _, ok := got["session_key"].(string); !ok {
+		t.Errorf("session_key missing or non-string: %v", got["session_key"])
+	}
+	if got["options"] == nil {
+		t.Errorf("options missing in response: %v", got)
+	}
+	// Sanity: the nested options block also carries the same user.id
+	// the top-level field promises. The frontend can read either; the
+	// top-level field is the cache-bypass path.
+	opts, _ := got["options"].(map[string]any)
+	if opts != nil {
+		if userBlock, ok := opts["user"].(map[string]any); ok {
+			if userBlock["id"] != wantUserID {
+				t.Errorf("options.user.id = %v, want %s (must match top-level user_id)", userBlock["id"], wantUserID)
+			}
+			if userBlock["name"] != "alice" {
+				t.Errorf("options.user.name = %v, want alice", userBlock["name"])
+			}
+		} else {
+			t.Errorf("options.user block missing: %v", opts)
+		}
+	}
+}
+
+// TestPostLinkPasskeyBeginLiftsChallenge asserts `challenge` is at
+// the top level of /auth/link/passkey/begin. The frontend may read
+// `data.challenge` directly (e.g. when feeding it to a custom
+// publicKey builder) without digging into `data.options`.
+func TestPostLinkPasskeyBeginLiftsChallenge(t *testing.T) {
+	const userID = "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
+	fake := &auth.FakeAuthClient{
+		OnGetUserAuth: func(*proto.GetUserAuthRequest) (*proto.GetUserAuthResponse, error) {
+			return &proto.GetUserAuthResponse{
+				User: &proto.UserAuth{Id: userID, Username: "alice", Email: "alice@example.com"},
+			}, nil
+		},
+		OnListPasskeys: func(*proto.ListPasskeysRequest) (*proto.ListPasskeysResponse, error) {
+			return &proto.ListPasskeysResponse{}, nil
+		},
+	}
+	r := newAuthTestRouterWithLinkOAuth(t, fake, nil, nil, func(ac *AuthController) {
+		w, err := webauthn.New(&webauthn.Config{
+			RPID:          "localhost",
+			RPDisplayName: "Test RP",
+			RPOrigins:     []string{"http://localhost"},
+		})
+		if err != nil {
+			t.Fatalf("webauthn.New: %v", err)
+		}
+		ac.webauthn = w
+	})
+
+	rec := httptest.NewRecorder()
+	runWithSession(nil, rec, r, func(c *gin.Context) {
+		s := sessions.Default(c)
+		s.Set("user", models.User{ID: userID, Email: "alice@example.com"})
+		_ = s.Save()
+	})
+	req := httptest.NewRequest(http.MethodPost, "/auth/link/passkey/begin", nil)
+	req.Header.Set("Cookie", rec.Result().Header.Get("Set-Cookie"))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, body=%s", w.Code, w.Body.String())
+	}
+	var got map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	gotChallenge, ok := got["challenge"].(string)
+	if !ok || gotChallenge == "" {
+		t.Fatalf("top-level challenge missing or empty: %v", got["challenge"])
+	}
+	opts, _ := got["options"].(map[string]any)
+	if opts == nil {
+		t.Fatalf("options missing: %+v", got)
+	}
+	if opts["challenge"] != gotChallenge {
+		t.Errorf("options.challenge (%v) and top-level challenge (%v) must match",
+			opts["challenge"], gotChallenge)
+	}
+}
+
 func TestPostPasskeyRegisterFinishRequiresExistingUser(t *testing.T) {
 	// /register/finish with no WebAuthn config still surfaces 503.
 	// The "ceremony did not include a user id" 400 branch only
@@ -1728,6 +1948,49 @@ func TestPostPasskeyRegisterFinishRequiresExistingUser(t *testing.T) {
 	w := doRequest(r, http.MethodPost, "/auth/passkey/register/finish", body)
 	if w.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503", w.Code)
+	}
+}
+
+// TestPasskeyBeginLiftsChallenge registers a third test against
+// /auth/passkey/register/begin and /auth/passkey/login/begin to
+// confirm the anonymous endpoints also lift `challenge` to the top
+// level. /link/passkey/begin is covered by
+// TestPostLinkPasskeyBeginLiftsChallenge above.
+func TestPasskeyBeginAnonymousLiftChallenge(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	store := cookie.NewStore([]byte("test-secret"))
+	r.Use(sessions.Sessions("discord_auth", store))
+	wInst, err := webauthn.New(&webauthn.Config{
+		RPID:          "localhost",
+		RPDisplayName: "Test RP",
+		RPOrigins:     []string{"http://localhost"},
+	})
+	if err != nil {
+		t.Fatalf("webauthn.New: %v", err)
+	}
+	ac := NewAuthController(nil, nil, &auth.FakeAuthClient{}, nil, "test-jwt-secret",
+		"", "", nil, nil, nil)
+	ac.webauthn = wInst
+	g := r.Group("/auth")
+	g.POST("/passkey/register/begin", ac.PostPasskeyRegisterBegin)
+	g.POST("/passkey/login/begin", ac.PostPasskeyLoginBegin)
+
+	for _, path := range []string{"/auth/passkey/register/begin", "/auth/passkey/login/begin"} {
+		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{}`))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("%s status = %d, body=%s", path, w.Code, w.Body.String())
+		}
+		var got map[string]any
+		if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+			t.Fatalf("%s unmarshal: %v", path, err)
+		}
+		if _, ok := got["challenge"].(string); !ok {
+			t.Errorf("%s missing top-level challenge: %+v", path, got)
+		}
 	}
 }
 

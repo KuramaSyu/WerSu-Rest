@@ -1335,14 +1335,23 @@ type PasskeyCeremonyBeginRequest struct {
 	UserId string `json:"user_id,omitempty"`
 }
 
-// PasskeyCeremonyBeginReply is the response to a `/begin` endpoint.
-// It carries the WebAuthn ceremony payload plus a server-generated
-// `SessionKey` that the browser must echo back on the matching
-// `/finish` call so the controller can look up the stored
-// `SessionData` (challenge, allowed credentials, user handle).
+// PasskeyCeremonyBeginReply is the response of a /begin endpoint:
+// the ceremony envelope the browser feeds to navigator.credentials,
+// the session key the matching /finish echoes back, and -- on
+// /link/passkey/begin only -- the server-supplied user handle the
+// frontend copies into options.user instead of reading a cache.
+//
+// `challenge` is duplicated at the top level so a caller that
+// reads `data.challenge` directly (the natural shape for
+// PublicKeyCredentialCreationOptions) does not need to dig into
+// `data.options`. The ceremony envelope itself remains in
+// `options` for callers that already wire it that way.
 type PasskeyCeremonyBeginReply struct {
 	SessionKey string         `json:"session_key"`
-	Options    map[string]any `json:"options"`
+	Challenge  string         `json:"challenge,omitempty"`
+	Options    map[string]any `json:"options,omitempty"`
+	UserID     string         `json:"user_id,omitempty"`
+	UserName   string         `json:"user_name,omitempty"`
 }
 
 // PasskeyCeremonyFinishRequest is the body posted to the `/finish`
@@ -1408,10 +1417,7 @@ func (ac *AuthController) PostPasskeyRegisterBegin(c *gin.Context) {
 		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("store ceremony: %w", err))
 		return
 	}
-	c.JSON(http.StatusOK, PasskeyCeremonyBeginReply{
-		SessionKey: key,
-		Options:    ceremonyOptionsJSON(options.Response),
-	})
+	c.JSON(http.StatusOK, beginReplyFrom(key, options.Response))
 }
 
 // PostPasskeyRegisterFinish godoc
@@ -1520,10 +1526,7 @@ func (ac *AuthController) PostPasskeyLoginBegin(c *gin.Context) {
 		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("store ceremony: %w", err))
 		return
 	}
-	c.JSON(http.StatusOK, PasskeyCeremonyBeginReply{
-		SessionKey: key,
-		Options:    ceremonyOptionsJSON(options.Response),
-	})
+	c.JSON(http.StatusOK, beginReplyFrom(key, options.Response))
 }
 
 // PostPasskeyLoginFinish godoc
@@ -1621,6 +1624,27 @@ func ceremonyOptionsJSON(v any) map[string]any {
 		return nil
 	}
 	return out
+}
+
+// beginReplyFrom wraps the ceremony envelope plus session key in a
+// PasskeyCeremonyBeginReply. `challenge` is also lifted to the top
+// level so a caller that reads `data.challenge` directly finds it.
+func beginReplyFrom(key string, response any) PasskeyCeremonyBeginReply {
+	opts := ceremonyOptionsJSON(response)
+	challenge, _ := opts["challenge"].(string)
+	return PasskeyCeremonyBeginReply{
+		SessionKey: key,
+		Challenge:  challenge,
+		Options:    opts,
+	}
+}
+
+// withLinkUser adds the cache-bypass user fields populated by
+// /auth/link/passkey/begin. Other /begin endpoints leave them empty.
+func withLinkUser(reply PasskeyCeremonyBeginReply, userID, userName string) PasskeyCeremonyBeginReply {
+	reply.UserID = base64.RawURLEncoding.EncodeToString([]byte(userID))
+	reply.UserName = userName
+	return reply
 }
 
 // ------------ Account linking ------------
@@ -1771,13 +1795,17 @@ type ChangePasswordRequest struct {
 }
 
 // PostChangePassword godoc
-// @Summary      Change the authenticated user's password
+// @Summary      Change or set the authenticated user's password
 // @Description  Hashes the submitted current password and compares it
 // @Description  in constant time against the stored hash. On match,
 // the old credential is unlinked and the new (hashed) credential is
-// @Description  linked. Returns 401 on a wrong current password and
-// @Description  400 if the account has no password credential yet
-// @Description  (OAuth-only signups should use /auth/link/password first).
+// @Description  linked.
+// @Description
+// @Description  If the account has no password credential yet,
+// @Description  `current_password` may be omitted and the endpoint
+// @Description  acts as a first-time password setup.
+// @Description
+// @Description  Returns 401 on a wrong current password.
 // @Tags         Authentication
 // @Accept       json
 // @Produce      json
@@ -1794,38 +1822,45 @@ func (ac *AuthController) PostChangePassword(c *gin.Context) {
 		return
 	}
 	var req ChangePasswordRequest
-	if err := c.ShouldBindJSON(&req); err != nil ||
-		req.CurrentPassword == "" || req.NewPassword == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "current_password and new_password are required"})
+	if err := c.ShouldBindJSON(&req); err != nil || req.NewPassword == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "new_password is required"})
 		return
 	}
+	// current_password is only required when a credential already exists;
+	// that branch enforces it below.
 	if req.CurrentPassword == req.NewPassword {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "new_password must differ from current_password"})
 		return
 	}
 
+	// credentialID stays empty when no prior password credential exists;
+	// we skip both the verify and the unlink in that case.
+	var credentialID string
 	lookup, err := ac.authService.FindCredentialByProvider(c, &proto.FindCredentialByProviderRequest{
 		Kind:       proto.CredentialKind_CREDENTIAL_KIND_PASSWORD,
 		Identifier: &proto.FindCredentialByProviderRequest_Email{Email: user.Email},
 	})
-	if err != nil {
-		if auth.IsNotFound(err) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "no password is set on this account; use /auth/link/password first"})
+	switch {
+	case err == nil:
+		credentialID = lookup.GetCredential().GetId()
+		storedHash := lookup.GetCredential().GetPasswordHash()
+		if storedHash == "" || credentialID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "no password credential to update"})
 			return
 		}
+		if req.CurrentPassword == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "current_password is required to change an existing password"})
+			return
+		}
+		ok, verr := auth.Argon2Hasher{}.Verify(req.CurrentPassword, storedHash)
+		if verr != nil || !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid current password"})
+			return
+		}
+	case auth.IsNotFound(err):
+		// First-time password setup; fall through to LinkCredential below.
+	default:
 		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("lookup password credential: %w", err))
-		return
-	}
-	storedHash := lookup.GetCredential().GetPasswordHash()
-	credentialID := lookup.GetCredential().GetId()
-	if storedHash == "" || credentialID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "no password credential to update"})
-		return
-	}
-
-	ok, verr := auth.Argon2Hasher{}.Verify(req.CurrentPassword, storedHash)
-	if verr != nil || !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid current password"})
 		return
 	}
 
@@ -1835,15 +1870,18 @@ func (ac *AuthController) PostChangePassword(c *gin.Context) {
 		return
 	}
 
-	// Unlink the old row first. LinkCredential returns ALREADY_EXISTS
-	// when a PASSWORD credential already exists, so we can't just overwrite.
-	if _, err := ac.authService.UnlinkCredential(c, &proto.UnlinkCredentialRequest{
-		CredentialId: credentialID,
-		UserId:       user.ID,
-		RequesterId:  user.ID,
-	}); err != nil {
-		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("unlink old password credential: %w", err))
-		return
+	// Unlink the old row first when one exists. LinkCredential returns
+	// ALREADY_EXISTS when a PASSWORD credential already exists, so we
+	// can't just overwrite.
+	if credentialID != "" {
+		if _, err := ac.authService.UnlinkCredential(c, &proto.UnlinkCredentialRequest{
+			CredentialId: credentialID,
+			UserId:       user.ID,
+			RequesterId:  user.ID,
+		}); err != nil {
+			utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("unlink old password credential: %w", err))
+			return
+		}
 	}
 
 	if _, err := ac.authService.LinkCredential(c, &proto.LinkCredentialRequest{
@@ -1912,7 +1950,11 @@ func (ac *AuthController) PostLinkPassword(c *gin.Context) {
 // @Description
 // @Description  The server returns ceremony options
 // @Description  (`PublicKeyCredentialCreationOptions`) that the browser
-// @Description  uses to invoke the platform authenticator.
+// @Description  uses to invoke the platform authenticator. The reply also
+// @Description  carries the server-supplied `user_id` (base64url of the
+// @Description  user's stable DB id, matching the encoding inside
+// @Description  `options.user.id`) and `user_name` so the frontend does not
+// @Description  have to read those values from a client-side cache.
 // @Description
 // @Description  Returns 503 if passkey support is not configured.
 // @Tags         Authentication
@@ -1952,10 +1994,10 @@ func (ac *AuthController) PostLinkPasskeyBegin(c *gin.Context) {
 		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("store ceremony: %w", err))
 		return
 	}
-	c.JSON(http.StatusOK, PasskeyCeremonyBeginReply{
-		SessionKey: key,
-		Options:    ceremonyOptionsJSON(options.Response),
-	})
+	// Empty UserID/UserName on register/login endpoints; populated
+	// here so the frontend need not read options.user from a
+	// client cache.
+	c.JSON(http.StatusOK, withLinkUser(beginReplyFrom(key, options.Response), user.ID, wu.WebAuthnName()))
 }
 
 // PostLinkPasskeyFinish godoc
@@ -2032,8 +2074,18 @@ func (ac *AuthController) PostLinkPasskeyFinish(c *gin.Context) {
 	})
 }
 
-// GetLinkedCredentials returns the user's authenticated credentials
-// summary (discord? password? N passkeys).
+// GetLinkedCredentials godoc
+// @Summary      List my linked credentials and passkeys
+// @Description  Returns every credential linked to the currently
+// @Description  authenticated user (Discord, Google, password) and
+// @Description  every passkey registered on their account.
+// @Tags         Authentication
+// @Produce      json
+// @Security     CookieAuth
+// @Success      200  {object}  map[string]interface{}  "credentials array and passkeys array"
+// @Failure      401  {object}  map[string]string        "Unauthorized - no session"
+// @Failure      500  {object}  map[string]string        "Internal Server Error - gRPC service failure"
+// @Router       /auth/me/credentials [get]
 func (ac *AuthController) GetLinkedCredentials(c *gin.Context) {
 	user, _, err := utils.UserFromContext(c)
 	if user == nil {
@@ -2086,13 +2138,15 @@ func (ac *AuthController) GetPasskeysForMe(c *gin.Context) {
 // @Description  Revokes the passkey identified by `:id`. The actor must
 // @Description  own it -- cross-user revoke attempts are rejected as 404
 // @Description  so we do not leak existence of passkeys owned by other
-// @Description  users.
+// @Description  users. Revoke is idempotent: a row that is already revoked
+// @Description  resolves to 204 No Content so a flaky network that
+// @Description  double-fires still resolves cleanly.
 // @Tags         Authentication
 // @Param        id  path  string  true  "Passkey ID"
 // @Success      204  "No Content"
 // @Failure      400  {object}  map[string]string  "Bad Request - missing id"
 // @Failure      401  {object}  map[string]string  "Unauthorized - no session"
-// @Failure      404  {object}  map[string]string  "Not Found - passkey not owned by caller"
+// @Failure      404  {object}  map[string]string  "Not Found - passkey not owned by caller or already revoked cross-user"
 // @Router       /auth/passkey/{id} [delete]
 func (ac *AuthController) DeletePasskey(c *gin.Context) {
 	user, _, err := utils.UserFromContext(c)
@@ -2110,6 +2164,17 @@ func (ac *AuthController) DeletePasskey(c *gin.Context) {
 		UserId:      user.ID,
 		RequesterId: user.ID,
 	}); err != nil {
+		switch status.Code(err) {
+		case codes.NotFound, codes.PermissionDenied:
+			// Missing OR belongs to a different user -- collapse to 404
+			// so existence of other users' rows never leaks.
+			c.JSON(http.StatusNotFound, gin.H{"error": "passkey not found"})
+			return
+		case codes.AlreadyExists:
+			// Already revoked -- 204 keeps a double-fired revoke idempotent.
+			c.Status(http.StatusNoContent)
+			return
+		}
 		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("revoke passkey failed: %w", err))
 		return
 	}
