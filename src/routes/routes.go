@@ -246,6 +246,9 @@ func SetupRouter(
 		auth.POST("/passkey/register/finish", authController.PostPasskeyRegisterFinish)
 		auth.POST("/passkey/login/begin", authController.PostPasskeyLoginBegin)
 		auth.POST("/passkey/login/finish", authController.PostPasskeyLoginFinish)
+		// Manage the authenticated user's passkeys
+		auth.GET("/passkey/list", authController.GetPasskeysForMe)
+		auth.DELETE("/passkey/:id", authController.DeletePasskey)
 
 		// Account linking (must be authenticated)
 		auth.POST("/link/discord", authController.PostLinkDiscord)
@@ -254,6 +257,12 @@ func SetupRouter(
 		auth.POST("/password/change", authController.PostChangePassword)
 		auth.POST("/link/passkey/begin", authController.PostLinkPasskeyBegin)
 		auth.POST("/link/passkey/finish", authController.PostLinkPasskeyFinish)
+
+		// Popup-based OAuth link flow. :p is discord or google.
+		// The init endpoint redirects to the provider
+		auth.GET("/link/:p/init", authController.GetLinkInit)
+		auth.GET("/link/:p/callback", authController.GetLinkCallback)
+		auth.GET("/link/:p/complete", authController.GetLinkComplete)
 
 		// Linked-credentials summary
 		auth.GET("/me/credentials", authController.GetLinkedCredentials)
