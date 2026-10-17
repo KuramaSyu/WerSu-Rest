@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/KuramaSyu/WerSu-Rest/src/controllers"
+	authctl "github.com/KuramaSyu/WerSu-Rest/src/controllers/auth"
 	_ "github.com/KuramaSyu/WerSu-Rest/src/docs" // load docs
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -13,7 +14,7 @@ import (
 // SetupRouter configures all application routes
 func SetupRouter(
 	r *gin.Engine,
-	authController *controllers.AuthController,
+	authController *authctl.AuthController,
 	noteController *controllers.NoteController,
 	noteSearchController *controllers.SearchNotesController,
 	noteVersionController *controllers.NoteVersionController,

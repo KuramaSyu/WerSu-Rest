@@ -14,6 +14,7 @@ import (
 
 	"github.com/KuramaSyu/WerSu-Rest/src/config"
 	"github.com/KuramaSyu/WerSu-Rest/src/controllers"
+	authctl "github.com/KuramaSyu/WerSu-Rest/src/controllers/auth"
 	"github.com/KuramaSyu/WerSu-Rest/src/models"
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
 	"github.com/KuramaSyu/WerSu-Rest/src/routes"
@@ -106,7 +107,7 @@ func main() {
 	// legacy UserService). The Discord OAuth config is the first
 	// argument; Google OAuth is optional and may be nil if the env
 	// vars are unset.
-	authController := controllers.NewAuthController(
+	authController := authctl.NewAuthController(
 		appConfig.DiscordOAuthConfig,
 		appConfig.GoogleOAuthConfig,
 		authGrpcClient,
