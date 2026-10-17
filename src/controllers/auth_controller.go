@@ -1,10 +1,13 @@
 package controllers
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -47,8 +50,8 @@ type PostAccessTokenRequest struct {
 // (`POST /auth/login`) by switching on the `kind` field of the
 // request body.
 type AuthController struct {
-	OAuthConfig  *oauth2.Config
-	GoogleOAuth  *oauth2.Config
+	OAuthConfig *oauth2.Config
+	GoogleOAuth *oauth2.Config
 	// OAuthLinkConfig is the OAuth config used by the popup-based
 	// link flow (`/api/auth/link/discord/*`). It uses a separate
 	// RedirectURL that points to the link callback. Nil when the
@@ -67,9 +70,9 @@ type AuthController struct {
 	// GoogleUserinfoURL is the equivalent for Google. Defaults to
 	// https://openidconnect.googleapis.com/v1/userinfo.
 	GoogleUserinfoURL string
-	authService     auth.AuthServiceClientIface
-	shareService    *proto.SharingServiceClient
-	JWTSecret       string
+	authService       auth.AuthServiceClientIface
+	shareService      *proto.SharingServiceClient
+	JWTSecret         string
 
 	// webauthn runs the WebAuthn ceremony. Nil when RP ID is unset
 	// (the six passkey endpoints then return 503).
@@ -156,21 +159,36 @@ func (ac *AuthController) putCeremony(sd webauthn.SessionData) (string, error) {
 		return "", err
 	}
 	key := base64.RawURLEncoding.EncodeToString(nonce[:])
-	ac.ceremonyStore.Store(key, ceremonyEntry{data: sd, expires: time.Now().Add(passkeyCeremonyTTL)})
+	expires := time.Now().Add(passkeyCeremonyTTL)
+	ac.ceremonyStore.Store(key, ceremonyEntry{data: sd, expires: expires})
+	log.Printf("passkey: stored ceremony key=%s expires=%s userID=%q", key, expires.UTC().Format(time.RFC3339), sd.UserID)
 	return key, nil
 }
 
-// takeCeremony loads and deletes; ok=false means unknown or expired.
-func (ac *AuthController) takeCeremony(key string) (webauthn.SessionData, bool) {
+// takeCeremony loads and deletes the SessionData under key. The
+// store is single-use, so a retried /finish returns an error;
+// entries past their TTL are reported with the cutoff time so the
+// SPA can decide whether to start a fresh ceremony.
+func (ac *AuthController) takeCeremony(key string) (webauthn.SessionData, error) {
 	v, ok := ac.ceremonyStore.LoadAndDelete(key)
 	if !ok {
-		return webauthn.SessionData{}, false
+		log.Printf("passkey: takeCeremony key=%s -> miss (not found or already consumed)", key)
+		return webauthn.SessionData{}, errors.New("ceremony not found")
 	}
 	e, ok := v.(ceremonyEntry)
-	if !ok || time.Now().After(e.expires) {
-		return webauthn.SessionData{}, false
+	if !ok {
+		log.Printf("passkey: takeCeremony key=%s -> corrupted entry of type %T", key, v)
+		return webauthn.SessionData{}, fmt.Errorf("ceremony store: unexpected entry type %T", v)
 	}
-	return e.data, true
+	if now := time.Now(); now.After(e.expires) {
+		log.Printf("passkey: takeCeremony key=%s -> expired expires=%s now=%s", key, e.expires.UTC().Format(time.RFC3339), now.UTC().Format(time.RFC3339))
+		return webauthn.SessionData{}, fmt.Errorf(
+			"ceremony expired at %s (now=%s)",
+			e.expires.UTC().Format(time.RFC3339), now.UTC().Format(time.RFC3339),
+		)
+	}
+	log.Printf("passkey: takeCeremony key=%s -> hit userID=%q", key, e.data.UserID)
+	return e.data, nil
 }
 
 // webauthnConfigured reports whether the controller has a usable
@@ -607,7 +625,7 @@ func (ac *AuthController) GetPublicAccessToken(c *gin.Context) {
 	}
 	userId := resp.AccessAs
 
-	token, err := utils.GenerateJWT(userId, ac.JWTSecret, unwrapNullableDatetime(resp.OnlineUntil))
+	token, err := utils.GenerateJWT(userId, ac.JWTSecret, UnwrapNullableDatetime(resp.OnlineUntil))
 	if err != nil {
 		log.Printf("Failed to generate JWT: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate access token"})
@@ -1355,19 +1373,93 @@ type PasskeyCeremonyBeginReply struct {
 }
 
 // PasskeyCeremonyFinishRequest is the body posted to the `/finish`
-// endpoints. The browser includes:
-//   - `session_key` from the matching /begin response,
-//   - the raw attestation (registration) or assertion (login)
-//     bytes the authenticator returned,
-//   - for registration, an optional human-readable friendly_name
-//     for the new passkey.
+// endpoints. The browser delivers the resolved `PublicKeyCredential`
+// exactly as `JSON.stringify(navigator.credentials.{create,get}())`
+// produces it; binary fields (rawId, attestationObject,
+// authenticatorData, signature, userHandle) are base64url-no-pad
+// strings so the JSON encoder does not drop the ArrayBuffers.
+//
+// `session_key` is the nonce the server returned on /begin;
+// `friendly_name` is an optional human-readable label carried only
+// for registration / link paths (used by `RegisterPasskey`). Login
+// ceremonies never supply `friendly_name`.
+//
+// The lib (`go-webauthn/webauthn`) parses the lib-shaped
+// `CredentialCreationResponse` / `CredentialAssertionResponse`
+// directly from `c.Request.Body`, so the /finish handlers rebuild
+// the request body to be exactly `req.Credential` JSON before
+// calling `FinishRegistration` / `FinishPasskeyLogin`.
+//
+// Authoritative field shapes are pinned by the SPA hook tests
+// (`expectBase64UrlNoPad`).
 type PasskeyCeremonyFinishRequest struct {
-	SessionKey        string `json:"session_key"`
-	CredentialId      []byte `json:"credential_id"`
-	ClientDataJSON    []byte `json:"client_data_json"`
-	AuthenticatorData []byte `json:"authenticator_data"`
-	Signature         []byte `json:"signature"`
-	FriendlyName      string `json:"friendly_name,omitempty"`
+	SessionKey   string                  `json:"session_key"`
+	FriendlyName string                  `json:"friendly_name,omitempty"`
+	Credential   PasskeyFinishCredential `json:"credential"`
+}
+
+// PasskeyFinishCredential mirrors the JSON-serialized shape the
+// browser produces. Two response branches:
+//   - register / link: response carries `clientDataJSON`,
+//     `attestationObject`, optional `transports`.
+//   - login: response carries `clientDataJSON`,
+//     `authenticatorData`, `signature`, optional `userHandle`.
+type PasskeyFinishCredential struct {
+	ID                      string            `json:"id"`
+	RawID                   string            `json:"rawId"`
+	Type                    string            `json:"type"`
+	AuthenticatorAttachment string            `json:"authenticatorAttachment,omitempty"`
+	ClientExtensionResults  map[string]any    `json:"clientExtensionResults,omitempty"`
+	Response                PasskeyFinishResp `json:"response"`
+}
+
+// PasskeyFinishResp holds whichever response fields the browser sent;
+// the tag `omitempty` keeps the wire JSON byte-for-byte identical to
+// what the SPA produced (so go-webauthn's strict parser is happy).
+type PasskeyFinishResp struct {
+	ClientDataJSON    string   `json:"clientDataJSON"`
+	AttestationObject string   `json:"attestationObject,omitempty"`
+	Transports        []string `json:"transports,omitempty"`
+	AuthenticatorData string   `json:"authenticatorData,omitempty"`
+	Signature         string   `json:"signature,omitempty"`
+	UserHandle        string   `json:"userHandle,omitempty"`
+}
+
+// withRequestBodyJSON replaces `c.Request.Body` with a reader over
+// the JSON encoding of `v`. The previous body (which contained the
+// SPA's wrapper including `session_key` / `friendly_name`) is
+// discarded; go-webauthn then parses the lib-shaped credential
+// exactly as if it had been posted at the top level.
+func withRequestBodyJSON(c *gin.Context, v any) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	c.Request.Body = io.NopCloser(bytes.NewReader(b))
+	c.Request.ContentLength = int64(len(b))
+	return nil
+}
+
+// validateCeremonyCredential does an early-shape sanity check on the
+// SPA's nested credential. Returns the first user-visible error.
+// The library's own parser will fail with `Parse error for
+// Registration` / `Parse error for Assertion` if these are off, but
+// catching them up-front lets the controller return 400 with a more
+// specific message rather than 401 from `FinishRegistration`.
+func validateCeremonyCredential(cred PasskeyFinishCredential) error {
+	if cred.Type != "" && cred.Type != "public-key" {
+		return errors.New("credential.type must be \"public-key\"")
+	}
+	if cred.ID == "" {
+		return errors.New("credential.id is required")
+	}
+	if cred.RawID == "" {
+		return errors.New("credential.rawId is required")
+	}
+	if cred.Response.ClientDataJSON == "" {
+		return errors.New("credential.response.clientDataJSON is required")
+	}
+	return nil
 }
 
 // PasskeyCeremonyFinishReply is the success body returned by the
@@ -1407,6 +1499,7 @@ func (ac *AuthController) PostPasskeyRegisterBegin(c *gin.Context) {
 	user := &proto.UserAuth{Id: req.UserId}
 	wu := auth.NewWebAuthnUser(user, nil)
 
+	log.Printf("passkey: begin register userID=%q", req.UserId)
 	options, sessionData, err := ac.webauthn.BeginRegistration(wu)
 	if err != nil {
 		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("begin registration: %w", err))
@@ -1451,9 +1544,22 @@ func (ac *AuthController) PostPasskeyRegisterFinish(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
-	sessionData, ok := ac.takeCeremony(req.SessionKey)
-	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ceremony expired or unknown"})
+	log.Printf("passkey: finish register session_key=%s cred_id=%s", req.SessionKey, req.Credential.ID)
+	if req.SessionKey == "" {
+		utils.SetGinError(c, http.StatusBadRequest, errors.New("session_key is required"))
+		return
+	}
+	if err := validateCeremonyCredential(req.Credential); err != nil {
+		utils.SetGinError(c, http.StatusBadRequest, err)
+		return
+	}
+	if err := withRequestBodyJSON(c, req.Credential); err != nil {
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("rebuild request body: %w", err))
+		return
+	}
+	sessionData, err := ac.takeCeremony(req.SessionKey)
+	if err != nil {
+		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
 	}
 	userId := string(sessionData.UserID)
@@ -1516,6 +1622,7 @@ func (ac *AuthController) PostPasskeyLoginBegin(c *gin.Context) {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "passkey support is not configured (WEBAUTHN_RP_ID unset)"})
 		return
 	}
+	log.Printf("passkey: begin login (discoverable)")
 	options, sessionData, err := ac.webauthn.BeginDiscoverableLogin()
 	if err != nil {
 		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("begin login: %w", err))
@@ -1560,9 +1667,22 @@ func (ac *AuthController) PostPasskeyLoginFinish(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
-	sessionData, ok := ac.takeCeremony(req.SessionKey)
-	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ceremony expired or unknown"})
+	log.Printf("passkey: finish login session_key=%s cred_id=%s", req.SessionKey, req.Credential.ID)
+	if req.SessionKey == "" {
+		utils.SetGinError(c, http.StatusBadRequest, errors.New("session_key is required"))
+		return
+	}
+	if err := validateCeremonyCredential(req.Credential); err != nil {
+		utils.SetGinError(c, http.StatusBadRequest, err)
+		return
+	}
+	if err := withRequestBodyJSON(c, req.Credential); err != nil {
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("rebuild request body: %w", err))
+		return
+	}
+	sessionData, err := ac.takeCeremony(req.SessionKey)
+	if err != nil {
+		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
 	}
 	var matched *auth.WebAuthnUser
@@ -1593,8 +1713,8 @@ func (ac *AuthController) PostPasskeyLoginFinish(c *gin.Context) {
 		return
 	}
 	if _, err := ac.authService.UpdatePasskeyCounter(c.Request.Context(), &proto.UpdatePasskeyCounterRequest{
-		PasskeyId:    rec.PasskeyID,
-		NewSignCount: uint64(cred.Authenticator.SignCount),
+		PasskeyId:   rec.PasskeyID,
+		RequesterId: matched.UserAuth.GetId(),
 	}); err != nil {
 		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("update counter: %w", err))
 		return
@@ -1975,6 +2095,7 @@ func (ac *AuthController) PostLinkPasskeyBegin(c *gin.Context) {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "passkey support is not configured (WEBAUTHN_RP_ID unset)"})
 		return
 	}
+	log.Printf("passkey: begin link userID=%q", user.ID)
 	wu, err := auth.LoadPasskeyUser(c.Request.Context(), ac.authService, user.ID)
 	if err != nil {
 		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("load user: %w", err))
@@ -2039,9 +2160,22 @@ func (ac *AuthController) PostLinkPasskeyFinish(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
-	sessionData, ok := ac.takeCeremony(req.SessionKey)
-	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ceremony expired or unknown"})
+	log.Printf("passkey: finish link session_key=%s userID=%q cred_id=%s", req.SessionKey, user.ID, req.Credential.ID)
+	if req.SessionKey == "" {
+		utils.SetGinError(c, http.StatusBadRequest, errors.New("session_key is required"))
+		return
+	}
+	if err := validateCeremonyCredential(req.Credential); err != nil {
+		utils.SetGinError(c, http.StatusBadRequest, err)
+		return
+	}
+	if err := withRequestBodyJSON(c, req.Credential); err != nil {
+		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("rebuild request body: %w", err))
+		return
+	}
+	sessionData, cerErr := ac.takeCeremony(req.SessionKey)
+	if cerErr != nil {
+		utils.SetGinError(c, http.StatusBadRequest, cerErr)
 		return
 	}
 	wu, err := auth.LoadPasskeyUser(c.Request.Context(), ac.authService, user.ID)

@@ -42,6 +42,7 @@ func (s *DiscordStrategy) Login(ctx context.Context) (*proto.UserAuth, error) {
 		return nil, errors.New("auth service not configured")
 	}
 
+	// Does discord id already present @ backend?
 	did := s.DiscordId
 	resp, err := s.Auth.FindCredentialByProvider(ctx, &proto.FindCredentialByProviderRequest{
 		Kind:       proto.CredentialKind_CREDENTIAL_KIND_DISCORD,
@@ -53,7 +54,9 @@ func (s *DiscordStrategy) Login(ctx context.Context) (*proto.UserAuth, error) {
 	if !IsNotFound(err) {
 		return nil, err
 	}
+	// user not found
 
+	// insert user
 	email := s.Email
 	if email == "" {
 		email = discordPlaceholderEmail(s.DiscordId)
