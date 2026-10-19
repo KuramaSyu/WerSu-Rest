@@ -846,9 +846,23 @@ func TestPostChangePasswordWrongCurrent(t *testing.T) {
 }
 
 func TestPostChangePasswordNoPasswordSet(t *testing.T) {
+	var (
+		gotLink  *proto.LinkCredentialRequest
+		gotUnlink *proto.UnlinkCredentialRequest
+	)
 	fake := &auth.FakeAuthClient{
 		OnFindCredentialByProv: func(*proto.FindCredentialByProviderRequest) (*proto.FindCredentialByProviderResponse, error) {
 			return nil, status.Error(codes.NotFound, "no credential")
+		},
+		OnLinkCredential: func(in *proto.LinkCredentialRequest) (*proto.LinkCredentialResponse, error) {
+			gotLink = in
+			return &proto.LinkCredentialResponse{
+				Credential: &proto.Credential{Id: "c-new"},
+			}, nil
+		},
+		OnUnlinkCredential: func(in *proto.UnlinkCredentialRequest) (*emptypb.Empty, error) {
+			gotUnlink = in
+			return &emptypb.Empty{}, nil
 		},
 	}
 	r, cookie := changePasswordFixture(t, fake)
@@ -862,8 +876,27 @@ func TestPostChangePasswordNoPasswordSet(t *testing.T) {
 	req.Header.Set("Cookie", cookie)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
-	if w.Code != http.StatusBadRequest {
+	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, body=%s", w.Code, w.Body.String())
+	}
+	if gotUnlink != nil {
+		t.Errorf("UnlinkCredential should not run when no prior credential exists")
+	}
+	if gotLink == nil {
+		t.Fatal("LinkCredential was not called for first-time setup")
+	}
+	if gotLink.GetPasswordHash() == "" {
+		t.Errorf("password hash was empty")
+	}
+	if gotLink.GetPasswordHash() == "newpw" {
+		t.Errorf("plaintext password was sent to gRPC")
+	}
+	ok, err := (auth.Argon2Hasher{}).Verify("newpw", gotLink.GetPasswordHash())
+	if err != nil {
+		t.Fatalf("verify: %v", err)
+	}
+	if !ok {
+		t.Errorf("server hash did not reproduce plaintext")
 	}
 }
 
