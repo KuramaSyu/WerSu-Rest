@@ -27,6 +27,7 @@ const (
 	AttachmentService_UpdateAttachmentMetadata_FullMethodName = "/proto.AttachmentService/UpdateAttachmentMetadata"
 	AttachmentService_PostAttachmentLink_FullMethodName       = "/proto.AttachmentService/PostAttachmentLink"
 	AttachmentService_DeleteAttachmentLink_FullMethodName     = "/proto.AttachmentService/DeleteAttachmentLink"
+	AttachmentService_GetAttachmentToken_FullMethodName       = "/proto.AttachmentService/GetAttachmentToken"
 )
 
 // AttachmentServiceClient is the client API for AttachmentService service.
@@ -42,6 +43,8 @@ type AttachmentServiceClient interface {
 	// either succeeds fully or fails with an error; no response body needed
 	PostAttachmentLink(ctx context.Context, in *PostAttachmentLinkRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteAttachmentLink(ctx context.Context, in *DeleteAttachmentLinkRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// to retrieve single attachments later on during edit mode
+	GetAttachmentToken(ctx context.Context, in *GetAttachmentTokenRequest, opts ...grpc.CallOption) (*GetAttachmentTokenResponse, error)
 }
 
 type attachmentServiceClient struct {
@@ -122,6 +125,16 @@ func (c *attachmentServiceClient) DeleteAttachmentLink(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *attachmentServiceClient) GetAttachmentToken(ctx context.Context, in *GetAttachmentTokenRequest, opts ...grpc.CallOption) (*GetAttachmentTokenResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAttachmentTokenResponse)
+	err := c.cc.Invoke(ctx, AttachmentService_GetAttachmentToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AttachmentServiceServer is the server API for AttachmentService service.
 // All implementations must embed UnimplementedAttachmentServiceServer
 // for forward compatibility.
@@ -135,6 +148,8 @@ type AttachmentServiceServer interface {
 	// either succeeds fully or fails with an error; no response body needed
 	PostAttachmentLink(context.Context, *PostAttachmentLinkRequest) (*emptypb.Empty, error)
 	DeleteAttachmentLink(context.Context, *DeleteAttachmentLinkRequest) (*emptypb.Empty, error)
+	// to retrieve single attachments later on during edit mode
+	GetAttachmentToken(context.Context, *GetAttachmentTokenRequest) (*GetAttachmentTokenResponse, error)
 	mustEmbedUnimplementedAttachmentServiceServer()
 }
 
@@ -165,6 +180,9 @@ func (UnimplementedAttachmentServiceServer) PostAttachmentLink(context.Context, 
 }
 func (UnimplementedAttachmentServiceServer) DeleteAttachmentLink(context.Context, *DeleteAttachmentLinkRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteAttachmentLink not implemented")
+}
+func (UnimplementedAttachmentServiceServer) GetAttachmentToken(context.Context, *GetAttachmentTokenRequest) (*GetAttachmentTokenResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAttachmentToken not implemented")
 }
 func (UnimplementedAttachmentServiceServer) mustEmbedUnimplementedAttachmentServiceServer() {}
 func (UnimplementedAttachmentServiceServer) testEmbeddedByValue()                           {}
@@ -313,6 +331,24 @@ func _AttachmentService_DeleteAttachmentLink_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AttachmentService_GetAttachmentToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAttachmentTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttachmentServiceServer).GetAttachmentToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttachmentService_GetAttachmentToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttachmentServiceServer).GetAttachmentToken(ctx, req.(*GetAttachmentTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AttachmentService_ServiceDesc is the grpc.ServiceDesc for AttachmentService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -347,6 +383,10 @@ var AttachmentService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteAttachmentLink",
 			Handler:    _AttachmentService_DeleteAttachmentLink_Handler,
+		},
+		{
+			MethodName: "GetAttachmentToken",
+			Handler:    _AttachmentService_GetAttachmentToken_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

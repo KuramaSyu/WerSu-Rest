@@ -96,6 +96,7 @@ func SetupRouter(
 			attachments.POST("", attachmentController.PostAttachment)
 			attachments.GET("/", attachmentController.GetAttachment)
 			attachments.GET("/image", attachmentController.GetImage)
+			attachments.GET("/token", attachmentController.GetAttachmentToken)
 			attachments.GET("/metadata/", attachmentController.GetAttachmentMetadata)
 			attachments.PATCH("/metadata/", attachmentController.PatchAttachmentMetadata)
 			attachments.DELETE("/", attachmentController.DeleteAttachment)

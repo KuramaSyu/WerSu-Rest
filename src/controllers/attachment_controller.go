@@ -95,6 +95,19 @@ type DeleteAttachmentMetadataRequest struct {
 	Key string `form:"key" binding:"required"`
 }
 
+// query parameters to mint a per-attachment JWT
+//
+// The key is passed as a query parameter (not a path parameter) because
+// attachment keys contain slashes, matching the other attachment routes.
+type GetAttachmentTokenQuery struct {
+	Key string `form:"key" binding:"required"`
+}
+
+// AttachmentTokenReply is the REST body for GET /attachments/token.
+type AttachmentTokenReply struct {
+	Token string `json:"token" example:"eyJhbGciOiJIUzI1NiJ9...."`
+}
+
 func attachmentMetadataReplyFromProto(
 	metadata *proto.AttachmentMetadata,
 ) AttachmentMetadataReply {
@@ -434,6 +447,65 @@ func (ac *AttachmentController) GetAttachmentMetadata(c *gin.Context) {
 		http.StatusOK,
 		attachmentMetadataReplyFromProto(metadata),
 	)
+}
+
+// GetAttachmentToken mints a per-attachment JWT for the authenticated caller.
+//
+// This is aimed at live collaboration: when a new image is uploaded into a
+// note while other peers (in particular public/guest editors) are already
+// editing it, those peers never received a token for the new attachment in
+// their initial GetNote response (its id_token_map only covers the
+// attachments that existed at fetch time). This route lets such a peer
+// request a JWT for that newly added attachment on demand, after which the
+// token can be used wherever an attachment access JWT is accepted.
+//
+// @Summary Mint an attachment access JWT
+// @Description Mints a per-attachment JWT for the authenticated caller. Intended for live-collaboration peers (especially public/guest editors) who did not receive a token for a newly uploaded attachment in their initial GetNote response and therefore need to request one on demand.
+// @Tags attachments
+// @Produce json
+// @Param key query string true "Attachment key" example(attachments/0195f8f4-1167-7f89-b5ec-b40a8f08f4cb)
+// @Success 200 {object} AttachmentTokenReply
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /attachments/token [get]
+func (ac *AttachmentController) GetAttachmentToken(c *gin.Context) {
+	user, code, err := utils.UserFromContext(c)
+	if err != nil {
+		utils.SetGinError(c, code, fmt.Errorf("not logged in: %w", err))
+		return
+	}
+
+	var params GetAttachmentTokenQuery
+	if err := c.ShouldBindQuery(&params); err != nil {
+		utils.SetGinError(c, http.StatusBadRequest, err)
+		return
+	}
+
+	key, err := url.QueryUnescape(params.Key)
+	if err != nil {
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid attachment key: %w", err))
+		return
+	} else if key == "" {
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("parameter key can't be empty"))
+		return
+	}
+
+	response, err := (*ac.AttachmentService).GetAttachmentToken(
+		c,
+		&proto.GetAttachmentTokenRequest{
+			AttachmentKey: key,
+			UserId:        user.ID,
+		},
+	)
+	if err != nil {
+		utils.SetGinError(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, AttachmentTokenReply{Token: response.GetToken()})
 }
 
 // @Summary Delete attachment

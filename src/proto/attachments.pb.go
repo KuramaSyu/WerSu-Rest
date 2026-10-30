@@ -789,6 +789,102 @@ func (x *DeleteAttachmentResponse) GetSuccess() bool {
 	return false
 }
 
+type GetAttachmentTokenRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AttachmentKey string                 `protobuf:"bytes,1,opt,name=attachment_key,json=attachmentKey,proto3" json:"attachment_key,omitempty"`
+	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAttachmentTokenRequest) Reset() {
+	*x = GetAttachmentTokenRequest{}
+	mi := &file_src_proto_attachments_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAttachmentTokenRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAttachmentTokenRequest) ProtoMessage() {}
+
+func (x *GetAttachmentTokenRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_src_proto_attachments_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAttachmentTokenRequest.ProtoReflect.Descriptor instead.
+func (*GetAttachmentTokenRequest) Descriptor() ([]byte, []int) {
+	return file_src_proto_attachments_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GetAttachmentTokenRequest) GetAttachmentKey() string {
+	if x != nil {
+		return x.AttachmentKey
+	}
+	return ""
+}
+
+func (x *GetAttachmentTokenRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type GetAttachmentTokenResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAttachmentTokenResponse) Reset() {
+	*x = GetAttachmentTokenResponse{}
+	mi := &file_src_proto_attachments_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAttachmentTokenResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAttachmentTokenResponse) ProtoMessage() {}
+
+func (x *GetAttachmentTokenResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_src_proto_attachments_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAttachmentTokenResponse.ProtoReflect.Descriptor instead.
+func (*GetAttachmentTokenResponse) Descriptor() ([]byte, []int) {
+	return file_src_proto_attachments_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *GetAttachmentTokenResponse) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
 var File_src_proto_attachments_proto protoreflect.FileDescriptor
 
 const file_src_proto_attachments_proto_rawDesc = "" +
@@ -859,7 +955,12 @@ const file_src_proto_attachments_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\"4\n" +
 	"\x18DeleteAttachmentResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess2\xc8\x04\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"[\n" +
+	"\x19GetAttachmentTokenRequest\x12%\n" +
+	"\x0eattachment_key\x18\x01 \x01(\tR\rattachmentKey\x12\x17\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"2\n" +
+	"\x1aGetAttachmentTokenResponse\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token2\xa3\x05\n" +
 	"\x11AttachmentService\x12A\n" +
 	"\x0ePostAttachment\x12\x1c.proto.PostAttachmentRequest\x1a\x11.proto.Attachment\x12?\n" +
 	"\rGetAttachment\x12\x1b.proto.GetAttachmentRequest\x1a\x11.proto.Attachment\x12W\n" +
@@ -867,7 +968,8 @@ const file_src_proto_attachments_proto_rawDesc = "" +
 	"\x10DeleteAttachment\x12\x1e.proto.DeleteAttachmentRequest\x1a\x1f.proto.DeleteAttachmentResponse\x12]\n" +
 	"\x18UpdateAttachmentMetadata\x12&.proto.UpdateAttachmentMetadataRequest\x1a\x19.proto.AttachmentMetadata\x12N\n" +
 	"\x12PostAttachmentLink\x12 .proto.PostAttachmentLinkRequest\x1a\x16.google.protobuf.Empty\x12R\n" +
-	"\x14DeleteAttachmentLink\x12\".proto.DeleteAttachmentLinkRequest\x1a\x16.google.protobuf.EmptyB1Z/github.com/KuramaSyu/WerSu-Rest/src/proto;protob\x06proto3"
+	"\x14DeleteAttachmentLink\x12\".proto.DeleteAttachmentLinkRequest\x1a\x16.google.protobuf.Empty\x12Y\n" +
+	"\x12GetAttachmentToken\x12 .proto.GetAttachmentTokenRequest\x1a!.proto.GetAttachmentTokenResponseB1Z/github.com/KuramaSyu/WerSu-Rest/src/proto;protob\x06proto3"
 
 var (
 	file_src_proto_attachments_proto_rawDescOnce sync.Once
@@ -882,7 +984,7 @@ func file_src_proto_attachments_proto_rawDescGZIP() []byte {
 }
 
 var file_src_proto_attachments_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_src_proto_attachments_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_src_proto_attachments_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_src_proto_attachments_proto_goTypes = []any{
 	(PostAttachmentLinkRequest_LinkTarget)(0),   // 0: proto.PostAttachmentLinkRequest.LinkTarget
 	(DeleteAttachmentLinkRequest_LinkTarget)(0), // 1: proto.DeleteAttachmentLinkRequest.LinkTarget
@@ -896,12 +998,14 @@ var file_src_proto_attachments_proto_goTypes = []any{
 	(*GetAttachmentMetadataRequest)(nil),        // 9: proto.GetAttachmentMetadataRequest
 	(*DeleteAttachmentRequest)(nil),             // 10: proto.DeleteAttachmentRequest
 	(*DeleteAttachmentResponse)(nil),            // 11: proto.DeleteAttachmentResponse
-	(*timestamppb.Timestamp)(nil),               // 12: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),                       // 13: google.protobuf.Empty
+	(*GetAttachmentTokenRequest)(nil),           // 12: proto.GetAttachmentTokenRequest
+	(*GetAttachmentTokenResponse)(nil),          // 13: proto.GetAttachmentTokenResponse
+	(*timestamppb.Timestamp)(nil),               // 14: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                       // 15: google.protobuf.Empty
 }
 var file_src_proto_attachments_proto_depIdxs = []int32{
-	12, // 0: proto.AttachmentMetadata.created_at:type_name -> google.protobuf.Timestamp
-	12, // 1: proto.AttachmentMetadata.updated_at:type_name -> google.protobuf.Timestamp
+	14, // 0: proto.AttachmentMetadata.created_at:type_name -> google.protobuf.Timestamp
+	14, // 1: proto.AttachmentMetadata.updated_at:type_name -> google.protobuf.Timestamp
 	2,  // 2: proto.Attachment.metadata:type_name -> proto.AttachmentMetadata
 	0,  // 3: proto.PostAttachmentLinkRequest.link_target:type_name -> proto.PostAttachmentLinkRequest.LinkTarget
 	1,  // 4: proto.DeleteAttachmentLinkRequest.link_target:type_name -> proto.DeleteAttachmentLinkRequest.LinkTarget
@@ -912,15 +1016,17 @@ var file_src_proto_attachments_proto_depIdxs = []int32{
 	7,  // 9: proto.AttachmentService.UpdateAttachmentMetadata:input_type -> proto.UpdateAttachmentMetadataRequest
 	5,  // 10: proto.AttachmentService.PostAttachmentLink:input_type -> proto.PostAttachmentLinkRequest
 	6,  // 11: proto.AttachmentService.DeleteAttachmentLink:input_type -> proto.DeleteAttachmentLinkRequest
-	3,  // 12: proto.AttachmentService.PostAttachment:output_type -> proto.Attachment
-	3,  // 13: proto.AttachmentService.GetAttachment:output_type -> proto.Attachment
-	2,  // 14: proto.AttachmentService.GetAttachmentMetadata:output_type -> proto.AttachmentMetadata
-	11, // 15: proto.AttachmentService.DeleteAttachment:output_type -> proto.DeleteAttachmentResponse
-	2,  // 16: proto.AttachmentService.UpdateAttachmentMetadata:output_type -> proto.AttachmentMetadata
-	13, // 17: proto.AttachmentService.PostAttachmentLink:output_type -> google.protobuf.Empty
-	13, // 18: proto.AttachmentService.DeleteAttachmentLink:output_type -> google.protobuf.Empty
-	12, // [12:19] is the sub-list for method output_type
-	5,  // [5:12] is the sub-list for method input_type
+	12, // 12: proto.AttachmentService.GetAttachmentToken:input_type -> proto.GetAttachmentTokenRequest
+	3,  // 13: proto.AttachmentService.PostAttachment:output_type -> proto.Attachment
+	3,  // 14: proto.AttachmentService.GetAttachment:output_type -> proto.Attachment
+	2,  // 15: proto.AttachmentService.GetAttachmentMetadata:output_type -> proto.AttachmentMetadata
+	11, // 16: proto.AttachmentService.DeleteAttachment:output_type -> proto.DeleteAttachmentResponse
+	2,  // 17: proto.AttachmentService.UpdateAttachmentMetadata:output_type -> proto.AttachmentMetadata
+	15, // 18: proto.AttachmentService.PostAttachmentLink:output_type -> google.protobuf.Empty
+	15, // 19: proto.AttachmentService.DeleteAttachmentLink:output_type -> google.protobuf.Empty
+	13, // 20: proto.AttachmentService.GetAttachmentToken:output_type -> proto.GetAttachmentTokenResponse
+	13, // [13:21] is the sub-list for method output_type
+	5,  // [5:13] is the sub-list for method input_type
 	5,  // [5:5] is the sub-list for extension type_name
 	5,  // [5:5] is the sub-list for extension extendee
 	0,  // [0:5] is the sub-list for field type_name
@@ -937,7 +1043,7 @@ func file_src_proto_attachments_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_src_proto_attachments_proto_rawDesc), len(file_src_proto_attachments_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
