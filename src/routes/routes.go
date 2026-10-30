@@ -30,6 +30,7 @@ func SetupRouter(
 	shelfController *controllers.ShelfController,
 	statusController *controllers.StatusController,
 	preferencesController *controllers.PreferencesController,
+	tagController *controllers.TagController,
 ) {
 
 	// TODO: some endpoints still use PATCH {id: } instead of PATCH /:id shape
@@ -185,6 +186,20 @@ func SetupRouter(
 				rule.GET("", ruleController.GetRule)
 				rule.PATCH("", ruleController.UpdateRule)
 				rule.DELETE("", ruleController.DeleteRule)
+			}
+		}
+
+		// tag routes (flat, global tag taxonomy shared by notes / directories)
+		tags := api.Group("/tags")
+		{
+			tags.POST("", tagController.CreateTag)
+			tags.GET("", tagController.ListTags)
+
+			tag := tags.Group("/:id")
+			{
+				tag.GET("", tagController.GetTag)
+				tag.PATCH("", tagController.UpdateTag)
+				tag.DELETE("", tagController.DeleteTag)
 			}
 		}
 
