@@ -451,6 +451,81 @@ const docTemplate = `{
                 }
             }
         },
+        "/attachments/token": {
+            "get": {
+                "description": "Mints a per-attachment JWT for the authenticated caller. Intended for live-collaboration peers (especially public/guest editors) who did not receive a token for a newly uploaded attachment in their initial GetNote response and therefore need to request one on demand.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "attachments"
+                ],
+                "summary": "Mint an attachment access JWT",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "attachments/0195f8f4-1167-7f89-b5ec-b40a8f08f4cb",
+                        "description": "Attachment key",
+                        "name": "key",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.AttachmentTokenReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/attachments/{key}": {
             "get": {
                 "produces": [
@@ -4022,17 +4097,9 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Creates a share via gRPC service",
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
-                "tags": [
-                    "shares"
-                ],
-                "summary": "Create share",
                 "parameters": [
                     {
                         "description": "Create share request",
@@ -4939,9 +5006,340 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/tags": {
+            "get": {
+                "description": "Lists every tag via the gRPC service.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tags"
+                ],
+                "summary": "List tags",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/controllers.TagReply"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Creates a tag via the gRPC service.  Slugs must be unique.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tags"
+                ],
+                "summary": "Create tag",
+                "parameters": [
+                    {
+                        "description": "Create tag request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.CreateTagBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.TagReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tags/{id}": {
+            "get": {
+                "description": "Fetches a single tag by ID via the gRPC service.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tags"
+                ],
+                "summary": "Get tag by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tag ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.TagReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes a tag via the gRPC service.  The response reports\nwhether a row was actually removed.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tags"
+                ],
+                "summary": "Delete tag",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tag ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.DeleteTagReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Partially updates a tag via the gRPC service.  Omitted\nfields are left unchanged.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tags"
+                ],
+                "summary": "Update tag",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tag ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update tag request",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.UpdateTagBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.TagReply"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "auth.ChangePasswordRequest": {
+            "type": "object",
+            "properties": {
+                "current_password": {
+                    "type": "string"
+                },
+                "new_password": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.GetAccessTokenReply": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
         "auth.Kind": {
             "type": "string",
             "enum": [
@@ -4956,6 +5354,209 @@ const docTemplate = `{
                 "KindPassword",
                 "KindPasskeyKind"
             ]
+        },
+        "auth.LinkPasswordRequest": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.LoginRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "description": "Password fields",
+                    "type": "string",
+                    "example": "alice@example.com"
+                },
+                "kind": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/auth.Kind"
+                        }
+                    ],
+                    "example": "password"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "correct horse battery staple"
+                }
+            }
+        },
+        "auth.PasskeyCeremonyBeginReply": {
+            "type": "object",
+            "properties": {
+                "challenge": {
+                    "type": "string"
+                },
+                "options": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "session_key": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "user_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.PasskeyCeremonyFinishReply": {
+            "type": "object",
+            "properties": {
+                "credential_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.PasskeyCeremonyFinishRequest": {
+            "type": "object",
+            "properties": {
+                "credential": {
+                    "$ref": "#/definitions/auth.PasskeyFinishCredential"
+                },
+                "friendly_name": {
+                    "type": "string"
+                },
+                "session_key": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.PasskeyFinishCredential": {
+            "type": "object",
+            "properties": {
+                "authenticatorAttachment": {
+                    "type": "string"
+                },
+                "clientExtensionResults": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "id": {
+                    "type": "string"
+                },
+                "rawId": {
+                    "type": "string"
+                },
+                "response": {
+                    "$ref": "#/definitions/auth.PasskeyFinishResp"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.PasskeyFinishResp": {
+            "type": "object",
+            "properties": {
+                "attestationObject": {
+                    "type": "string"
+                },
+                "authenticatorData": {
+                    "type": "string"
+                },
+                "clientDataJSON": {
+                    "type": "string"
+                },
+                "signature": {
+                    "type": "string"
+                },
+                "transports": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "userHandle": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.PatchUserRequest": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string",
+                    "example": "https://cdn.example.com/avatars/alice.png"
+                },
+                "avatar_url_clear": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "email": {
+                    "type": "string",
+                    "example": "alice@example.com"
+                },
+                "email_clear": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "email_verified_at": {
+                    "type": "string",
+                    "example": "2026-10-12T10:00:00Z"
+                },
+                "email_verified_at_clear": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "username": {
+                    "type": "string",
+                    "example": "alice"
+                },
+                "username_clear": {
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "auth.PostUserRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password",
+                "username"
+            ],
+            "properties": {
+                "avatar_url": {
+                    "type": "string",
+                    "example": "https://cdn.example.com/avatars/alice.png"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "alice@example.com"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "correct horse battery staple"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "alice"
+                }
+            }
+        },
+        "auth.SignupRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "alice@example.com"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "correct horse battery staple"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "alice"
+                }
+            }
         },
         "controllers.ActivityReply": {
             "type": "object",
@@ -5081,6 +5682,15 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
+                }
+            }
+        },
+        "controllers.AttachmentTokenReply": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiJ9...."
                 }
             }
         },
@@ -5264,50 +5874,7 @@ const docTemplate = `{
             }
         },
         "controllers.CreateRuleBody": {
-            "type": "object",
-            "required": [
-                "action_context",
-                "action_type",
-                "attached_entity_id",
-                "attached_entity_type",
-                "condition",
-                "event_type"
-            ],
-            "properties": {
-                "action_context": {
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "action_type": {
-                    "type": "string",
-                    "example": "add_to_directory"
-                },
-                "attached_entity_id": {
-                    "type": "string",
-                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
-                },
-                "attached_entity_type": {
-                    "type": "string",
-                    "example": "directory"
-                },
-                "condition": {
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "creator_id": {
-                    "description": "CreatorId defaults to the requesting user when omitted.",
-                    "type": "string",
-                    "example": "0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"
-                },
-                "enabled": {
-                    "type": "boolean",
-                    "example": true
-                },
-                "event_type": {
-                    "type": "string",
-                    "example": "note_created"
-                }
-            }
+            "type": "object"
         },
         "controllers.CreateShareRequestBody": {
             "type": "object",
@@ -5383,6 +5950,23 @@ const docTemplate = `{
                 },
                 "shelf": {
                     "$ref": "#/definitions/controllers.ShelfReply"
+                }
+            }
+        },
+        "controllers.CreateTagBody": {
+            "type": "object",
+            "required": [
+                "display_name",
+                "slug"
+            ],
+            "properties": {
+                "display_name": {
+                    "type": "string",
+                    "example": "Engineering"
+                },
+                "slug": {
+                    "type": "string",
+                    "example": "engineering"
                 }
             }
         },
@@ -5488,6 +6072,14 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "dry": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "controllers.DeleteTagReply": {
+            "type": "object",
+            "properties": {
+                "deleted": {
                     "type": "boolean"
                 }
             }
@@ -5906,35 +6498,64 @@ const docTemplate = `{
         "controllers.PasskeyCeremonyFinishRequest": {
             "type": "object",
             "properties": {
-                "authenticator_data": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "client_data_json": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "credential_id": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                "credential": {
+                    "$ref": "#/definitions/controllers.PasskeyFinishCredential"
                 },
                 "friendly_name": {
                     "type": "string"
                 },
                 "session_key": {
                     "type": "string"
+                }
+            }
+        },
+        "controllers.PasskeyFinishCredential": {
+            "type": "object",
+            "properties": {
+                "authenticatorAttachment": {
+                    "type": "string"
+                },
+                "clientExtensionResults": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "id": {
+                    "type": "string"
+                },
+                "rawId": {
+                    "type": "string"
+                },
+                "response": {
+                    "$ref": "#/definitions/controllers.PasskeyFinishResp"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "controllers.PasskeyFinishResp": {
+            "type": "object",
+            "properties": {
+                "attestationObject": {
+                    "type": "string"
+                },
+                "authenticatorData": {
+                    "type": "string"
+                },
+                "clientDataJSON": {
+                    "type": "string"
                 },
                 "signature": {
+                    "type": "string"
+                },
+                "transports": {
                     "type": "array",
                     "items": {
-                        "type": "integer"
+                        "type": "string"
                     }
+                },
+                "userHandle": {
+                    "type": "string"
                 }
             }
         },
@@ -6047,15 +6668,6 @@ const docTemplate = `{
                     "example": "https://cdn.example.com/avatars/alice.png"
                 },
                 "avatar_url_clear": {
-                    "type": "boolean",
-                    "example": false
-                },
-                "display_name": {
-                    "description": "DisplayName is the optional human-friendly, non-unique name\nthe user picked for themselves. Pass an empty string with\nDisplayNameClear=true to reset it to NULL.",
-                    "type": "string",
-                    "example": "Alice"
-                },
-                "display_name_clear": {
                     "type": "boolean",
                     "example": false
                 },
@@ -6535,6 +7147,20 @@ const docTemplate = `{
                 }
             }
         },
+        "controllers.TagReply": {
+            "type": "object",
+            "properties": {
+                "display_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
         "controllers.UpdateRoleBody": {
             "type": "object",
             "properties": {
@@ -6652,6 +7278,19 @@ const docTemplate = `{
                 }
             }
         },
+        "controllers.UpdateTagBody": {
+            "type": "object",
+            "properties": {
+                "display_name": {
+                    "type": "string",
+                    "example": "Engineering"
+                },
+                "slug": {
+                    "type": "string",
+                    "example": "engineering"
+                }
+            }
+        },
         "controllers.UserRoleMembershipReply": {
             "type": "object",
             "properties": {
@@ -6673,11 +7312,6 @@ const docTemplate = `{
                     "description": "AvatarURL is the absolute avatar URL. Empty renders as JSON\nnull so the frontend can fall back to its initials avatar.",
                     "type": "string",
                     "example": "https://cdn.example.com/avatars/alice.png"
-                },
-                "display_name": {
-                    "description": "DisplayName is the human-friendly, non-unique name the user\npicked for themselves (optional). Empty means the user has\nnot picked one.",
-                    "type": "string",
-                    "example": "Alice"
                 },
                 "email": {
                     "type": "string",
