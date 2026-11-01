@@ -3010,6 +3010,12 @@ const docTemplate = `{
                         "name": "target_id",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Optional preference key; omit for the default row",
+                        "name": "key",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -6002,6 +6008,11 @@ const docTemplate = `{
                 "target_id"
             ],
             "properties": {
+                "key": {
+                    "description": "Optional caller-chosen key; see GetPreferencesQuery.Key.",
+                    "type": "string",
+                    "example": "ui"
+                },
                 "scope": {
                     "type": "string",
                     "enum": [
@@ -6888,6 +6899,11 @@ const docTemplate = `{
                 "target_id"
             ],
             "properties": {
+                "key": {
+                    "description": "Optional caller-chosen key; see GetPreferencesQuery.Key.",
+                    "type": "string",
+                    "example": "ui"
+                },
                 "preferences_json": {
                     "type": "string",
                     "example": "{\"theme\":\"dark\",\"language\":\"de\"}"
@@ -6910,6 +6926,10 @@ const docTemplate = `{
         "controllers.PreferencesReply": {
             "type": "object",
             "properties": {
+                "key": {
+                    "type": "string",
+                    "example": "ui"
+                },
                 "preferences_json": {
                     "type": "string",
                     "example": "{\"theme\":\"dark\",\"language\":\"de\"}"

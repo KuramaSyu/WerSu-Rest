@@ -470,6 +470,10 @@ definitions:
     type: object
   controllers.DeletePreferencesBody:
     properties:
+      key:
+        description: Optional caller-chosen key; see GetPreferencesQuery.Key.
+        example: ui
+        type: string
       scope:
         enum:
         - user
@@ -1071,6 +1075,10 @@ definitions:
     type: object
   controllers.PreferencesJsonBody:
     properties:
+      key:
+        description: Optional caller-chosen key; see GetPreferencesQuery.Key.
+        example: ui
+        type: string
       preferences_json:
         example: '{"theme":"dark","language":"de"}'
         type: string
@@ -1091,6 +1099,9 @@ definitions:
     type: object
   controllers.PreferencesReply:
     properties:
+      key:
+        example: ui
+        type: string
       preferences_json:
         example: '{"theme":"dark","language":"de"}'
         type: string
@@ -3640,6 +3651,10 @@ paths:
         in: query
         name: target_id
         required: true
+        type: string
+      - description: Optional preference key; omit for the default row
+        in: query
+        name: key
         type: string
       produces:
       - application/json

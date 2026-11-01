@@ -86,6 +86,9 @@ func validatePreferencesJSON(s string) error {
 type GetPreferencesQuery struct {
 	Scope    string `form:"scope" binding:"required,oneof=user shelf role" example:"user"`
 	TargetId string `form:"target_id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
+	// Optional caller-chosen key.  Omit for the default
+	// scope+target-only row.  scope and target_id stay required.
+	Key string `form:"key" example:"ui"`
 }
 
 // PreferencesJsonBody is the JSON body for POST (replace) and PATCH (merge).
@@ -93,17 +96,22 @@ type PreferencesJsonBody struct {
 	Scope           string `json:"scope" binding:"required,oneof=user shelf role" example:"user"`
 	TargetId        string `json:"target_id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 	PreferencesJson string `json:"preferences_json" binding:"required" example:"{\"theme\":\"dark\",\"language\":\"de\"}"`
+	// Optional caller-chosen key; see GetPreferencesQuery.Key.
+	Key string `json:"key" example:"ui"`
 }
 
 // DeletePreferencesBody is the JSON body for DELETE.
 type DeletePreferencesBody struct {
 	Scope    string `json:"scope" binding:"required,oneof=user shelf role" example:"user"`
 	TargetId string `json:"target_id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
+	// Optional caller-chosen key; see GetPreferencesQuery.Key.
+	Key string `json:"key" example:"ui"`
 }
 
 // PreferencesReply wraps the JSON blob returned by GET / POST / PATCH.
 type PreferencesReply struct {
 	PreferencesJson string `json:"preferences_json" example:"{\"theme\":\"dark\",\"language\":\"de\"}"`
+	Key             string `json:"key" example:"ui"`
 }
 
 // DeletePreferencesReply reports whether the row was actually removed.
@@ -114,10 +122,13 @@ type DeletePreferencesReply struct {
 // preferencesReplyFromProto wraps a proto response into the REST shape.
 // Treats nil or empty JSON as {}.
 func preferencesReplyFromProto(resp *proto.GetPreferencesResponse) PreferencesReply {
-	if resp == nil || resp.GetPreferencesJson() == "" {
+	if resp == nil {
 		return PreferencesReply{PreferencesJson: "{}"}
 	}
-	return PreferencesReply{PreferencesJson: resp.GetPreferencesJson()}
+	if resp.GetPreferencesJson() == "" {
+		return PreferencesReply{PreferencesJson: "{}", Key: resp.GetKey()}
+	}
+	return PreferencesReply{PreferencesJson: resp.GetPreferencesJson(), Key: resp.GetKey()}
 }
 
 // GetPreferences godoc
@@ -128,6 +139,7 @@ func preferencesReplyFromProto(resp *proto.GetPreferencesResponse) PreferencesRe
 // @Produce json
 // @Param scope query string true "Scope: user | shelf | role"
 // @Param target_id query string true "Target entity id"
+// @Param key query string false "Optional preference key; omit for the default row"
 // @Success 200 {object} PreferencesReply
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
@@ -155,6 +167,7 @@ func (pc *PreferencesController) GetPreferences(c *gin.Context) {
 		Scope:    scope,
 		TargetId: query.TargetId,
 		UserId:   user.ID,
+		Key:      query.Key,
 	})
 	if err != nil {
 		setPreferencesGRPCError(c, err, "fetch preferences")
@@ -204,6 +217,7 @@ func (pc *PreferencesController) PostPreferences(c *gin.Context) {
 		TargetId:        body.TargetId,
 		PreferencesJson: body.PreferencesJson,
 		UserId:          user.ID,
+		Key:             body.Key,
 	})
 	if err != nil {
 		setPreferencesGRPCError(c, err, "post preferences")
@@ -253,6 +267,7 @@ func (pc *PreferencesController) PatchPreferences(c *gin.Context) {
 		TargetId:        body.TargetId,
 		PreferencesJson: body.PreferencesJson,
 		UserId:          user.ID,
+		Key:             body.Key,
 	})
 	if err != nil {
 		setPreferencesGRPCError(c, err, "patch preferences")
@@ -297,6 +312,7 @@ func (pc *PreferencesController) DeletePreferences(c *gin.Context) {
 		Scope:    scope,
 		TargetId: body.TargetId,
 		UserId:   user.ID,
+		Key:      body.Key,
 	})
 	if err != nil {
 		setPreferencesGRPCError(c, err, "delete preferences")
