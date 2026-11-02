@@ -72,7 +72,6 @@ type ActivityScoreReply struct {
 // repeated query keys.
 type GetActivityHistoryQuery struct {
 	NoteId       string `form:"note_id"`
-	DirectoryId  string `form:"directory_id"`
 	ActorId      string `form:"actor_id"`
 	RoleId       string `form:"role_id"`
 	AccessedAs   string `form:"accessed_as" enums:"ACCESSED_AS_UNSPECIFIED,ACCESSED_AS_USER,ACCESSED_AS_SYSTEM"`
@@ -149,7 +148,9 @@ func parseMostUsedAlgorithm(value string) (proto.MostUsedAlgorithm, error) {
 // activityFilterFromQuery maps the REST query into a protobuf ActivityFilter.
 // Empty optional fields are passed as zero values; the gRPC service treats
 // zero-valued strings / enums as "do not filter on this column".
-func activityFilterFromQuery(query GetActivityHistoryQuery, actions []string) (*proto.ActivityFilter, error) {
+// `directoryIds` holds the repeated `directory_ids` query values (read via
+// `QueryArray` because gin's struct-tag binder does not handle repeats).
+func activityFilterFromQuery(query GetActivityHistoryQuery, actions []string, directoryIds []string) (*proto.ActivityFilter, error) {
 	accessedAs, err := parseAccessedAs(query.AccessedAs)
 	if err != nil {
 		return nil, err
@@ -157,7 +158,7 @@ func activityFilterFromQuery(query GetActivityHistoryQuery, actions []string) (*
 
 	return &proto.ActivityFilter{
 		NoteId:       query.NoteId,
-		DirectoryId:  query.DirectoryId,
+		DirectoryIds: directoryIds,
 		ActorId:      query.ActorId,
 		RoleId:       query.RoleId,
 		AccessedAs:   accessedAs,
@@ -184,7 +185,7 @@ func activityFilterFromQuery(query GetActivityHistoryQuery, actions []string) (*
 // @Accept json
 // @Produce json
 // @Param note_id query string false "Filter by note ID"
-// @Param directory_id query string false "Filter by directory ID"
+// @Param directory_ids query []string false "Filter by one or more directory IDs (OR, subtree-expanded)"
 // @Param actor_id query string false "Filter by actor user ID"
 // @Param role_id query string false "Filter by role ID"
 // @Param accessed_as query string false "Filter by access mode" Enums(ACCESSED_AS_USER,ACCESSED_AS_SYSTEM)
@@ -220,8 +221,9 @@ func (ac *ActivityController) GetActivityHistory(c *gin.Context) {
 	// `actions` is a repeated query parameter; read it separately because the
 	// struct-tag binder does not support repeated values.
 	actions := c.QueryArray("actions")
+	directoryIds := c.QueryArray("directory_ids")
 
-	filter, err := activityFilterFromQuery(query, actions)
+	filter, err := activityFilterFromQuery(query, actions, directoryIds)
 	if err != nil {
 		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
