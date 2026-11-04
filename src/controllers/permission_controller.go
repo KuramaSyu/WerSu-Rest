@@ -8,6 +8,8 @@ import (
 	"github.com/KuramaSyu/WerSu-Rest/src/proto"
 	"github.com/KuramaSyu/WerSu-Rest/src/utils"
 	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type PermissionController struct {
@@ -19,9 +21,12 @@ func NewPermissionController(permissionService *proto.PermissionServiceClient) *
 }
 
 const (
-	PermissionObjectTypeNote      = "note"
-	PermissionObjectTypeDirectory = "directory"
-	PermissionObjectTypeUser      = "user"
+	PermissionObjectTypeNote       = "note"
+	PermissionObjectTypeDirectory  = "directory"
+	PermissionObjectTypeUser       = "user"
+	PermissionObjectTypeAttachment = "attachment"
+	PermissionObjectTypeRole       = "role"
+	PermissionObjectTypeShelf      = "shelf"
 
 	PermissionRelationOwner           = "owner"
 	PermissionRelationAdmin           = "admin"
@@ -29,58 +34,144 @@ const (
 	PermissionRelationReader          = "reader"
 	PermissionRelationParent          = "parent"
 	PermissionRelationParentDirectory = "parent_directory"
+	PermissionRelationParentNote      = "parent_note"
+
+	PermissionRelationGrantRead      = "grant_read"
+	PermissionRelationGrantWrite     = "grant_write"
+	PermissionRelationGrantAdmin     = "grant_admin"
+	PermissionRelationDelegateRead   = "delegate_read"
+	PermissionRelationDelegateWrite  = "delegate_write"
+	PermissionRelationDelegateAdmin  = "delegate_admin"
+	PermissionRelationGrantMember    = "grant_member"
+	PermissionRelationDelegateMember = "delegate_member"
+
+	PermissionSubjectRelationMember = "member"
 )
+
+// shareablePermissionRelations lists the relations that PermissionService
+// accepts for each resource type.  Hierarchical relations (parent,
+// parent_directory, parent_note) and owner are managed by the resource
+// patch/creation flows and are intentionally not writable via /permissions.
+var shareablePermissionRelations = map[proto.PermissionObjectType]map[string]struct{}{
+	proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_NOTE: relationSet(
+		PermissionRelationAdmin,
+		PermissionRelationWriter,
+		PermissionRelationReader,
+		PermissionRelationGrantRead,
+		PermissionRelationGrantWrite,
+		PermissionRelationGrantAdmin,
+		PermissionRelationDelegateRead,
+		PermissionRelationDelegateWrite,
+		PermissionRelationDelegateAdmin,
+	),
+	proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_DIRECTORY: relationSet(
+		PermissionRelationAdmin,
+		PermissionRelationWriter,
+		PermissionRelationReader,
+		PermissionRelationGrantRead,
+		PermissionRelationGrantWrite,
+		PermissionRelationGrantAdmin,
+		PermissionRelationDelegateRead,
+		PermissionRelationDelegateWrite,
+		PermissionRelationDelegateAdmin,
+	),
+	proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_SHELF: relationSet(
+		PermissionRelationAdmin,
+		PermissionRelationWriter,
+		PermissionRelationReader,
+		PermissionRelationGrantRead,
+		PermissionRelationGrantWrite,
+		PermissionRelationGrantAdmin,
+		PermissionRelationDelegateRead,
+		PermissionRelationDelegateWrite,
+		PermissionRelationDelegateAdmin,
+	),
+	proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_ROLE: relationSet(
+		PermissionRelationGrantMember,
+		PermissionRelationDelegateMember,
+	),
+}
+
+func relationSet(relations ...string) map[string]struct{} {
+	set := make(map[string]struct{}, len(relations))
+	for _, relation := range relations {
+		set[relation] = struct{}{}
+	}
+	return set
+}
+
+// setPermissionGRPCError maps gRPC status codes to REST responses.
+func setPermissionGRPCError(c *gin.Context, err error, op string) {
+	if grpcErr, ok := status.FromError(err); ok {
+		switch grpcErr.Code() {
+		case codes.InvalidArgument:
+			utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("%s: %w", op, err))
+			return
+		case codes.PermissionDenied:
+			utils.SetGinError(c, http.StatusForbidden, fmt.Errorf("%s: %w", op, err))
+			return
+		case codes.NotFound:
+			utils.SetGinError(c, http.StatusNotFound, fmt.Errorf("%s: %w", op, err))
+			return
+		}
+	}
+	utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to %s via gRPC service: %w", op, err))
+}
 
 // GetPermissionsQuery defines query parameters for fetching permissions.
 type GetPermissionsQuery struct {
-	ObjectType string `form:"object_type" binding:"required,oneof=note directory" enums:"note,directory" example:"note"`
+	ObjectType string `form:"object_type" binding:"required" enums:"note,directory,shelf,role" example:"note"`
 	ObjectId   string `form:"object_id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 }
 
 // PermissionSubjectRequest defines the subject side of a relationship.
+//
+// Role subjects may set OptionalRelation to "member" (role:<id>#member).
+// User subjects must leave it empty.
 type PermissionSubjectRequest struct {
-	ObjectType string `json:"object_type" binding:"required,oneof=user directory" enums:"user,directory" example:"user"`
-	ObjectId   string `json:"object_id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
+	ObjectType       string `json:"object_type" binding:"required" enums:"user,role" example:"user"`
+	ObjectId         string `json:"object_id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
+	OptionalRelation string `json:"optional_relation,omitempty" binding:"omitempty" enums:"member" example:"member"`
 }
 
 // PermissionResourceRequest defines an optional explicit resource for a relationship.
 type PermissionResourceRequest struct {
-	ObjectType string `json:"object_type" binding:"required,oneof=note directory" enums:"note,directory" example:"note"`
+	ObjectType string `json:"object_type" binding:"required" enums:"note,directory,shelf,role" example:"note"`
 	ObjectId   string `json:"object_id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 }
 
 // PermissionRelationshipRequest defines one relationship tuple
-// like note:42#parent@directory:24 where 42 and 24 are the actual uuids
+// like note:42#reader@user:24 where 42 and 24 are the actual uuids.
 type PermissionRelationshipRequest struct {
-	Relation string                     `json:"relation" binding:"required,oneof=owner admin writer reader parent parent_directory" enums:"owner,admin,writer,reader,parent,parent_directory" example:"reader"`
-	Subject  *PermissionSubjectRequest  `json:"subject,omitempty"`
+	Relation string                     `json:"relation" binding:"required" enums:"admin,writer,reader,grant_read,grant_write,grant_admin,delegate_read,delegate_write,delegate_admin,grant_member,delegate_member" example:"reader"`
+	Subject  PermissionSubjectRequest   `json:"subject" binding:"required"`
 	Resource *PermissionResourceRequest `json:"resource,omitempty"`
 }
 
 // CreatePermissionBody defines request body for creating a single permission relationship.
 type CreatePermissionBody struct {
-	ObjectType   string                        `json:"object_type" binding:"required,oneof=note directory" enums:"note,directory" example:"note"`
+	ObjectType   string                        `json:"object_type" binding:"required" enums:"note,directory,shelf,role" example:"note"`
 	ObjectId     string                        `json:"object_id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 	Relationship PermissionRelationshipRequest `json:"relationship" binding:"required"`
 }
 
 // DeletePermissionBody defines request body for deleting a single permission relationship.
 type DeletePermissionBody struct {
-	ObjectType   string                        `json:"object_type" binding:"required,oneof=note directory" enums:"note,directory" example:"note"`
+	ObjectType   string                        `json:"object_type" binding:"required" enums:"note,directory,shelf,role" example:"note"`
 	ObjectId     string                        `json:"object_id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 	Relationship PermissionRelationshipRequest `json:"relationship" binding:"required"`
 }
 
 // ReplacePermissionsBody defines request body for replacing all permission relationships.
 type ReplacePermissionsBody struct {
-	ObjectType    string                          `json:"object_type" binding:"required,oneof=note directory" enums:"note,directory" example:"note"`
+	ObjectType    string                          `json:"object_type" binding:"required" enums:"note,directory,shelf,role" example:"note"`
 	ObjectId      string                          `json:"object_id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 	Relationships []PermissionRelationshipRequest `json:"relationships" binding:"required"`
 }
 
 // PermissionsReply is the REST response containing the full permission set for an object.
 type PermissionsReply struct {
-	ObjectType    string                        `json:"object_type" enums:"PERMISSION_OBJECT_TYPE_UNSPECIFIED,PERMISSION_OBJECT_TYPE_NOTE,PERMISSION_OBJECT_TYPE_DIRECTORY"`
+	ObjectType    string                        `json:"object_type" enums:"PERMISSION_OBJECT_TYPE_UNSPECIFIED,PERMISSION_OBJECT_TYPE_NOTE,PERMISSION_OBJECT_TYPE_DIRECTORY,PERMISSION_OBJECT_TYPE_USER,PERMISSION_OBJECT_TYPE_ATTACHMENT,PERMISSION_OBJECT_TYPE_ROLE,PERMISSION_OBJECT_TYPE_SHELF"`
 	ObjectId      string                        `json:"object_id"`
 	Relationships []PermissionRelationshipReply `json:"relationships"`
 }
@@ -88,112 +179,181 @@ type PermissionsReply struct {
 // parsePermissionObjectType normalizes a REST `object_type` value and maps it
 // to the protobuf enum expected by PermissionService.
 //
-// Accepted values:
-//   - "note" / "PERMISSION_OBJECT_TYPE_NOTE"
-//   - "directory" / "PERMISSION_OBJECT_TYPE_DIRECTORY"
-//   - "user" / "PERMISSION_OBJECT_TYPE_USER"
-//   - "unspecified" / "PERMISSION_OBJECT_TYPE_UNSPECIFIED"
-//
-// Used by:
-//   - `GetPermissions()`
-//   - `CreatePermission()`
-//   - `DeletePermission()`
-//   - `ReplacePermissions()`
-//   - `permissionRelationshipRequestToProto()` when mapping `resource.object_type`
+// Accepted values are either the short REST name ("note", "directory", ...)
+// or the fully-qualified protobuf enum name
+// ("PERMISSION_OBJECT_TYPE_NOTE", ...).
 func parsePermissionObjectType(objectType string) (proto.PermissionObjectType, error) {
 	normalized := strings.ToUpper(strings.TrimSpace(objectType))
+	normalized = strings.TrimPrefix(normalized, "PERMISSION_OBJECT_TYPE_")
 	switch normalized {
-	case "NOTE", "PERMISSION_OBJECT_TYPE_NOTE":
+	case "NOTE":
 		return proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_NOTE, nil
-	case "DIRECTORY", "PERMISSION_OBJECT_TYPE_DIRECTORY":
+	case "DIRECTORY":
 		return proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_DIRECTORY, nil
-	case "USER", "PERMISSION_OBJECT_TYPE_USER":
+	case "USER":
 		return proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_USER, nil
-	case "ATTACHMENT", "PERMISSION_OBJECT_TYPE_ATTACHMENT":
+	case "ATTACHMENT":
 		return proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_ATTACHMENT, nil
-	case "UNSPECIFIED", "PERMISSION_OBJECT_TYPE_UNSPECIFIED":
+	case "ROLE":
+		return proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_ROLE, nil
+	case "SHELF":
+		return proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_SHELF, nil
+	case "UNSPECIFIED":
 		return proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_UNSPECIFIED, nil
 	default:
 		return proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_UNSPECIFIED, fmt.Errorf("invalid object_type: %s", objectType)
 	}
 }
 
-// parsePermissionRelation validates and normalizes the relationship name from
-// REST input to the canonical lowercase value used by the permission backend.
-//
-// Used by:
-//   - `permissionRelationshipRequestToProto()`
-func parsePermissionRelation(relation string) (string, error) {
-	normalized := strings.ToLower(strings.TrimSpace(relation))
-	switch normalized {
-	case PermissionRelationOwner,
-		PermissionRelationAdmin,
-		PermissionRelationWriter,
-		PermissionRelationReader,
-		PermissionRelationParent,
-		PermissionRelationParentDirectory:
-		return normalized, nil
+// parsePermissionResourceType validates an object type that can own a
+// permission relationship managed by PermissionService.
+func parsePermissionResourceType(objectType string) (proto.PermissionObjectType, error) {
+	parsed, err := parsePermissionObjectType(objectType)
+	if err != nil {
+		return parsed, err
+	}
+
+	if _, ok := shareablePermissionRelations[parsed]; !ok {
+		return proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_UNSPECIFIED,
+			fmt.Errorf("object_type %s does not support permission management", objectType)
+	}
+	return parsed, nil
+}
+
+// parsePermissionSubjectType validates a subject type.  The share API accepts
+// users and roles; role subjects use the role:<id>#member userset form.
+func parsePermissionSubjectType(objectType string) (proto.PermissionObjectType, error) {
+	parsed, err := parsePermissionObjectType(objectType)
+	if err != nil {
+		return parsed, err
+	}
+
+	switch parsed {
+	case proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_USER,
+		proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_ROLE:
+		return parsed, nil
 	default:
-		return "", fmt.Errorf("invalid relation: %s", relation)
+		return proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_UNSPECIFIED,
+			fmt.Errorf("subject object_type must be user or role, got %s", objectType)
 	}
 }
 
-// permissionRelationshipRequestToProto maps a REST relationship payload into a
-// protobuf `PermissionRelationship`.
-//
-// This helper also validates:
-//   - `relation` via `parsePermissionRelation()`
-//   - `resource.object_type` via `parsePermissionObjectType()`
-//
-// Used by:
-//   - `CreatePermission()`
-//   - `DeletePermission()`
-//   - `ReplacePermissions()`
-func permissionRelationshipRequestToProto(relationship PermissionRelationshipRequest) (*proto.PermissionRelationship, error) {
-	relation, err := parsePermissionRelation(relationship.Relation)
+// parsePermissionRelation validates that relation is writable for resourceType.
+func parsePermissionRelation(resourceType proto.PermissionObjectType, relation string) (string, error) {
+	normalized := strings.ToLower(strings.TrimSpace(relation))
+
+	allowed, ok := shareablePermissionRelations[resourceType]
+	if !ok {
+		return "", fmt.Errorf("object_type %s does not support permission management", resourceType)
+	}
+	if _, ok := allowed[normalized]; !ok {
+		return "", fmt.Errorf("relation %q is not writable for object_type %s", relation, resourceType)
+	}
+	return normalized, nil
+}
+
+// normalizeSubjectOptionalRelation validates and normalizes the userset
+// qualifier.  User subjects must not carry one; role subjects default to
+// "member".
+func normalizeSubjectOptionalRelation(subjectType proto.PermissionObjectType, optionalRelation string) (string, error) {
+	normalized := strings.ToLower(strings.TrimSpace(optionalRelation))
+
+	switch subjectType {
+	case proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_USER:
+		if normalized != "" {
+			return "", fmt.Errorf("optional_relation is only valid for role subjects")
+		}
+		return "", nil
+	case proto.PermissionObjectType_PERMISSION_OBJECT_TYPE_ROLE:
+		if normalized == "" {
+			return PermissionSubjectRelationMember, nil
+		}
+		if normalized != PermissionSubjectRelationMember {
+			return "", fmt.Errorf("role subjects only support optional_relation=%q", PermissionSubjectRelationMember)
+		}
+		return normalized, nil
+	default:
+		return "", fmt.Errorf("subject object_type must be user or role, got %s", subjectType)
+	}
+}
+
+// permissionSubjectRequestToProto maps a REST subject payload into a
+// protobuf PermissionSubject.
+func permissionSubjectRequestToProto(subject PermissionSubjectRequest) (*proto.PermissionSubject, error) {
+	subjectType, err := parsePermissionSubjectType(subject.ObjectType)
 	if err != nil {
 		return nil, err
 	}
 
-	grpcRelationship := &proto.PermissionRelationship{
-		Relation: relation,
+	optionalRelation, err := normalizeSubjectOptionalRelation(subjectType, subject.OptionalRelation)
+	if err != nil {
+		return nil, err
 	}
 
-	if relationship.Subject != nil {
-		subjectType, err := parsePermissionObjectType(relationship.Subject.ObjectType)
-		if err != nil {
-			return nil, err
-		}
+	return &proto.PermissionSubject{
+		ObjectType:       subjectType,
+		ObjectId:         subject.ObjectId,
+		OptionalRelation: optionalRelation,
+	}, nil
+}
 
-		grpcRelationship.Subject = &proto.PermissionSubject{
-			ObjectType: subjectType,
-			ObjectId:   relationship.Subject.ObjectId,
-		}
+// permissionResourceRequestToProto maps a REST resource payload into a
+// protobuf PermissionResource.
+func permissionResourceRequestToProto(resource PermissionResourceRequest) (*proto.PermissionResource, error) {
+	resourceType, err := parsePermissionResourceType(resource.ObjectType)
+	if err != nil {
+		return nil, err
+	}
+
+	return &proto.PermissionResource{
+		ObjectType: resourceType,
+		ObjectId:   resource.ObjectId,
+	}, nil
+}
+
+// permissionRelationshipRequestToProto maps a REST relationship payload into a
+// protobuf PermissionRelationship for the target resource.
+//
+// The optional relationship-level resource must match objectType/objectId of
+// the request; it is accepted for compatibility with the gRPC shape but is not
+// required by REST callers.
+func permissionRelationshipRequestToProto(
+	objectType proto.PermissionObjectType,
+	objectId string,
+	relationship PermissionRelationshipRequest,
+) (*proto.PermissionRelationship, error) {
+	relation, err := parsePermissionRelation(objectType, relationship.Relation)
+	if err != nil {
+		return nil, err
+	}
+
+	subject, err := permissionSubjectRequestToProto(relationship.Subject)
+	if err != nil {
+		return nil, err
 	}
 
 	if relationship.Resource != nil {
-		resourceType, err := parsePermissionObjectType(relationship.Resource.ObjectType)
+		resource, err := permissionResourceRequestToProto(*relationship.Resource)
 		if err != nil {
 			return nil, err
 		}
-
-		grpcRelationship.Resource = &proto.PermissionResource{
-			ObjectType: resourceType,
-			ObjectId:   relationship.Resource.ObjectId,
+		if resource.GetObjectType() != objectType || resource.GetObjectId() != objectId {
+			return nil, fmt.Errorf("relationship.resource must match object_type/object_id of the request")
 		}
 	}
 
-	return grpcRelationship, nil
+	return &proto.PermissionRelationship{
+		Relation: relation,
+		Subject:  subject,
+		Resource: &proto.PermissionResource{
+			ObjectType: objectType,
+			ObjectId:   objectId,
+		},
+	}, nil
 }
 
-// permissionsReplyFromProto converts the gRPC `PermissionsResponse` into the
-// REST `PermissionsReply` shape.
-//
-// Used by:
-//   - `GetPermissions()`
-//   - `CreatePermission()`
-//   - `DeletePermission()`
-//   - `ReplacePermissions()`
+// permissionsReplyFromProto converts the gRPC PermissionsResponse into the
+// REST PermissionsReply shape.
 func permissionsReplyFromProto(response *proto.PermissionsResponse) PermissionsReply {
 	relationships := make([]PermissionRelationshipReply, 0, len(response.GetRelationships()))
 	for _, relationship := range response.GetRelationships() {
@@ -213,10 +373,12 @@ func permissionsReplyFromProto(response *proto.PermissionsResponse) PermissionsR
 // @Tags permissions
 // @Accept json
 // @Produce json
-// @Param object_type query string true "Object type" Enums(note, directory)
+// @Param object_type query string true "Object type" Enums(note, directory, shelf, role)
 // @Param object_id query string true "Object ID"
 // @Success 200 {object} PermissionsReply
 // @Failure 400 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /permissions [get]
 func (pc *PermissionController) GetPermissions(c *gin.Context) {
@@ -232,7 +394,7 @@ func (pc *PermissionController) GetPermissions(c *gin.Context) {
 		return
 	}
 
-	objectType, err := parsePermissionObjectType(query.ObjectType)
+	objectType, err := parsePermissionResourceType(query.ObjectType)
 	if err != nil {
 		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
@@ -244,7 +406,7 @@ func (pc *PermissionController) GetPermissions(c *gin.Context) {
 		UserId:     user.ID,
 	})
 	if err != nil {
-		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to get permissions via gRPC service: %w", err))
+		setPermissionGRPCError(c, err, "get permissions")
 		return
 	}
 
@@ -260,6 +422,8 @@ func (pc *PermissionController) GetPermissions(c *gin.Context) {
 // @Param payload body CreatePermissionBody true "Create permission request"
 // @Success 200 {object} PermissionsReply
 // @Failure 400 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /permissions [post]
 func (pc *PermissionController) CreatePermission(c *gin.Context) {
@@ -275,13 +439,13 @@ func (pc *PermissionController) CreatePermission(c *gin.Context) {
 		return
 	}
 
-	objectType, err := parsePermissionObjectType(body.ObjectType)
+	objectType, err := parsePermissionResourceType(body.ObjectType)
 	if err != nil {
 		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
 	}
 
-	relationship, err := permissionRelationshipRequestToProto(body.Relationship)
+	relationship, err := permissionRelationshipRequestToProto(objectType, body.ObjectId, body.Relationship)
 	if err != nil {
 		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
@@ -294,7 +458,7 @@ func (pc *PermissionController) CreatePermission(c *gin.Context) {
 		UserId:       user.ID,
 	})
 	if err != nil {
-		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to create permission via gRPC service: %w", err))
+		setPermissionGRPCError(c, err, "create permission")
 		return
 	}
 
@@ -310,6 +474,8 @@ func (pc *PermissionController) CreatePermission(c *gin.Context) {
 // @Param payload body DeletePermissionBody true "Delete permission request"
 // @Success 200 {object} PermissionsReply
 // @Failure 400 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /permissions [delete]
 func (pc *PermissionController) DeletePermission(c *gin.Context) {
@@ -325,13 +491,13 @@ func (pc *PermissionController) DeletePermission(c *gin.Context) {
 		return
 	}
 
-	objectType, err := parsePermissionObjectType(body.ObjectType)
+	objectType, err := parsePermissionResourceType(body.ObjectType)
 	if err != nil {
 		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
 	}
 
-	relationship, err := permissionRelationshipRequestToProto(body.Relationship)
+	relationship, err := permissionRelationshipRequestToProto(objectType, body.ObjectId, body.Relationship)
 	if err != nil {
 		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
@@ -344,7 +510,7 @@ func (pc *PermissionController) DeletePermission(c *gin.Context) {
 		UserId:       user.ID,
 	})
 	if err != nil {
-		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to delete permission via gRPC service: %w", err))
+		setPermissionGRPCError(c, err, "delete permission")
 		return
 	}
 
@@ -360,6 +526,8 @@ func (pc *PermissionController) DeletePermission(c *gin.Context) {
 // @Param payload body ReplacePermissionsBody true "Replace permissions request"
 // @Success 200 {object} PermissionsReply
 // @Failure 400 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /permissions [put]
 func (pc *PermissionController) ReplacePermissions(c *gin.Context) {
@@ -375,7 +543,7 @@ func (pc *PermissionController) ReplacePermissions(c *gin.Context) {
 		return
 	}
 
-	objectType, err := parsePermissionObjectType(body.ObjectType)
+	objectType, err := parsePermissionResourceType(body.ObjectType)
 	if err != nil {
 		utils.SetGinError(c, http.StatusBadRequest, err)
 		return
@@ -383,7 +551,7 @@ func (pc *PermissionController) ReplacePermissions(c *gin.Context) {
 
 	relationships := make([]*proto.PermissionRelationship, 0, len(body.Relationships))
 	for _, relationshipBody := range body.Relationships {
-		relationship, err := permissionRelationshipRequestToProto(relationshipBody)
+		relationship, err := permissionRelationshipRequestToProto(objectType, body.ObjectId, relationshipBody)
 		if err != nil {
 			utils.SetGinError(c, http.StatusBadRequest, err)
 			return
@@ -398,7 +566,7 @@ func (pc *PermissionController) ReplacePermissions(c *gin.Context) {
 		UserId:        user.ID,
 	})
 	if err != nil {
-		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to replace permissions via gRPC service: %w", err))
+		setPermissionGRPCError(c, err, "replace permissions")
 		return
 	}
 

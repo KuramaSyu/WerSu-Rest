@@ -361,6 +361,8 @@ definitions:
         enum:
         - note
         - directory
+        - shelf
+        - role
         example: note
         type: string
       relationship:
@@ -459,6 +461,8 @@ definitions:
         enum:
         - note
         - directory
+        - shelf
+        - role
         example: note
         type: string
       relationship:
@@ -955,12 +959,17 @@ definitions:
     properties:
       relation:
         enum:
-        - owner
         - admin
         - writer
         - reader
-        - parent
-        - parent_directory
+        - grant_read
+        - grant_write
+        - grant_admin
+        - delegate_read
+        - delegate_write
+        - delegate_admin
+        - grant_member
+        - delegate_member
         example: reader
         type: string
       resource:
@@ -969,6 +978,7 @@ definitions:
         $ref: '#/definitions/controllers.PermissionSubjectRequest'
     required:
     - relation
+    - subject
     type: object
   controllers.PermissionResourceReply:
     properties:
@@ -986,6 +996,8 @@ definitions:
         enum:
         - note
         - directory
+        - shelf
+        - role
         example: note
         type: string
     required:
@@ -998,6 +1010,8 @@ definitions:
         type: string
       object_type:
         type: string
+      optional_relation:
+        type: string
     type: object
   controllers.PermissionSubjectRequest:
     properties:
@@ -1007,8 +1021,13 @@ definitions:
       object_type:
         enum:
         - user
-        - directory
+        - role
         example: user
+        type: string
+      optional_relation:
+        enum:
+        - member
+        example: member
         type: string
     required:
     - object_id
@@ -1023,6 +1042,10 @@ definitions:
         - PERMISSION_OBJECT_TYPE_UNSPECIFIED
         - PERMISSION_OBJECT_TYPE_NOTE
         - PERMISSION_OBJECT_TYPE_DIRECTORY
+        - PERMISSION_OBJECT_TYPE_USER
+        - PERMISSION_OBJECT_TYPE_ATTACHMENT
+        - PERMISSION_OBJECT_TYPE_ROLE
+        - PERMISSION_OBJECT_TYPE_SHELF
         type: string
       relationships:
         items:
@@ -1127,6 +1150,8 @@ definitions:
         enum:
         - note
         - directory
+        - shelf
+        - role
         example: note
         type: string
       relationships:
@@ -3011,10 +3036,13 @@ paths:
         in: query
         name: note_id
         type: string
-      - description: Filter by directory ID
+      - collectionFormat: csv
+        description: Filter by one or more directory IDs (OR, subtree-expanded)
         in: query
-        name: directory_id
-        type: string
+        items:
+          type: string
+        name: directory_ids
+        type: array
       - description: Filter by actor user ID
         in: query
         name: actor_id
@@ -3480,6 +3508,18 @@ paths:
             additionalProperties:
               type: string
             type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "500":
           description: Internal Server Error
           schema:
@@ -3498,6 +3538,8 @@ paths:
         enum:
         - note
         - directory
+        - shelf
+        - role
         in: query
         name: object_type
         required: true
@@ -3516,6 +3558,18 @@ paths:
             $ref: '#/definitions/controllers.PermissionsReply'
         "400":
           description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
           schema:
             additionalProperties:
               type: string
@@ -3553,6 +3607,18 @@ paths:
             additionalProperties:
               type: string
             type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "500":
           description: Internal Server Error
           schema:
@@ -3582,6 +3648,18 @@ paths:
             $ref: '#/definitions/controllers.PermissionsReply'
         "400":
           description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
           schema:
             additionalProperties:
               type: string

@@ -2115,9 +2115,13 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
-                        "type": "string",
-                        "description": "Filter by directory ID",
-                        "name": "directory_id",
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "Filter by one or more directory IDs (OR, subtree-expanded)",
+                        "name": "directory_ids",
                         "in": "query"
                     },
                     {
@@ -2789,7 +2793,9 @@ const docTemplate = `{
                     {
                         "enum": [
                             "note",
-                            "directory"
+                            "directory",
+                            "shelf",
+                            "role"
                         ],
                         "type": "string",
                         "description": "Object type",
@@ -2814,6 +2820,24 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2871,6 +2895,24 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -2921,6 +2963,24 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -2964,6 +3024,24 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -5854,7 +5932,9 @@ const docTemplate = `{
                     "type": "string",
                     "enum": [
                         "note",
-                        "directory"
+                        "directory",
+                        "shelf",
+                        "role"
                     ],
                     "example": "note"
                 },
@@ -5992,7 +6072,9 @@ const docTemplate = `{
                     "type": "string",
                     "enum": [
                         "note",
-                        "directory"
+                        "directory",
+                        "shelf",
+                        "role"
                     ],
                     "example": "note"
                 },
@@ -6725,18 +6807,24 @@ const docTemplate = `{
         "controllers.PermissionRelationshipRequest": {
             "type": "object",
             "required": [
-                "relation"
+                "relation",
+                "subject"
             ],
             "properties": {
                 "relation": {
                     "type": "string",
                     "enum": [
-                        "owner",
                         "admin",
                         "writer",
                         "reader",
-                        "parent",
-                        "parent_directory"
+                        "grant_read",
+                        "grant_write",
+                        "grant_admin",
+                        "delegate_read",
+                        "delegate_write",
+                        "delegate_admin",
+                        "grant_member",
+                        "delegate_member"
                     ],
                     "example": "reader"
                 },
@@ -6774,7 +6862,9 @@ const docTemplate = `{
                     "type": "string",
                     "enum": [
                         "note",
-                        "directory"
+                        "directory",
+                        "shelf",
+                        "role"
                     ],
                     "example": "note"
                 }
@@ -6787,6 +6877,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "object_type": {
+                    "type": "string"
+                },
+                "optional_relation": {
                     "type": "string"
                 }
             }
@@ -6806,9 +6899,16 @@ const docTemplate = `{
                     "type": "string",
                     "enum": [
                         "user",
-                        "directory"
+                        "role"
                     ],
                     "example": "user"
+                },
+                "optional_relation": {
+                    "type": "string",
+                    "enum": [
+                        "member"
+                    ],
+                    "example": "member"
                 }
             }
         },
@@ -6823,7 +6923,11 @@ const docTemplate = `{
                     "enum": [
                         "PERMISSION_OBJECT_TYPE_UNSPECIFIED",
                         "PERMISSION_OBJECT_TYPE_NOTE",
-                        "PERMISSION_OBJECT_TYPE_DIRECTORY"
+                        "PERMISSION_OBJECT_TYPE_DIRECTORY",
+                        "PERMISSION_OBJECT_TYPE_USER",
+                        "PERMISSION_OBJECT_TYPE_ATTACHMENT",
+                        "PERMISSION_OBJECT_TYPE_ROLE",
+                        "PERMISSION_OBJECT_TYPE_SHELF"
                     ]
                 },
                 "relationships": {
@@ -6969,7 +7073,9 @@ const docTemplate = `{
                     "type": "string",
                     "enum": [
                         "note",
-                        "directory"
+                        "directory",
+                        "shelf",
+                        "role"
                     ],
                     "example": "note"
                 },

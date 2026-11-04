@@ -38,8 +38,9 @@ type NoteReply struct {
 //
 // ObjectType contains the protobuf enum label (for example: PERMISSION_OBJECT_TYPE_USER).
 type PermissionSubjectReply struct {
-	ObjectType string `json:"object_type"`
-	ObjectId   string `json:"object_id"`
+	ObjectType       string `json:"object_type"`
+	ObjectId         string `json:"object_id"`
+	OptionalRelation string `json:"optional_relation,omitempty"`
 }
 
 // PermissionResourceReply represents the resource side of a permission tuple in REST responses.
@@ -69,8 +70,9 @@ func PermissionRelationshipReplyFromProto(relationship *proto.PermissionRelation
 
 	if relationship.GetSubject() != nil {
 		permissionReply.Subject = &PermissionSubjectReply{
-			ObjectType: relationship.GetSubject().GetObjectType().String(),
-			ObjectId:   relationship.GetSubject().GetObjectId(),
+			ObjectType:       relationship.GetSubject().GetObjectType().String(),
+			ObjectId:         relationship.GetSubject().GetObjectId(),
+			OptionalRelation: relationship.GetSubject().GetOptionalRelation(),
 		}
 	}
 
