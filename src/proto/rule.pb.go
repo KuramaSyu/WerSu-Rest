@@ -32,7 +32,7 @@ const (
 // condition and action_context are Structs so the shape can evolve without
 // breaking the gRPC contract.
 // Valid condition.type values: "always_true", "note_content_contains" (with substring),
-// "note_title_contains" (with substring).
+// "note_title_contains" (with substring), "note_has_no_directory".
 // Valid action_type values: "add_to_directory" (with directory_id), "add_tag" (with tag_id).
 type Rule struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
