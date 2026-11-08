@@ -638,6 +638,15 @@ definitions:
     required:
     - ids
     type: object
+  controllers.GetUsersByIdsBody:
+    properties:
+      ids:
+        example:
+        - 0195f8f4-1167-7f89-b5ec-b40a8f08f4ca
+        items:
+          type: string
+        type: array
+    type: object
   controllers.LinkPasswordRequest:
     properties:
       password:
@@ -1422,6 +1431,19 @@ definitions:
       user_id:
         type: string
     type: object
+  controllers.UserSummary:
+    properties:
+      avatar:
+        type: string
+      discord_id:
+        type: string
+      discriminator:
+        type: string
+      id:
+        type: string
+      username:
+        type: string
+    type: object
   models.JsUserAuth:
     properties:
       avatar_url:
@@ -1663,6 +1685,108 @@ paths:
       security:
       - CookieAuth: []
       summary: Partially update a user
+      tags:
+      - users
+  /api/users/by-ids:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Resolves many user ids in one request. Unknown ids are
+        omitted. Email addresses are omitted from the REST response.
+      parameters:
+      - description: User ids
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.GetUsersByIdsBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/controllers.UserSummary'
+            type: array
+        "400":
+          description: Bad Request - invalid body
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized - no session or JWT
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error - gRPC service failure
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Fetch users by ids
+      tags:
+      - users
+  /api/users/search:
+    get:
+      description: |-
+        Searches users by username/id fragment or exact email. The
+        gRPC backend returns at most ten hits. Email addresses are
+        omitted from the REST response.
+      parameters:
+      - description: Search query
+        in: query
+        name: query
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/controllers.UserSummary'
+            type: array
+        "400":
+          description: Bad Request - invalid query
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized - no session or JWT
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error - gRPC service failure
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Search users
       tags:
       - users
   /attachment-links:

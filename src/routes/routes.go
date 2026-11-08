@@ -32,6 +32,7 @@ func SetupRouter(
 	preferencesController *controllers.PreferencesController,
 	tagController *controllers.TagController,
 	calculatedStatsController *controllers.CalculatedStatsController,
+	userController *controllers.UserController,
 ) {
 
 	// TODO: some endpoints still use PATCH {id: } instead of PATCH /:id shape
@@ -52,11 +53,17 @@ func SetupRouter(
 		// Service reachability status
 		api.GET("/status", statusController.GetStatus)
 
-		// User CRUD (REST wrappers over the auth gRPC service).
+		// User CRUD (REST wrappers over the auth gRPC service) and
+		// user discovery (wrappers over the UserService gRPC API).
 		users := api.Group("/users")
 		{
 			users.POST("", authController.PostUser)
 			users.PATCH("/:id", authController.PatchUser)
+
+			// authenticated user discovery
+			users.GET("/search", userController.SearchUsers)
+			// batch read by ids (POST because of the body)
+			users.POST("/by-ids", userController.GetUsersByIds)
 		}
 
 		// Note routes

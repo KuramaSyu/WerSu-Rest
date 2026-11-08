@@ -138,6 +138,7 @@ func main() {
 	preferencesController := controllers.NewPreferencesController(&preferencesGrpcClient)
 	tagController := controllers.NewTagController(&tagGrpcClient)
 	calculatedStatsController := controllers.NewCalculatedStatsController(&calculatedStatsGrpcClient)
+	userController := controllers.NewUserController(&userGrpcClient)
 
 	// Setup routes
 	routes.SetupRouter(
@@ -160,6 +161,7 @@ func main() {
 		preferencesController,
 		tagController,
 		calculatedStatsController,
+		userController,
 	)
 
 	// Start the server
