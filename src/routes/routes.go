@@ -31,6 +31,7 @@ func SetupRouter(
 	statusController *controllers.StatusController,
 	preferencesController *controllers.PreferencesController,
 	tagController *controllers.TagController,
+	calculatedStatsController *controllers.CalculatedStatsController,
 ) {
 
 	// TODO: some endpoints still use PATCH {id: } instead of PATCH /:id shape
@@ -201,6 +202,14 @@ func SetupRouter(
 				tag.PATCH("", tagController.UpdateTag)
 				tag.DELETE("", tagController.DeleteTag)
 			}
+		}
+
+		// precomputed user stats (read-only; refreshed by the backend's
+		// daily background process)
+		stats := api.Group("/stats")
+		{
+			stats.GET("", calculatedStatsController.GetCalculatedStats)
+			stats.GET("/:user_id", calculatedStatsController.GetCalculatedStatsForUser)
 		}
 
 		// shelf routes (flat grouping of books / directories)

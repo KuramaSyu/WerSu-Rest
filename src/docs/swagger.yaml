@@ -294,6 +294,26 @@ definitions:
       description:
         type: string
     type: object
+  controllers.CalculatedStatsReply:
+    properties:
+      calculated_at:
+        type: string
+      total_books:
+        example: 2
+        type: integer
+      total_chapters:
+        example: 7
+        type: integer
+      total_chars:
+        example: 12345
+        type: integer
+      total_notes:
+        example: 42
+        type: integer
+      user_id:
+        example: 0195f8f4-1167-7f89-b5ec-b40a8f08f4cb
+        type: string
+    type: object
   controllers.ChangePasswordRequest:
     properties:
       current_password:
@@ -5020,6 +5040,108 @@ paths:
       summary: Get shelves by IDs
       tags:
       - shelves
+  /stats:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Returns the precomputed stats row for the authenticated
+        user.  The row is refreshed by the backend's daily
+        background process, so values may lag behind recent edits.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.CalculatedStatsReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get calculated stats for the caller
+      tags:
+      - stats
+  /stats/{user_id}:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Returns the precomputed stats row for another user.
+        Reading another user's stats requires page-administrator
+        access on the gRPC backend.
+      parameters:
+      - description: Target user ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.CalculatedStatsReply'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get calculated stats for a user
+      tags:
+      - stats
   /status:
     get:
       description: |-

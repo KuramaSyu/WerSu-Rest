@@ -101,6 +101,7 @@ func main() {
 	shelfGrpcClient := proto.NewShelfServiceClient(grpcConn)
 	preferencesGrpcClient := proto.NewPreferencesServiceClient(grpcConn)
 	tagGrpcClient := proto.NewTagServiceClient(grpcConn)
+	calculatedStatsGrpcClient := proto.NewCalculatedStatsServiceClient(grpcConn)
 
 	// Initialize RSET controllers.
 	//
@@ -136,6 +137,7 @@ func main() {
 	statusController := controllers.NewStatusController(appConfig, &userGrpcClient, s3Client)
 	preferencesController := controllers.NewPreferencesController(&preferencesGrpcClient)
 	tagController := controllers.NewTagController(&tagGrpcClient)
+	calculatedStatsController := controllers.NewCalculatedStatsController(&calculatedStatsGrpcClient)
 
 	// Setup routes
 	routes.SetupRouter(
@@ -157,6 +159,7 @@ func main() {
 		statusController,
 		preferencesController,
 		tagController,
+		calculatedStatsController,
 	)
 
 	// Start the server
