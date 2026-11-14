@@ -2706,6 +2706,12 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Resolve embedded note references (default true)",
+                        "name": "include_references",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -6734,6 +6740,20 @@ const docTemplate = `{
                 }
             }
         },
+        "controllers.NoteReferenceReply": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "note_id": {
+                    "type": "string"
+                },
+                "section": {
+                    "type": "string"
+                }
+            }
+        },
         "controllers.NoteReply": {
             "type": "object",
             "properties": {
@@ -6762,6 +6782,12 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/controllers.PermissionRelationshipReply"
+                    }
+                },
+                "references": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controllers.NoteReferenceReply"
                     }
                 },
                 "shelf_ids": {

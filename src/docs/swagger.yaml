@@ -710,6 +710,15 @@ definitions:
       slug:
         type: string
     type: object
+  controllers.NoteReferenceReply:
+    properties:
+      content:
+        type: string
+      note_id:
+        type: string
+      section:
+        type: string
+    type: object
   controllers.NoteReply:
     properties:
       attachment_ids:
@@ -729,6 +738,10 @@ definitions:
       permissions:
         items:
           $ref: '#/definitions/controllers.PermissionRelationshipReply'
+        type: array
+      references:
+        items:
+          $ref: '#/definitions/controllers.NoteReferenceReply'
         type: array
       shelf_ids:
         items:
@@ -3416,6 +3429,10 @@ paths:
         name: id
         required: true
         type: string
+      - description: Resolve embedded note references (default true)
+        in: query
+        name: include_references
+        type: boolean
       produces:
       - application/json
       responses:

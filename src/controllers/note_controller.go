@@ -20,6 +20,20 @@ type GetNoteRequest struct {
 	ID string `json:"id" binding:"required" example:"0195f8f4-1167-7f89-b5ec-b40a8f08f4cb"`
 }
 
+// GetNoteQuery carries the optional query flags for GetNote.
+type GetNoteQuery struct {
+	// IncludeReferences resolves {{@note-id#section}} references embedded
+	// in the note content. When omitted the gRPC service defaults to true.
+	IncludeReferences *bool `form:"include_references" example:"true"`
+}
+
+// NoteReferenceReply is one resolved note reference returned by GetNote.
+type NoteReferenceReply struct {
+	NoteId  string `json:"note_id"`
+	Section string `json:"section,omitempty"`
+	Content string `json:"content"`
+}
+
 type NoteReply struct {
 	Id            string                        `json:"id"`
 	Title         string                        `json:"title"`
@@ -32,6 +46,7 @@ type NoteReply struct {
 	TagIds        []string                      `json:"tag_ids,omitempty"`
 	AttachmentIds []string                      `json:"attachment_ids,omitempty"`
 	ShelfIds      []string                      `json:"shelf_ids,omitempty"`
+	References    []NoteReferenceReply          `json:"references,omitempty"`
 }
 
 // PermissionSubjectReply represents the subject side of a permission tuple in REST responses.
@@ -137,17 +152,33 @@ func NoteReplyFromProto(note *proto.Note) NoteReply {
 	}
 }
 
+// NoteReferencesReplyFromProto converts resolved gRPC references into
+// the REST response shape. The order returned by the service is kept.
+func NoteReferencesReplyFromProto(refs []*proto.NoteReference) []NoteReferenceReply {
+	references := make([]NoteReferenceReply, 0, len(refs))
+	for _, ref := range refs {
+		references = append(references, NoteReferenceReply{
+			NoteId:  ref.GetNoteId(),
+			Section: ref.GetSection(),
+			Content: ref.GetContent(),
+		})
+	}
+	return references
+}
+
 // NoteResponseToProto converts a protobuf NoteResponse into a NoteReply.
 //
 // Parameters:
 //   - resp: A pointer to a proto.NoteResponse (note + id_token_map)
 //
 // Returns:
-//   - NoteReply populated with the note fields plus the per-attachment
-//     tokens from `id_token_map`. Tokens is omitted from the JSON when nil.
+//   - NoteReply populated with the note fields, the per-attachment
+//     tokens from `id_token_map`, and the resolved references. Tokens and
+//     references are omitted from the JSON when empty.
 func NoteResponseToProto(resp *proto.NoteResponse) NoteReply {
 	reply := NoteReplyFromProto(resp.GetNote())
 	reply.Tokens = resp.GetIdTokenMap()
+	reply.References = NoteReferencesReplyFromProto(resp.GetReferences())
 	return reply
 }
 
@@ -162,6 +193,7 @@ func NewNoteController(noteService *proto.NoteServiceClient) *NoteController {
 // @Accept json
 // @Produce json
 // @Param id path string true "Note ID (UUIDv7)"
+// @Param include_references query bool false "Resolve embedded note references (default true)"
 // @Success 200 {object} NoteReply
 // @Failure 400 {object} map[string]string
 // @Router /notes/{id} [get]
@@ -180,9 +212,19 @@ func (uc *NoteController) GetNote(c *gin.Context) {
 		return
 	}
 
+	var query GetNoteQuery
+	if err := c.ShouldBindQuery(&query); err != nil {
+		utils.SetGinError(c, http.StatusBadRequest, fmt.Errorf("invalid query: %w", err))
+		return
+	}
+
 	// gRPC service
 	resp, err := (*uc.NoteService).GetNote(
-		c, &proto.GetNoteRequest{Id: id, UserId: user.ID},
+		c, &proto.GetNoteRequest{
+			Id:                id,
+			UserId:            user.ID,
+			IncludeReferences: query.IncludeReferences,
+		},
 	)
 	if err != nil {
 		utils.SetGinError(c, http.StatusInternalServerError, fmt.Errorf("failed to fetch note via gRPC service: %w", err))
