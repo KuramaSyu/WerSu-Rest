@@ -3429,7 +3429,7 @@ paths:
         name: id
         required: true
         type: string
-      - description: Resolve embedded note references (default true)
+      - description: Resolve embedded note references (default false)
         in: query
         name: include_references
         type: boolean

@@ -2709,7 +2709,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
-                        "description": "Resolve embedded note references (default true)",
+                        "description": "Resolve embedded note references (default false)",
                         "name": "include_references",
                         "in": "query"
                     }

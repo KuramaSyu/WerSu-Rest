@@ -23,8 +23,8 @@ type GetNoteRequest struct {
 // GetNoteQuery carries the optional query flags for GetNote.
 type GetNoteQuery struct {
 	// IncludeReferences resolves {{@note-id#section}} references embedded
-	// in the note content. When omitted the gRPC service defaults to true.
-	IncludeReferences *bool `form:"include_references" example:"true"`
+	// in the note content. When omitted it defaults to false.
+	IncludeReferences *bool `form:"include_references" example:"false"`
 }
 
 // NoteReferenceReply is one resolved note reference returned by GetNote.
@@ -193,7 +193,7 @@ func NewNoteController(noteService *proto.NoteServiceClient) *NoteController {
 // @Accept json
 // @Produce json
 // @Param id path string true "Note ID (UUIDv7)"
-// @Param include_references query bool false "Resolve embedded note references (default true)"
+// @Param include_references query bool false "Resolve embedded note references (default false)"
 // @Success 200 {object} NoteReply
 // @Failure 400 {object} map[string]string
 // @Router /notes/{id} [get]
@@ -218,12 +218,17 @@ func (uc *NoteController) GetNote(c *gin.Context) {
 		return
 	}
 
+	includeReferences := false
+	if query.IncludeReferences != nil {
+		includeReferences = *query.IncludeReferences
+	}
+
 	// gRPC service
 	resp, err := (*uc.NoteService).GetNote(
 		c, &proto.GetNoteRequest{
 			Id:                id,
 			UserId:            user.ID,
-			IncludeReferences: query.IncludeReferences,
+			IncludeReferences: &includeReferences,
 		},
 	)
 	if err != nil {
